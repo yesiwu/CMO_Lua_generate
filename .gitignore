@@ -1,0 +1,44 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+
+# Python bytecode, environments, and tooling caches
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+build/
+dist/
+
+# Local databases and runtime state
+*.db
+*.db3
+*.sqlite
+*.sqlite3
+
+# Generated runtime artifacts
+/outputs/
+/runs/*
+!/runs/.gitkeep
+
+# IDE, OS, and local agent metadata
+.vscode/
+.idea/
+.cursor/
+.agents/
+.codex/
+.DS_Store
+Thumbs.db
+~$*
+*.swp
+*.swo
+*.tmp
+*.log

@@ -1,0 +1,38 @@
+﻿=== ComponentID=2496 in DataAircraftLoadouts (任何存在) ===
+Count: 0
+
+=== ID=2496 (作 Aircraft-dbid) 关联的 Loadout ===
+Count: 14
+LoadoutIDs: [3, 4, 9676, 9677, 9678, 9679, 9680, 9681, 9682, 14035, 14036, 17499, 22546, 30185]
+
+=== J-15D (4817) LoadoutID (反着用) ===
+Count: 5
+LoadoutIDs: [3, 4, 25211, 25212, 25444]
+
+=== J-15 (2496) 全部 Loadout 详情 ===
+Count: 14
+
+  LoadoutID= 9676  ROF= 5  Cap= 10  Role=2003  Radius=200nm  TOS=105s  Dep=0  A/A: PL-12, Standard CAP
+  LoadoutID=14035  ROF= 5  Cap=  6  Role=2003  Radius=200nm  TOS=150s  Dep=0  A/A: PL-12, Light
+  LoadoutID=30185  ROF= 5  Cap= 10  Role=2003  Radius=200nm  TOS=105s  Dep=0  A/A: PL-12, Heavy CAP
+  LoadoutID= 9678  ROF= 5  Cap= 12  Role=3001  Radius=470nm  TOS=0s  Dep=0  250kg GPB
+  LoadoutID= 9679  ROF= 5  Cap=  8  Role=3001  Radius=470nm  TOS=0s  Dep=0  500kg GPB
+  LoadoutID= 9680  ROF= 5  Cap= 84  Role=3001  Radius=470nm  TOS=0s  Dep=0  S-8KO 80mm Rockets
+  LoadoutID=22546  ROF= 5  Cap= 84  Role=3001  Radius=470nm  TOS=0s  Dep=0  S-13B 122mm Rockets
+python : Traceback (most recent call last):
+所在位置 C:\Users\user\AppData\Local\Temp\ps-script-d7f910ca-cd2c-42e2-a5a6-6b5a62f0f292.ps1:101 字符: 1
++ python "C:\Users\user\.codex\skills\CMOLua-main\outputs\_tmp\j15_real ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Traceback (most recent call last)::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  LoadoutID= 9677  ROF= 5  Cap=  8  Role=3003  Radius=500nm  TOS=0s  Dep=0  YJ-91 / AS-17 Krypton C [Kh-31P, ARM]
+  LoadoutID=14036  ROF= 5  Cap=  6  Role=3003  Radius=570nm  TOS=0s  Dep=0  YJ-91 / AS-17 Krypton C [Kh-31P, ARM], Long-Range
+  LoadoutID= 9682  ROF= 5  Cap=  6  Role=3202  Radius=490nm  TOS=0s  Dep=0  YJ-83K [C-802AK]
+  LoadoutID=17499  ROF= 5  Cap=  1  Role=8001  Radius=940nm  TOS=0s  Dep=0  Buddy Store
+  LoadoutID= 9681  ROF= 5  Cap=  0  Role=9001  Radius=2025nm  TOS=0s  Dep=0  (Ferry)
+  LoadoutID=    4  ROF= 5  Cap=  0  Role=9002  Radius=0nm  TOS=0s  Dep=0  (Maintenance [Unavailable])
+  LoadoutID=    3  ROF= 5  Cap=  0  Role=9003  Radius=0nm  TOS=0s  Dep=0  (Reserve [Available])
+  File "C:\Users\user\.codex\skills\CMOLua-main\outputs\_tmp\j15_real.py", line 66, in <module>
+    print(f"\n=== J-15 (2496) 每个 Loadout 的武器清单 (反舰 \u2b50 高亮) ===")
+UnicodeEncodeError: 'gbk' codec can't encode character '\u2b50' in position 39: illegal multibyte sequence

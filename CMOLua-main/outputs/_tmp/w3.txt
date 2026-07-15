@@ -1,0 +1,50 @@
+﻿[
+  {
+    "LoadoutID": 9676,
+    "Name": "A/A: PL-12, Standard CAP",
+    "LoadoutRole": 2003,
+    "DefaultCombatRadius": 200
+  },
+  {
+    "LoadoutID": 14035,
+    "Name": "A/A: PL-12, Light",
+    "LoadoutRole": 2003,
+    "DefaultCombatRadius": 200
+  },
+  {
+    "LoadoutID": 30185,
+    "Name": "A/A: PL-12, Heavy CAP",
+    "LoadoutRole": 2003,
+    "DefaultCombatRadius": 200
+  },
+  {
+    "LoadoutID": 9678,
+    "Name": "250kg GPB",
+    "LoadoutRole": 3001,
+    "DefaultCombatRadius": 470
+  },
+  {
+    "LoadoutID": 9679,
+    "Name": "500kg GPB",
+    "LoadoutRole": 3001,
+    "DefaultCombatRadius": 470
+  },
+  {
+    "LoadoutID": 9680,
+    "Name": "S-8KO 80mm Rockets",
+    "LoadoutRole": 3001,
+    "DefaultCombatRadius": 470
+  },
+  {
+    "LoadoutID": 22546,
+    "Name": "S-13B 122mm Rockets",
+    "LoadoutRole": 3001,
+    "DefaultCombatRadius": 470
+  },
+  {
+    "LoadoutID": 9677,
+    "Name": "YJ-91 / AS-17 Krypton C [Kh-31P, ARM]",
+    "LoadoutRole": 3003,
+    "DefaultCombatRadius": 500
+  }
+]

@@ -1,0 +1,18 @@
+﻿[
+  {
+    "cid": 0,
+    "name": "ID",
+    "type": "INTEGER",
+    "notnull": 1,
+    "dflt_value": null,
+    "pk": 1
+  },
+  {
+    "cid": 1,
+    "name": "ComponentID",
+    "type": "INTEGER",
+    "notnull": 1,
+    "dflt_value": null,
+    "pk": 2
+  }
+]

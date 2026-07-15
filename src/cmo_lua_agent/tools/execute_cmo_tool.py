@@ -1,0 +1,1 @@
+把 CmoRunner 包装成 LLM 能调用的 Tool

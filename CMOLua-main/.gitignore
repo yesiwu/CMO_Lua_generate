@@ -1,0 +1,55 @@
+# OS
+.DS_Store
+Thumbs.db
+~$*
+
+# IDE
+.vscode/settings.json
+.cursor/
+*.swp
+*.swo
+*.swn
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+
+# MCP database (user-provided, do not commit)
+mcp/db/DB3K_514.db3
+mcp/db/*.db3
+
+# Temp files
+*.tmp
+*.log
+
+# SpecStory / Cursor cache
+.specstory/
+
+# Stage debug / probe scripts (探索性临时脚本，非流水线)
+outputs/staging/**/02_dbg*.py
+outputs/staging/**/02_debug.py
+outputs/staging/**/02_describe.py
+outputs/staging/**/02_more.py
+outputs/staging/**/02_phase2b.py
+outputs/staging/**/02_probes.py
+outputs/staging/**/02_verify.py
+outputs/staging/**/extract.log
+outputs/staging/**/temp_*.py
+
+# MCP server 调试脚本
+mcp/_analyze_json*.py
+mcp/_healthcheck.py
+mcp/_*.log
+mcp_server.*.log
+
+# 临时调试脚本（根目录）
+/temp_*.py
+/temp_*.ps1
+
+# 旧版 SKILL 快照
+SK21414IL12L.md123

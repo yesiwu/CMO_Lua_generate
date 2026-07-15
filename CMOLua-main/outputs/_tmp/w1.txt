@@ -1,0 +1,14 @@
+﻿[
+  {
+    "ID": 2007,
+    "Name": "Type 001 Kuznetsov [16 Liaoning]"
+  },
+  {
+    "ID": 3187,
+    "Name": "Type 002 Kuznetsov Mod [17 Shandong]"
+  },
+  {
+    "ID": 3466,
+    "Name": "Type 003 [18 Fujian]"
+  }
+]

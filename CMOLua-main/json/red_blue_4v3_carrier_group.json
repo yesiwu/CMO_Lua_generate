@@ -1,0 +1,1038 @@
+{
+  "mission": {
+    "basicInfo": {
+      "planId": "red_blue_4v3_carrier_group",
+      "planName": "红方 4V3 反航母编队",
+      "planCode": "RB-4V3-CG",
+      "side": "红方",
+      "combatTime": "2026-07-07 09:00:00",
+      "astronomicalTime": "2026-07-07 09:00:00",
+      "timeZone": "UTC+8",
+      "scenarioFiles": [
+        "east_china_sea_red_blue_carrier_group"
+      ],
+      "planCategory": "红蓝对抗",
+      "keywords": "反舰，YJ-18，YJ-83K，水面+航空协同，多基齐射",
+      "relativeTimeBase": "2026-07-07 09:00:00",
+      "securityLevel": "",
+      "creator": "",
+      "createTime": "",
+      "createUnit": "",
+      "instructions": [
+        "红方按 4V3/5V3 (3舰 + 1~2机) 配置出击",
+        "飞机挂载 YJ-83K [C-802AK] 反舰弹 (Loadout #14059)",
+        "水面舰艇 VLS 装 YJ-18 通用反舰弹",
+        "蓝方固定编队 CVN-70 + CG-59 + DDG-113"
+      ],
+      "approver": "",
+      "approvalTime": "",
+      "approvalStatus": ""
+    },
+    "intentAnalysis": {
+      "combatPurposes": [
+        {
+          "description": "以多基反舰火力对蓝方航母编队（CVN-70 / CG-59 / DDG-113）实施饱和打击，优先重创 CVN-70。",
+          "types": [
+            "火力打击",
+            "反舰突击"
+          ]
+        }
+      ],
+      "combatRequirements": [
+        {
+          "requirementId": "REQ001",
+          "description": "对蓝方 CVN-70 达成至少 70% 毁伤效果",
+          "thresholds": {
+            "targetDamageThreshold": 70
+          }
+        },
+        {
+          "requirementId": "REQ002",
+          "description": "对蓝方 CG-59 达成至少 60% 毁伤效果",
+          "thresholds": {
+            "targetDamageThreshold": 60
+          }
+        }
+      ],
+      "restrictions": [
+        "禁止进入领海基线 12 nm 以内",
+        "民船航道保持安全距离"
+      ],
+      "terminationStates": [
+        {
+          "terminationId": "TS001",
+          "terminationType": "任务完成",
+          "description": "CVN-70 毁伤 >= 70% 且护航舰不能维持防空圈",
+          "thresholds": {
+            "targetDamageThreshold": 70
+          }
+        },
+        {
+          "terminationId": "TS002",
+          "terminationType": "任务失败",
+          "description": "我方损失 ≥ 2 艘主力舰"
+        }
+      ]
+    },
+    "situationAssessment": {
+      "enemySituation": {
+        "enemyIntents": [
+          {
+            "intentId": "EI001",
+            "description": "蓝方航母编队进逼我近海，意图压制我海空活动",
+            "priority": "高"
+          }
+        ],
+        "combatSystems": [
+          {
+            "systemId": "BLUE_AEGIS",
+            "systemName": "蓝方宙斯盾区域防空 (CG-59 + DDG-113)",
+            "missileTypes": [
+              "SM-2",
+              "SM-6",
+              "ESSM"
+            ],
+            "rangeNm": 100
+          }
+        ],
+        "allianceSupport": [],
+        "possibleActions": [
+          "组织 CIWS 近防",
+          "SM-2/SM-6 区域防空拦截",
+          "ESSM 内圈拦截",
+          "组织 EA-18G 电子干扰 (假定无)"
+        ],
+        "keyCivilianTargets": [],
+        "overallAssessment": "蓝方宙斯盾圈对低空亚音速反舰导弹有较好拦截能力; 高超音速(YJ-21)和多方向饱和同时打击最易破防。"
+      },
+      "friendlySituation": {
+        "situationDescription": "红方 4 个发射平台：水面对海突击群（VLS 装 YJ-18）+ 航空突击机群（J-16 携带 YJ-83K 反舰弹）",
+        "combatSystems": [],
+        "supportResources": [
+          {
+            "resourceId": "ELINT_LIBY",
+            "resourceName": "无侦-7/8 电子侦察",
+            "capability": "对蓝方雷达频段侦测"
+          },
+          {
+            "resourceId": "EW_J16D",
+            "resourceName": "J-16D 电子干扰支援",
+            "capability": "对宙斯盾雷达频段干扰"
+          }
+        ],
+        "combatEnvironment": [
+          {
+            "envId": "WX1",
+            "envName": "海况 3-4 级",
+            "constraint": "不影响平台机动"
+          }
+        ]
+      },
+      "comprehensiveConclusions": "以多基协同 / 同时饱和打击: 水面 052D/055 VLS YJ-18 齐射 + 航空 J-16 YJ-83K 突防，从多方位同时进入，压制宙斯盾拦截通道。"
+    },
+    "combatPhases": [
+      {
+        "phaseSequence": "1",
+        "phaseName": "接敌 / 待机",
+        "timeWindow": {
+          "startTime": "2026-07-07 09:00:00",
+          "endTime": "2026-07-07 09:00:00",
+          "duration": "PT50M"
+        },
+        "phasePurpose": "红方 052D/055 编队保持待机航渡; 航空 J-16 机群挂弹起飞、前出待机; J-16D 提供电子战支援",
+        "criticalTasks": [
+          {
+            "taskId": "CT1-1",
+            "taskName": "红方水面编队待机航渡",
+            "taskDescription": "055/052D 编队沿预定航渡线向目标海区机动，到达攻击阵位"
+          },
+          {
+            "taskId": "CT1-2",
+            "taskName": "J-16 机群前出待机",
+            "taskDescription": "J-16 (YJ-83K 反舰挂载) 在空中巡逻点待命，等待发射窗口"
+          },
+          {
+            "taskId": "CT1-3",
+            "taskName": "J-16D 电子干扰 / 支援",
+            "taskDescription": "J-16D 在编队外侧，对蓝方宙斯盾雷达频段实施干扰压制"
+          },
+          {
+            "taskId": "CT1-4",
+            "taskName": "目标信息确认",
+            "taskDescription": "通过无侦-7/侦察机 / 数据链确认 CVN-70 / CG-59 / DDG-113 的精确位置"
+          }
+        ]
+      },
+      {
+        "phaseSequence": "2",
+        "phaseName": "协同齐射 / 饱和打击",
+        "timeWindow": {
+          "startTime": "2026-07-07 09:00:00",
+          "endTime": "2026-07-07 10:00:00",
+          "duration": "PT10M"
+        },
+        "phasePurpose": "水面舰艇与航空机群在 T+50min 同步进入发射窗口，多基协同齐射 YJ-18 / YJ-83K 反舰弹",
+        "criticalTasks": [
+          {
+            "taskId": "CT2-1",
+            "taskName": "水面 052D/055 VLS 齐射 YJ-18",
+            "taskDescription": "全部红方水面舰艇 VLS 同步齐射 YJ-18 反舰弹，瞄准 CVN-70"
+          },
+          {
+            "taskId": "CT2-2",
+            "taskName": "J-16 投放 YJ-83K",
+            "taskDescription": "J-16 飞机从低空突防，对 CVN-70 / CG-59 投放 YJ-83K 反舰弹"
+          },
+          {
+            "taskId": "CT2-3",
+            "taskName": "J-16D 持续干扰",
+            "taskDescription": "J-16D 在编队外保持对蓝方雷达频段的干扰，掩护反舰弹突防"
+          }
+        ]
+      },
+      {
+        "phaseSequence": "3",
+        "phaseName": "战果评估 / 脱离",
+        "timeWindow": {
+          "startTime": "2026-07-07 09:00:00",
+          "endTime": "2026-07-07 10:15:00",
+          "duration": "PT15M"
+        },
+        "phasePurpose": "评估战果，决定是否补射或脱离",
+        "criticalTasks": [
+          {
+            "taskId": "CT3-1",
+            "taskName": "战果评估",
+            "taskDescription": "通过侦察判定 CVN-70 / CG-59 / DDG-113 毁伤等级"
+          },
+          {
+            "taskId": "CT3-2",
+            "taskName": "脱离 / 补射",
+            "taskDescription": "若主要目标未达毁伤阈值，进入补射程序；否则脱离接触"
+          }
+        ]
+      }
+    ]
+  },
+  "task": {
+    "killWebs": [
+      {
+        "killWebsId": "KW001",
+        "killWebsName": "红方 4V3 反航母编队协同打击",
+        "description": "1 艘 055 + 2 艘 052D 实施水面 VLS YJ-18 齐射, 1 架 J-16 携带 YJ-83K 反舰弹从空中突防, 多基协同同时到达 CVN-70 编队。",
+        "killWebsObjective": "集中火力对蓝方 CVN-70 Carl Vinson 实施协同饱和打击",
+        "startTime": "2026-07-07 09:00:00",
+        "endTime": "2026-07-07 09:00:00",
+        "targets": [
+          {
+            "targetID": "blue_cvn_1",
+            "targetSequence": 1,
+            "targetName": "蓝方 CVN-70 Carl Vinson",
+            "objectType": "水面舰艇",
+            "friendlyEnemyFlag": "敌方",
+            "targetStatus": "活动",
+            "priorityLevel": 1,
+            "phaseSequence": "1",
+            "phaseName": "接敌 / 待机",
+            "intelligenceSource": "空中侦察 / 数据链",
+            "location": {
+              "longitude": "124.50",
+              "latitude": "30.40",
+              "altitude": "0"
+            },
+            "motion": {
+              "directionOfMovement": 0,
+              "speed": 14
+            },
+            "affiliation": {
+              "countryCode": "USA",
+              "forceSideId": "",
+              "forceSideName": "蓝方",
+              "militaryService": "USN",
+              "category": "水面装备",
+              "subCategory": ""
+            },
+            "targetCombatRequirement": {
+              "indicatorType": "毁伤百分比",
+              "quantitativeValue": {
+                "operator": ">=",
+                "value": 70,
+                "level": "",
+                "range": {
+                  "minValue": 0,
+                  "maxValue": 100
+                }
+              }
+            }
+          },
+          {
+            "targetID": "blue_cg59_1",
+            "targetSequence": 2,
+            "targetName": "蓝方 CG-59 Princeton",
+            "objectType": "水面舰艇",
+            "friendlyEnemyFlag": "敌方",
+            "targetStatus": "活动",
+            "priorityLevel": 2,
+            "phaseSequence": "1",
+            "phaseName": "接敌 / 待机",
+            "intelligenceSource": "空中侦察 / 数据链",
+            "location": {
+              "longitude": "124.20",
+              "latitude": "30.39",
+              "altitude": "0"
+            },
+            "motion": {
+              "directionOfMovement": 0,
+              "speed": 14
+            },
+            "affiliation": {
+              "countryCode": "USA",
+              "forceSideId": "",
+              "forceSideName": "蓝方",
+              "militaryService": "USN",
+              "category": "水面装备",
+              "subCategory": ""
+            },
+            "targetCombatRequirement": {
+              "indicatorType": "毁伤百分比",
+              "quantitativeValue": {
+                "operator": ">=",
+                "value": 60,
+                "level": "",
+                "range": {
+                  "minValue": 0,
+                  "maxValue": 100
+                }
+              }
+            }
+          },
+          {
+            "targetID": "blue_ddg113_1",
+            "targetSequence": 3,
+            "targetName": "蓝方 DDG-113 John Finn",
+            "objectType": "水面舰艇",
+            "friendlyEnemyFlag": "敌方",
+            "targetStatus": "活动",
+            "priorityLevel": 3,
+            "phaseSequence": "1",
+            "phaseName": "接敌 / 待机",
+            "intelligenceSource": "空中侦察 / 数据链",
+            "location": {
+              "longitude": "124.80",
+              "latitude": "30.41",
+              "altitude": "0"
+            },
+            "motion": {
+              "directionOfMovement": 0,
+              "speed": 14
+            },
+            "affiliation": {
+              "countryCode": "USA",
+              "forceSideId": "",
+              "forceSideName": "蓝方",
+              "militaryService": "USN",
+              "category": "水面装备",
+              "subCategory": ""
+            },
+            "targetCombatRequirement": {
+              "indicatorType": "毁伤百分比",
+              "quantitativeValue": {
+                "operator": ">=",
+                "value": 50,
+                "level": "",
+                "range": {
+                  "minValue": 0,
+                  "maxValue": 100
+                }
+              }
+            }
+          }
+        ],
+        "forceGroups": [
+          {
+            "forceGroupID": "FG_RED_SURFACE",
+            "forceGroupName": "红方对海突击群",
+            "forceSelection": [
+              {
+                "forceSideName": "红方",
+                "platformSelection": [
+                  {
+                    "platformId": "red_055_1",
+                    "platformName": "red_055_1",
+                    "platformCategory": "水面装备",
+                    "platformClass": "",
+                    "platformType": "DDG_055",
+                    "platformStatus": "活动",
+                    "platformSubCategory": "",
+                    "platformLocation": {
+                      "altitude": "0",
+                      "latitude": "30.316000",
+                      "longitude": "122.650000"
+                    },
+                    "dbid": 3883,
+                    "dbid_type": "DataShip",
+                    "loadList": [
+                      {
+                        "loadout_id": null,
+                        "weapon": {
+                          "weaponDBID": 2868,
+                          "weaponDBIDType": "DataWeapon",
+                          "weaponName": "YJ-18 通用垂直发射反舰导弹",
+                          "qty": 8
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "platformId": "red_052d_1",
+                    "platformName": "red_052d_1",
+                    "platformCategory": "水面装备",
+                    "platformClass": "",
+                    "platformType": "DDG_052D",
+                    "platformStatus": "活动",
+                    "platformSubCategory": "",
+                    "platformLocation": {
+                      "altitude": "0",
+                      "latitude": "30.372000",
+                      "longitude": "122.800000"
+                    },
+                    "dbid": 2296,
+                    "dbid_type": "DataShip",
+                    "loadList": [
+                      {
+                        "loadout_id": null,
+                        "weapon": {
+                          "weaponDBID": 2868,
+                          "weaponDBIDType": "DataWeapon",
+                          "weaponName": "YJ-18 通用垂直发射反舰导弹",
+                          "qty": 8
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "platformId": "red_052d_2",
+                    "platformName": "red_052d_2",
+                    "platformCategory": "水面装备",
+                    "platformClass": "",
+                    "platformType": "DDG_052D",
+                    "platformStatus": "活动",
+                    "platformSubCategory": "",
+                    "platformLocation": {
+                      "altitude": "0",
+                      "latitude": "30.428000",
+                      "longitude": "122.950000"
+                    },
+                    "dbid": 3586,
+                    "dbid_type": "DataShip",
+                    "loadList": [
+                      {
+                        "loadout_id": null,
+                        "weapon": {
+                          "weaponDBID": 2868,
+                          "weaponDBIDType": "DataWeapon",
+                          "weaponName": "YJ-18 通用垂直发射反舰导弹",
+                          "qty": 8
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "platformId": "blue_cvn_1",
+                    "platformName": "blue_cvn_1",
+                    "platformCategory": "水面装备",
+                    "platformClass": "",
+                    "platformType": "CVN_70",
+                    "platformStatus": "活动",
+                    "platformSubCategory": "",
+                    "platformLocation": {
+                      "altitude": "0",
+                      "latitude": "30.320000",
+                      "longitude": "124.300000"
+                    },
+                    "loadList": []
+                  },
+                  {
+                    "platformId": "blue_cg59_1",
+                    "platformName": "blue_cg59_1",
+                    "platformCategory": "水面装备",
+                    "platformClass": "",
+                    "platformType": "CG_59",
+                    "platformStatus": "活动",
+                    "platformSubCategory": "",
+                    "platformLocation": {
+                      "altitude": "0",
+                      "latitude": "30.400000",
+                      "longitude": "124.500000"
+                    },
+                    "loadList": []
+                  },
+                  {
+                    "platformId": "blue_ddg113_1",
+                    "platformName": "blue_ddg113_1",
+                    "platformCategory": "水面装备",
+                    "platformClass": "",
+                    "platformType": "DDG_113",
+                    "platformStatus": "活动",
+                    "platformSubCategory": "",
+                    "platformLocation": {
+                      "altitude": "0",
+                      "latitude": "30.480000",
+                      "longitude": "124.700000"
+                    },
+                    "loadList": []
+                  }
+                ]
+              }
+            ],
+            "installationSelection": []
+          },
+          {
+            "forceGroupID": "FG_RED_AIR",
+            "forceGroupName": "红方航空突击机群",
+            "forceSelection": [
+              {
+                "forceSideName": "红方",
+                "platformSelection": [
+                  {
+                    "platformId": "red_j16_1",
+                    "platformName": "red_j16_1",
+                    "platformCategory": "航空装备",
+                    "platformClass": "",
+                    "platformType": "AC_J16",
+                    "platformStatus": "活动",
+                    "platformSubCategory": "",
+                    "platformLocation": {
+                      "altitude": "8000",
+                      "latitude": "30.484000",
+                      "longitude": "123.100000"
+                    },
+                    "dbid": 2853,
+                    "dbid_type": "DataAircraft",
+                    "loadList": [
+                      {
+                        "loadout_id": 14059,
+                        "weapon": {
+                          "weaponDBID": 2868,
+                          "weaponDBIDType": "DataWeapon",
+                          "weaponName": "YJ-83K 反舰弹 (DBID=YJ-18 2868)",
+                          "qty": 2
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ],
+            "installationSelection": []
+          },
+          {
+            "forceGroupID": "FG_BLUE",
+            "forceGroupName": "蓝方航母编队",
+            "forceSelection": [
+              {
+                "forceSideName": "蓝方",
+                "platformSelection": [
+                  {
+                    "platformId": "blue_cvn_1",
+                    "platformName": "blue_cvn_1",
+                    "platformCategory": "水面装备",
+                    "platformClass": "",
+                    "platformType": "CVN_70",
+                    "platformStatus": "活动",
+                    "platformSubCategory": "",
+                    "platformLocation": {
+                      "altitude": "0",
+                      "latitude": "30.320000",
+                      "longitude": "124.300000"
+                    },
+                    "loadList": []
+                  },
+                  {
+                    "platformId": "blue_cg59_1",
+                    "platformName": "blue_cg59_1",
+                    "platformCategory": "水面装备",
+                    "platformClass": "",
+                    "platformType": "CG_59",
+                    "platformStatus": "活动",
+                    "platformSubCategory": "",
+                    "platformLocation": {
+                      "altitude": "0",
+                      "latitude": "30.400000",
+                      "longitude": "124.500000"
+                    },
+                    "loadList": []
+                  },
+                  {
+                    "platformId": "blue_ddg113_1",
+                    "platformName": "blue_ddg113_1",
+                    "platformCategory": "水面装备",
+                    "platformClass": "",
+                    "platformType": "DDG_113",
+                    "platformStatus": "活动",
+                    "platformSubCategory": "",
+                    "platformLocation": {
+                      "altitude": "0",
+                      "latitude": "30.480000",
+                      "longitude": "124.700000"
+                    },
+                    "loadList": []
+                  }
+                ]
+              }
+            ],
+            "installationSelection": []
+          }
+        ],
+        "killChains": [
+          {
+            "killChainId": "KC001",
+            "killChainName": "红方水面 YJ-18 齐射",
+            "description": "055/052D 编队 VLS 齐射 YJ-18 反舰弹，集中攻击 CVN-70",
+            "expectedDuration": "PT15M",
+            "phaseSequence": "2",
+            "taskSuccessCriteria": [
+              {
+                "indicator": "目标毁伤",
+                "operator": ">=",
+                "value": 70
+              }
+            ],
+            "TargetList": [
+              {
+                "targetSequence": 1,
+                "targetID": "blue_cvn_1",
+                "targetName": "蓝方 CVN-70"
+              }
+            ],
+            "LinkList": [
+              {
+                "linkId": "LK001-1",
+                "linkTaskName": "水面舰艇待机航渡",
+                "linkType": "巡航",
+                "taskType": "瞄准",
+                "description": "到达攻击阵位",
+                "startCondition": [
+                  {
+                    "type": "时间",
+                    "time": "2026-07-07 09:00:00",
+                    "priority": 1
+                  }
+                ],
+                "successCriteria": "进入预定射击水域",
+                "platforms": [
+                  {
+                    "platformId": "red_055_1",
+                    "platformName": "red_055_1",
+                    "role": "发射",
+                    "taskId": "",
+                    "task": "待机航渡",
+                    "startTimeOffset": "PT0H",
+                    "endTimeOffset": "PT50M",
+                    "weapon": {}
+                  },
+                  {
+                    "platformId": "red_052d_1",
+                    "platformName": "red_052d_1",
+                    "role": "发射",
+                    "taskId": "",
+                    "task": "待机航渡",
+                    "startTimeOffset": "PT0H",
+                    "endTimeOffset": "PT50M",
+                    "weapon": {}
+                  },
+                  {
+                    "platformId": "red_052d_2",
+                    "platformName": "red_052d_2",
+                    "role": "发射",
+                    "taskId": "",
+                    "task": "待机航渡",
+                    "startTimeOffset": "PT0H",
+                    "endTimeOffset": "PT50M",
+                    "weapon": {}
+                  }
+                ]
+              },
+              {
+                "linkId": "LK001-2",
+                "linkTaskName": "VLS 齐射 YJ-18",
+                "linkType": "舰对舰导弹发射",
+                "taskType": "交战",
+                "description": "T+50min 起 10 分钟内完成全部 YJ-18 齐射",
+                "startCondition": [
+                  {
+                    "type": "时间",
+                    "time": "2026-07-07 09:00:00",
+                    "priority": 1
+                  }
+                ],
+                "successCriteria": "YJ-18 进入自导段",
+                "platforms": [
+                  {
+                    "platformId": "red_055_1",
+                    "platformName": "red_055_1",
+                    "role": "突击",
+                    "taskId": "",
+                    "task": "YJ-18 齐射",
+                    "startTimeOffset": "PT50M",
+                    "endTimeOffset": "PT60M",
+                    "weapon": {
+                      "weaponDBID": 2868,
+                      "weaponName": "YJ-18 反舰导弹",
+                      "qty": 8
+                    }
+                  },
+                  {
+                    "platformId": "red_052d_1",
+                    "platformName": "red_052d_1",
+                    "role": "突击",
+                    "taskId": "",
+                    "task": "YJ-18 齐射",
+                    "startTimeOffset": "PT50M",
+                    "endTimeOffset": "PT60M",
+                    "weapon": {
+                      "weaponDBID": 2868,
+                      "weaponName": "YJ-18 反舰导弹",
+                      "qty": 8
+                    }
+                  },
+                  {
+                    "platformId": "red_052d_2",
+                    "platformName": "red_052d_2",
+                    "role": "突击",
+                    "taskId": "",
+                    "task": "YJ-18 齐射",
+                    "startTimeOffset": "PT50M",
+                    "endTimeOffset": "PT60M",
+                    "weapon": {
+                      "weaponDBID": 2868,
+                      "weaponName": "YJ-18 反舰导弹",
+                      "qty": 8
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "killChainId": "KC002",
+            "killChainName": "红方航空 YJ-83K 突击",
+            "description": "J-16 机群投放 YJ-83K 反舰弹，多方向攻击 CVN-70 / CG-59",
+            "expectedDuration": "PT15M",
+            "phaseSequence": "2",
+            "taskSuccessCriteria": [
+              {
+                "indicator": "目标毁伤",
+                "operator": ">=",
+                "value": 60
+              }
+            ],
+            "TargetList": [
+              {
+                "targetSequence": 1,
+                "targetID": "blue_cvn_1",
+                "targetName": "蓝方 CVN-70"
+              },
+              {
+                "targetSequence": 2,
+                "targetID": "blue_cg59_1",
+                "targetName": "蓝方 CG-59"
+              }
+            ],
+            "LinkList": [
+              {
+                "linkId": "LK002-1",
+                "linkTaskName": "J-16 前出待机",
+                "linkType": "空中巡逻",
+                "taskType": "发现",
+                "description": "J-16 在待机空域巡逻",
+                "startCondition": [
+                  {
+                    "type": "时间",
+                    "time": "2026-07-07 09:00:00",
+                    "priority": 1
+                  }
+                ],
+                "successCriteria": "进入待机空域 / 目标确认",
+                "platforms": [
+                  {
+                    "platformId": "red_j16_1",
+                    "platformName": "red_j16_1",
+                    "role": "侦察 / 待机",
+                    "taskId": "",
+                    "task": "空中待机",
+                    "startTimeOffset": "PT0H",
+                    "endTimeOffset": "PT45M",
+                    "weapon": {
+                      "weaponDBID": 14059,
+                      "weaponName": "YJ-83K [C-802AK] 反舰挂载",
+                      "qty": 1
+                    }
+                  }
+                ]
+              },
+              {
+                "linkId": "LK002-2",
+                "linkTaskName": "J-16 投放 YJ-83K",
+                "linkType": "空对舰导弹发射",
+                "taskType": "交战",
+                "description": "J-16 从低空突防，对 CVN-70/CG-59 投放 YJ-83K 反舰弹",
+                "startCondition": [
+                  {
+                    "type": "时间",
+                    "time": "2026-07-07 09:00:00",
+                    "priority": 1
+                  }
+                ],
+                "successCriteria": "YJ-83K 进入末段自导",
+                "platforms": [
+                  {
+                    "platformId": "red_j16_1",
+                    "platformName": "red_j16_1",
+                    "role": "突击",
+                    "taskId": "",
+                    "task": "YJ-83K 投放",
+                    "startTimeOffset": "PT45M",
+                    "endTimeOffset": "PT55M",
+                    "weapon": {
+                      "weaponDBID": 2868,
+                      "weaponName": "YJ-83K 反舰弹 (在 DBLoadout 映射为 YJ-18 SKU)",
+                      "qty": 2
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "killChainId": "KC003",
+            "killChainName": "红方多基协同饱和",
+            "description": "水面 + 航空 在同一时间窗口同时发起攻击，达成多方向同时到达 (TOT)",
+            "expectedDuration": "PT10M",
+            "phaseSequence": "2",
+            "taskSuccessCriteria": [
+              {
+                "indicator": "目标毁伤 (CVN)",
+                "operator": ">=",
+                "value": 70
+              },
+              {
+                "indicator": "目标毁伤 (CG)",
+                "operator": ">=",
+                "value": 50
+              }
+            ],
+            "TargetList": [
+              {
+                "targetSequence": 1,
+                "targetID": "blue_cvn_1",
+                "targetName": "蓝方 CVN-70"
+              },
+              {
+                "targetSequence": 2,
+                "targetID": "blue_cg59_1",
+                "targetName": "蓝方 CG-59"
+              }
+            ],
+            "LinkList": [
+              {
+                "linkId": "LK003-1",
+                "linkTaskName": "态势同步 / 数据链握手",
+                "linkType": "信息支援",
+                "taskType": "瞄准",
+                "description": "水面与航空通过数据链共享目标坐标，发射时间同步",
+                "startCondition": [
+                  {
+                    "type": "时间",
+                    "time": "2026-07-07 09:00:00",
+                    "priority": 1
+                  }
+                ],
+                "successCriteria": "TOT 时间一致性 < 1 秒",
+                "platforms": [
+                  {
+                    "platformId": "red_055_1",
+                    "platformName": "red_055_1",
+                    "role": "信息节点",
+                    "taskId": "",
+                    "task": "数据链同步",
+                    "startTimeOffset": "PT45M",
+                    "endTimeOffset": "PT50M",
+                    "weapon": {}
+                  },
+                  {
+                    "platformId": "red_052d_1",
+                    "platformName": "red_052d_1",
+                    "role": "信息节点",
+                    "taskId": "",
+                    "task": "数据链同步",
+                    "startTimeOffset": "PT45M",
+                    "endTimeOffset": "PT50M",
+                    "weapon": {}
+                  },
+                  {
+                    "platformId": "red_052d_2",
+                    "platformName": "red_052d_2",
+                    "role": "信息节点",
+                    "taskId": "",
+                    "task": "数据链同步",
+                    "startTimeOffset": "PT45M",
+                    "endTimeOffset": "PT50M",
+                    "weapon": {}
+                  },
+                  {
+                    "platformId": "red_j16_1",
+                    "platformName": "red_j16_1",
+                    "role": "信息节点",
+                    "taskId": "",
+                    "task": "数据链同步",
+                    "startTimeOffset": "PT45M",
+                    "endTimeOffset": "PT50M",
+                    "weapon": {}
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "platformExecutions": {
+      "platformExecutions": [
+        {
+          "platformExecutionId": "PE_red_055_1_2868",
+          "platformId": "red_055_1",
+          "side": "红方",
+          "taskType": "对海突击",
+          "primaryTarget": "blue_cvn_1",
+          "secondaryTargets": [
+            "blue_cg59_1",
+            "blue_ddg113_1"
+          ],
+          "weaponDBID": 2868,
+          "weaponName": "YJ-18 通用垂直发射反舰导弹",
+          "qty": 8,
+          "fireWindow": {
+            "earliestDeparture": "PT0M",
+            "latestDeparture": "PT15M"
+          },
+          "fireMode": "salvo",
+          "fireScheduleRule": "TOT-aligned",
+          "rippleIntervalSec": 5
+        },
+        {
+          "platformExecutionId": "PE_red_052d_1_2868",
+          "platformId": "red_052d_1",
+          "side": "红方",
+          "taskType": "对海突击",
+          "primaryTarget": "blue_cvn_1",
+          "secondaryTargets": [
+            "blue_cg59_1",
+            "blue_ddg113_1"
+          ],
+          "weaponDBID": 2868,
+          "weaponName": "YJ-18 通用垂直发射反舰导弹",
+          "qty": 8,
+          "fireWindow": {
+            "earliestDeparture": "PT0M",
+            "latestDeparture": "PT15M"
+          },
+          "fireMode": "salvo",
+          "fireScheduleRule": "TOT-aligned",
+          "rippleIntervalSec": 5
+        },
+        {
+          "platformExecutionId": "PE_red_052d_2_2868",
+          "platformId": "red_052d_2",
+          "side": "红方",
+          "taskType": "对海突击",
+          "primaryTarget": "blue_cvn_1",
+          "secondaryTargets": [
+            "blue_cg59_1",
+            "blue_ddg113_1"
+          ],
+          "weaponDBID": 2868,
+          "weaponName": "YJ-18 通用垂直发射反舰导弹",
+          "qty": 8,
+          "fireWindow": {
+            "earliestDeparture": "PT0M",
+            "latestDeparture": "PT15M"
+          },
+          "fireMode": "salvo",
+          "fireScheduleRule": "TOT-aligned",
+          "rippleIntervalSec": 5
+        },
+        {
+          "platformExecutionId": "PE_red_j16_1_2868",
+          "platformId": "red_j16_1",
+          "side": "红方",
+          "taskType": "对海突击",
+          "primaryTarget": "blue_cvn_1",
+          "secondaryTargets": [
+            "blue_cg59_1",
+            "blue_ddg113_1"
+          ],
+          "weaponDBID": 2868,
+          "weaponName": "YJ-83K 反舰弹 (DBID=YJ-18 2868)",
+          "qty": 2,
+          "fireWindow": {
+            "earliestDeparture": "PT0M",
+            "latestDeparture": "PT15M"
+          },
+          "fireMode": "salvo",
+          "fireScheduleRule": "TOT-aligned",
+          "rippleIntervalSec": 5
+        }
+      ]
+    }
+  },
+  "_meta": {
+    "schema": "B-type killweb",
+    "db_source": "DB3K_504",
+    "generated_by": "scene_skill/gen_scene.py",
+    "dbid_tags": [
+      {
+        "dbid": 3883,
+        "table": "DataShip",
+        "ctx": "red_055_1"
+      },
+      {
+        "dbid": 2296,
+        "table": "DataShip",
+        "ctx": "red_052d_1"
+      },
+      {
+        "dbid": 3586,
+        "table": "DataShip",
+        "ctx": "red_052d_2"
+      },
+      {
+        "dbid": 2853,
+        "table": "DataAircraft",
+        "ctx": "red_j16_1"
+      },
+      {
+        "dbid": 2868,
+        "table": "DataWeapon",
+        "ctx": "weapon of red_j16_1"
+      },
+      {
+        "dbid": 3551,
+        "table": "DataShip",
+        "ctx": "blue_cvn_1"
+      },
+      {
+        "dbid": 2862,
+        "table": "DataShip",
+        "ctx": "blue_cg59_1"
+      },
+      {
+        "dbid": 4299,
+        "table": "DataShip",
+        "ctx": "blue_ddg113_1"
+      }
+    ],
+    "red_count": 4,
+    "blue_count": 3
+  }
+}

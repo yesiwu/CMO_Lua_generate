@@ -1,0 +1,1826 @@
+{
+  "mission": {
+    "basicInfo": {
+      "planId": "covert_decisive_strike_c",
+      "planName": "隐蔽致命一击",
+      "planCode": "",
+      "side": "红方",
+      "combatTime": "2026-04-10 12:00:00",
+      "astronomicalTime": "2026-04-10 12:00:00",
+      "timeZone": "UTC+8",
+      "scenarioFiles": [
+        "east_china_sea_anti_ship"
+      ],
+      "planCategory": "",
+      "keywords": "反舰，潜艇突击，电磁压制，多域协同",
+      "relativeTimeBase": "2026-04-10 12:00:00",
+      "securityLevel": "",
+      "creator": "",
+      "createTime": "",
+      "createUnit": "",
+      "instructions": [],
+      "approver": "",
+      "approvalTime": "",
+      "approvalStatus": ""
+    },
+    "intentAnalysis": {
+      "combatPurposes": [
+        {
+          "description": "摧毁或重创蓝方护航编队，特别是高价值补给舰，削弱其持续作战能力。",
+          "types": [
+            "火力打击"
+          ]
+        }
+      ],
+      "combatRequirements": [
+        {
+          "requirementId": "REQ001",
+          "description": "对蓝方补给舰（blue_aux_supply_1）达成至少80%的毁伤效果。",
+          "thresholds": {
+            "targetDamageThreshold": 80
+          }
+        }
+      ],
+      "restrictions": [],
+      "terminationStates": [
+        {
+          "terminationId": "TS001",
+          "terminationType": "任务完成",
+          "description": "蓝方编队主要目标（补给舰及护航驱逐舰）被摧毁或丧失战斗力，红方攻击群安全脱离接触。",
+          "thresholds": {
+            "targetDamageThreshold": 80
+          }
+        }
+      ]
+    },
+    "situationAssessment": {
+      "enemySituation": {
+        "enemyIntents": [
+          {
+            "intentId": "EI001",
+            "description": "为补给舰提供护航，确保其安全通过东海海域。",
+            "priority": "高"
+          }
+        ],
+        "combatSystems": [],
+        "allianceSupport": [],
+        "possibleActions": [
+          "组织防空反导",
+          "进行反潜搜索与攻击",
+          "请求空中支援"
+        ],
+        "keyCivilianTargets": [],
+        "overallAssessment": "蓝方编队拥有较强的区域防空和反潜能力，但存在对隐蔽水下攻击和电磁压制的脆弱性。"
+      },
+      "friendlySituation": {
+        "situationDescription": "红方拥有水下隐蔽突击、空中远程打击与电磁压制优势，具备多域协同攻击能力。",
+        "combatSystems": [],
+        "supportResources": [],
+        "combatEnvironment": []
+      },
+      "comprehensiveConclusions": "应采取以潜艇隐蔽突击为核心，空中力量前出侦察、压制并实施补充打击的作战模式，以达成突然性和高效毁伤。"
+    },
+    "combatPhases": [
+      {
+        "phaseSequence": "1",
+        "phaseName": "隐蔽接敌与目标确认",
+        "timeWindow": {
+          "startTime": "2026-04-10 12:00:00",
+          "endTime": "2026-04-10 12:50:00",
+          "duration": "PT50M"
+        },
+        "phasePurpose": "潜艇隐蔽机动接敌，空中力量完成对蓝方编队的精确定位与信息分发。",
+        "criticalTasks": [
+          {
+            "taskId": "CT1-1",
+            "taskName": "潜艇隐蔽接敌",
+            "taskDescription": "潜艇red_sub_039c_1秘密向蓝方编队预定水域机动。"
+          },
+          {
+            "taskId": "CT1-2",
+            "taskName": "广域侦察监视",
+            "taskDescription": "J-16D (red_j16d_1) 与一架J-16 (red_j16_1) 对蓝方编队进行电磁侦察与监视，精确定位目标。"
+          }
+        ]
+      },
+      {
+        "phaseSequence": "2",
+        "phaseName": "潜艇致命一击",
+        "timeWindow": {
+          "startTime": "2026-04-10 12:50:00",
+          "endTime": "2026-04-10 13:00:00",
+          "duration": "PT10M"
+        },
+        "phasePurpose": "潜艇对蓝方高价值目标发起导弹齐射攻击，并实施电磁干扰掩护。",
+        "criticalTasks": [
+          {
+            "taskId": "CT2-1",
+            "taskName": "潜射导弹攻击",
+            "taskDescription": "潜艇red_sub_039c_1向蓝方目标齐射反舰导弹。"
+          },
+          {
+            "taskId": "CT2-2",
+            "taskName": "电磁干扰压制",
+            "taskDescription": "J-16D (red_j16d_1) 对蓝方反潜及防空区域实施电磁干扰。"
+          }
+        ]
+      },
+      {
+        "phaseSequence": "3",
+        "phaseName": "空中火力补充与评估",
+        "timeWindow": {
+          "startTime": "2026-04-10 13:00:00",
+          "endTime": "2026-04-10 13:15:00",
+          "duration": "PT15M"
+        },
+        "phasePurpose": "空中编队对受损或残存蓝方目标进行补充打击，并完成战果评估。",
+        "criticalTasks": [
+          {
+            "taskId": "CT3-1",
+            "taskName": "空中补充打击",
+            "taskDescription": "J-16机群 (red_j16_2, red_j16_3, red_j16_4) 前出，对蓝方目标进行导弹攻击。"
+          },
+          {
+            "taskId": "CT3-2",
+            "taskName": "持续电磁压制与评估",
+            "taskDescription": "J-16D (red_j16d_1) 持续压制并协同进行打击效果评估。"
+          }
+        ]
+      }
+    ]
+  },
+  "task": {
+    "killWebs": [
+      {
+        "killWebsId": "KW001",
+        "killWebsName": "东海多域联合反舰杀伤网",
+        "description": "针对蓝方护航编队的多平台、多阶段联合打击方案，以潜艇隐蔽突击为核心。",
+        "killWebsObjective": "摧毁蓝方护航编队，优先打击补给舰。",
+        "startTime": "2026-04-10 12:00:00",
+        "endTime": "2026-04-10 13:15:00",
+        "targets": [
+          {
+            "targetID": "blue_aux_supply_1",
+            "targetSequence": 1,
+            "targetName": "蓝方补给舰",
+            "objectType": "水面舰艇",
+            "friendlyEnemyFlag": "敌方",
+            "targetStatus": "活动",
+            "priorityLevel": 1,
+            "phaseSequence": "1",
+            "phaseName": "隐蔽接敌与目标确认",
+            "intelligenceSource": "空中侦察",
+            "location": {
+              "longitude": "127.25",
+              "latitude": "30.166666666666668",
+              "altitude": "0"
+            },
+            "motion": {
+              "directionOfMovement": 0,
+              "speed": 0
+            },
+            "affiliation": {
+              "countryCode": "",
+              "forceSideId": "",
+              "forceSideName": "蓝方",
+              "militaryService": "",
+              "category": "水面装备",
+              "subCategory": ""
+            },
+            "targetCombatRequirement": {
+              "indicatorType": "毁伤百分比",
+              "quantitativeValue": {
+                "operator": ">=",
+                "value": 80,
+                "level": "",
+                "range": {
+                  "minValue": 0,
+                  "maxValue": 100
+                }
+              }
+            }
+          },
+          {
+            "targetID": "blue_ddg_burke_1",
+            "targetSequence": 2,
+            "targetName": "蓝方驱逐舰1",
+            "objectType": "水面舰艇",
+            "friendlyEnemyFlag": "敌方",
+            "targetStatus": "活动",
+            "priorityLevel": 2,
+            "phaseSequence": "1",
+            "phaseName": "隐蔽接敌与目标确认",
+            "intelligenceSource": "空中侦察",
+            "location": {
+              "longitude": "127.5",
+              "latitude": "30.333333333333332",
+              "altitude": "0"
+            },
+            "motion": {
+              "directionOfMovement": 0,
+              "speed": 0
+            },
+            "affiliation": {
+              "countryCode": "",
+              "forceSideId": "",
+              "forceSideName": "蓝方",
+              "militaryService": "",
+              "category": "水面装备",
+              "subCategory": ""
+            },
+            "targetCombatRequirement": {
+              "indicatorType": "毁伤百分比",
+              "quantitativeValue": {
+                "operator": ">=",
+                "value": 60,
+                "level": "",
+                "range": {
+                  "minValue": 0,
+                  "maxValue": 100
+                }
+              }
+            }
+          },
+          {
+            "targetID": "blue_ddg_burke_2",
+            "targetSequence": 3,
+            "targetName": "蓝方驱逐舰2",
+            "objectType": "水面舰艇",
+            "friendlyEnemyFlag": "敌方",
+            "targetStatus": "活动",
+            "priorityLevel": 2,
+            "phaseSequence": "1",
+            "phaseName": "隐蔽接敌与目标确认",
+            "intelligenceSource": "空中侦察",
+            "location": {
+              "longitude": "127.75",
+              "latitude": "30.0",
+              "altitude": "0"
+            },
+            "motion": {
+              "directionOfMovement": 0,
+              "speed": 0
+            },
+            "affiliation": {
+              "countryCode": "",
+              "forceSideId": "",
+              "forceSideName": "蓝方",
+              "militaryService": "",
+              "category": "水面装备",
+              "subCategory": ""
+            },
+            "targetCombatRequirement": {
+              "indicatorType": "毁伤百分比",
+              "quantitativeValue": {
+                "operator": ">=",
+                "value": 60,
+                "level": "",
+                "range": {
+                  "minValue": 0,
+                  "maxValue": 100
+                }
+              }
+            }
+          }
+        ],
+        "forceOrganization": [
+          {
+            "forceGroupID": "FG001",
+            "forceGroupName": "水下突击群",
+            "forceSelection": [
+              {
+                "combatEffectiveness": "",
+                "countryCode": "",
+                "forceSideId": "",
+                "forceSideName": "红方",
+                "platformSelection": [
+                  {
+                    "loadList": [],
+                    "platformCategory": "水面装备",
+                    "platformClass": "",
+                    "platformId": "red_sub_039c_1",
+                    "platformLocation": {
+                      "altitude": "60",
+                      "latitude": "30.5",
+                      "longitude": "126.16666666666667"
+                    },
+                    "platformName": "red_sub_039c_1",
+                    "platformStatus": "",
+                    "platformSubCategory": "",
+                    "platformType": "SUB_039C"
+                  }
+                ],
+                "unitEchelon": "",
+                "unitId": "",
+                "unitLocation": {
+                  "altitude": 0,
+                  "latitude": 0,
+                  "longitude": 0
+                },
+                "unitMilitaryService": "",
+                "unitName": "",
+                "unitType": ""
+              }
+            ],
+            "installationSelection": []
+          },
+          {
+            "forceGroupID": "FG002",
+            "forceGroupName": "空中打击与支援群",
+            "forceSelection": [
+              {
+                "combatEffectiveness": "",
+                "countryCode": "",
+                "forceSideId": "",
+                "forceSideName": "红方",
+                "platformSelection": [
+                  {
+                    "loadList": [],
+                    "platformCategory": "航空装备",
+                    "platformClass": "",
+                    "platformId": "red_j16d_1",
+                    "platformLocation": {
+                      "altitude": "8534",
+                      "latitude": "30.133333333333333",
+                      "longitude": "123.0"
+                    },
+                    "platformName": "red_j16d_1",
+                    "platformStatus": "",
+                    "platformSubCategory": "",
+                    "platformType": "AC_J16D"
+                  },
+                  {
+                    "loadList": [],
+                    "platformCategory": "航空装备",
+                    "platformClass": "",
+                    "platformId": "red_j16_1",
+                    "platformLocation": {
+                      "altitude": "7620",
+                      "latitude": "30.0",
+                      "longitude": "122.0"
+                    },
+                    "platformName": "red_j16_1",
+                    "platformStatus": "",
+                    "platformSubCategory": "",
+                    "platformType": "AC_J16"
+                  },
+                  {
+                    "loadList": [],
+                    "platformCategory": "航空装备",
+                    "platformClass": "",
+                    "platformId": "red_j16_2",
+                    "platformLocation": {
+                      "altitude": "7620",
+                      "latitude": "30.083333333333332",
+                      "longitude": "122.16666666666667"
+                    },
+                    "platformName": "red_j16_2",
+                    "platformStatus": "",
+                    "platformSubCategory": "",
+                    "platformType": "AC_J16"
+                  },
+                  {
+                    "loadList": [],
+                    "platformCategory": "航空装备",
+                    "platformClass": "",
+                    "platformId": "red_j16_3",
+                    "platformLocation": {
+                      "altitude": "7315",
+                      "latitude": "29.916666666666668",
+                      "longitude": "122.08333333333333"
+                    },
+                    "platformName": "red_j16_3",
+                    "platformStatus": "",
+                    "platformSubCategory": "",
+                    "platformType": "AC_J16"
+                  },
+                  {
+                    "loadList": [],
+                    "platformCategory": "航空装备",
+                    "platformClass": "",
+                    "platformId": "red_j16_4",
+                    "platformLocation": {
+                      "altitude": "7315",
+                      "latitude": "30.033333333333335",
+                      "longitude": "122.25"
+                    },
+                    "platformName": "red_j16_4",
+                    "platformStatus": "",
+                    "platformSubCategory": "",
+                    "platformType": "AC_J16"
+                  }
+                ],
+                "unitEchelon": "",
+                "unitId": "",
+                "unitLocation": {
+                  "altitude": 0,
+                  "latitude": 0,
+                  "longitude": 0
+                },
+                "unitMilitaryService": "",
+                "unitName": "",
+                "unitType": ""
+              }
+            ],
+            "installationSelection": []
+          },
+          {
+            "forceGroupID": "FG003",
+            "forceGroupName": "水面信息支援群",
+            "forceSelection": [
+              {
+                "combatEffectiveness": "",
+                "countryCode": "",
+                "forceSideId": "",
+                "forceSideName": "红方",
+                "platformSelection": [
+                  {
+                    "loadList": [],
+                    "platformCategory": "水面装备",
+                    "platformClass": "",
+                    "platformId": "red_ddg_055_1",
+                    "platformLocation": {
+                      "altitude": "0",
+                      "latitude": "30.166666666666668",
+                      "longitude": "123.5"
+                    },
+                    "platformName": "red_ddg_055_1",
+                    "platformStatus": "",
+                    "platformSubCategory": "",
+                    "platformType": "DDG_055"
+                  },
+                  {
+                    "loadList": [],
+                    "platformCategory": "水面装备",
+                    "platformClass": "",
+                    "platformId": "red_ddg_055_2",
+                    "platformLocation": {
+                      "altitude": "0",
+                      "latitude": "29.833333333333332",
+                      "longitude": "123.83333333333333"
+                    },
+                    "platformName": "red_ddg_055_2",
+                    "platformStatus": "",
+                    "platformSubCategory": "",
+                    "platformType": "DDG_055"
+                  }
+                ],
+                "unitEchelon": "",
+                "unitId": "",
+                "unitLocation": {
+                  "altitude": 0,
+                  "latitude": 0,
+                  "longitude": 0
+                },
+                "unitMilitaryService": "",
+                "unitName": "",
+                "unitType": ""
+              }
+            ],
+            "installationSelection": []
+          }
+        ],
+        "killChains": [
+          {
+            "killChainId": "KC001",
+            "killChainName": "对蓝方补给舰打击链",
+            "description": "通过侦察-瞄准-交战流程摧毁蓝方补给舰 blue_aux_supply_1。",
+            "expectedDuration": "PT75M",
+            "phaseSequence": "1",
+            "taskSuccessCriteria": [
+              {
+                "indicator": "目标毁伤",
+                "operator": ">=",
+                "value": 80
+              }
+            ],
+            "TargetList": [
+              {
+                "targetSequence": 1,
+                "targetID": "blue_aux_supply_1",
+                "targetName": "蓝方补给舰"
+              }
+            ],
+            "LinkList": [
+              {
+                "linkId": "LK001-1",
+                "linkTaskName": "空中广域侦察",
+                "linkType": "巡航",
+                "taskType": "发现",
+                "description": "J-16D与J-16（侦察）前出，对蓝方编队进行电磁侦察与精确定位。",
+                "startCondition": [
+                  {
+                    "type": "时间",
+                    "time": "2026-04-10 12:00:00",
+                    "priority": 1,
+                    "eventId": "",
+                    "eventType": ""
+                  }
+                ],
+                "successCriteria": "获取蓝方补给舰精确坐标并分发。",
+                "platforms": [
+                  {
+                    "platformId": "red_j16d_1",
+                    "platformName": "red_j16d_1",
+                    "role": "侦察/干扰",
+                    "taskId": "",
+                    "task": "电磁侦察与监视",
+                    "startTimeOffset": "PT0H",
+                    "endTimeOffset": "PT50M",
+                    "weapon": {
+                      "weaponType": "",
+                      "weaponName": ""
+                    }
+                  },
+                  {
+                    "platformId": "red_j16_1",
+                    "platformName": "red_j16_1",
+                    "role": "侦察",
+                    "taskId": "",
+                    "task": "广域光学/雷达侦察",
+                    "startTimeOffset": "PT0H",
+                    "endTimeOffset": "PT50M",
+                    "weapon": {
+                      "weaponType": "",
+                      "weaponName": ""
+                    }
+                  }
+                ]
+              },
+              {
+                "linkId": "LK001-2",
+                "linkTaskName": "潜艇接敌机动",
+                "linkType": "巡航",
+                "taskType": "瞄准",
+                "description": "潜艇根据空中情报，隐蔽机动至最佳攻击阵位。",
+                "startCondition": [
+                  {
+                    "type": "事件",
+                    "time": "",
+                    "priority": 1,
+                    "eventId": "接收到目标信息",
+                    "eventType": ""
+                  }
+                ],
+                "successCriteria": "潜艇占领预定攻击阵位。",
+                "platforms": [
+                  {
+                    "platformId": "red_sub_039c_1",
+                    "platformName": "red_sub_039c_1",
+                    "role": "突击",
+                    "taskId": "",
+                    "task": "隐蔽接敌",
+                    "startTimeOffset": "PT0H",
+                    "endTimeOffset": "PT50M",
+                    "weapon": {
+                      "weaponType": "",
+                      "weaponName": ""
+                    }
+                  }
+                ]
+              },
+              {
+                "linkId": "LK001-3",
+                "linkTaskName": "潜射导弹攻击",
+                "linkType": "地对地导弹发射",
+                "taskType": "交战",
+                "description": "潜艇向蓝方补给舰齐射潜射反舰导弹。",
+                "startCondition": [
+                  {
+                    "type": "时间",
+                    "time": "2026-04-10 12:50:00",
+                    "priority": 1,
+                    "eventId": "",
+                    "eventType": ""
+                  }
+                ],
+                "successCriteria": "导弹成功发射并进入自导段。",
+                "platforms": [
+                  {
+                    "platformId": "red_sub_039c_1",
+                    "platformName": "red_sub_039c_1",
+                    "role": "突击",
+                    "taskId": "",
+                    "task": "导弹齐射",
+                    "startTimeOffset": "PT50M",
+                    "endTimeOffset": "PT55M",
+                    "weapon": {
+                      "weaponType": "反舰导弹",
+                      "weaponName": "潜射反舰导弹"
+                    }
+                  }
+                ]
+              },
+              {
+                "linkId": "LK001-4",
+                "linkTaskName": "空中补充打击",
+                "linkType": "空对地/舰火力突击",
+                "taskType": "交战",
+                "description": "J-16机群对受潜艇攻击后的补给舰进行补充导弹打击。",
+                "startCondition": [
+                  {
+                    "type": "事件",
+                    "time": "",
+                    "priority": 1,
+                    "eventId": "观测到蓝方编队混乱",
+                    "eventType": ""
+                  }
+                ],
+                "successCriteria": "导弹命中目标。",
+                "platforms": [
+                  {
+                    "platformId": "red_j16_2",
+                    "platformName": "red_j16_2",
+                    "role": "打击",
+                    "taskId": "",
+                    "task": "导弹攻击",
+                    "startTimeOffset": "PT60M",
+                    "endTimeOffset": "PT75M",
+                    "weapon": {
+                      "weaponType": "空舰导弹",
+                      "weaponName": "空射反舰导弹"
+                    }
+                  },
+                  {
+                    "platformId": "red_j16_3",
+                    "platformName": "red_j16_3",
+                    "role": "打击",
+                    "taskId": "",
+                    "task": "导弹攻击",
+                    "startTimeOffset": "PT60M",
+                    "endTimeOffset": "PT75M",
+                    "weapon": {
+                      "weaponType": "空舰导弹",
+                      "weaponName": "空射反舰导弹"
+                    }
+                  },
+                  {
+                    "platformId": "red_j16_4",
+                    "platformName": "red_j16_4",
+                    "role": "打击",
+                    "taskId": "",
+                    "task": "导弹攻击",
+                    "startTimeOffset": "PT60M",
+                    "endTimeOffset": "PT75M",
+                    "weapon": {
+                      "weaponType": "空舰导弹",
+                      "weaponName": "空射反舰导弹"
+                    }
+                  }
+                ]
+              },
+              {
+                "linkId": "LK001-5",
+                "linkTaskName": "水面舰艇信息支援",
+                "linkType": "巡逻",
+                "taskType": "发现",
+                "description": "水面驱逐舰在后方保持警戒，提供远程信息支援与态势感知。",
+                "startCondition": [
+                  {
+                    "type": "时间",
+                    "time": "2026-04-10 12:00:00",
+                    "priority": 1,
+                    "eventId": "",
+                    "eventType": ""
+                  }
+                ],
+                "successCriteria": "保持对相关空域、海域的监视。",
+                "platforms": [
+                  {
+                    "platformId": "red_ddg_055_1",
+                    "platformName": "red_ddg_055_1",
+                    "role": "支援",
+                    "taskId": "",
+                    "task": "区域警戒与信息支援",
+                    "startTimeOffset": "PT0H",
+                    "endTimeOffset": "PT75M",
+                    "weapon": {
+                      "weaponType": "",
+                      "weaponName": ""
+                    }
+                  },
+                  {
+                    "platformId": "red_ddg_055_2",
+                    "platformName": "red_ddg_055_2",
+                    "role": "支援",
+                    "taskId": "",
+                    "task": "区域警戒与信息支援",
+                    "startTimeOffset": "PT0H",
+                    "endTimeOffset": "PT75M",
+                    "weapon": {
+                      "weaponType": "",
+                      "weaponName": ""
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "killChainId": "KC002",
+            "killChainName": "对蓝方驱逐舰1打击链",
+            "description": "通过侦察-瞄准-交战流程打击蓝方驱逐舰 blue_ddg_burke_1。",
+            "expectedDuration": "PT75M",
+            "phaseSequence": "1",
+            "taskSuccessCriteria": [
+              {
+                "indicator": "目标毁伤",
+                "operator": ">=",
+                "value": 60
+              }
+            ],
+            "TargetList": [
+              {
+                "targetSequence": 2,
+                "targetID": "blue_ddg_burke_1",
+                "targetName": "蓝方驱逐舰1"
+              }
+            ],
+            "LinkList": [
+              {
+                "linkId": "LK002-1",
+                "linkTaskName": "目标信息共享",
+                "linkType": "巡航",
+                "taskType": "发现",
+                "description": "共享自 KC001 空中侦察环节获取的蓝方驱逐舰1目标信息。",
+                "startCondition": [
+                  {
+                    "type": "事件",
+                    "time": "",
+                    "priority": 1,
+                    "eventId": "LK001-1完成",
+                    "eventType": ""
+                  }
+                ],
+                "successCriteria": "目标信息已分发至各攻击平台。",
+                "platforms": []
+              },
+              {
+                "linkId": "LK002-2",
+                "linkTaskName": "潜艇攻击次要目标",
+                "linkType": "地对地导弹发射",
+                "taskType": "交战",
+                "description": "潜艇在攻击补给舰的同时或之后，视情攻击附近的蓝方驱逐舰1。",
+                "startCondition": [
+                  {
+                    "type": "时间",
+                    "time": "2026-04-10 12:50:00",
+                    "priority": 2,
+                    "eventId": "",
+                    "eventType": ""
+                  }
+                ],
+                "successCriteria": "导弹成功发射。",
+                "platforms": [
+                  {
+                    "platformId": "red_sub_039c_1",
+                    "platformName": "red_sub_039c_1",
+                    "role": "突击",
+                    "taskId": "",
+                    "task": "导弹攻击",
+                    "startTimeOffset": "PT50M",
+                    "endTimeOffset": "PT55M",
+                    "weapon": {
+                      "weaponType": "反舰导弹",
+                      "weaponName": "潜射反舰导弹"
+                    }
+                  }
+                ]
+              },
+              {
+                "linkId": "LK002-3",
+                "linkTaskName": "空中补充打击",
+                "linkType": "空对地/舰火力突击",
+                "taskType": "交战",
+                "description": "J-16机群对未被摧毁的蓝方驱逐舰1进行补充导弹打击。",
+                "startCondition": [
+                  {
+                    "type": "事件",
+                    "time": "",
+                    "priority": 1,
+                    "eventId": "观测到蓝方编队混乱",
+                    "eventType": ""
+                  }
+                ],
+                "successCriteria": "导弹命中目标。",
+                "platforms": [
+                  {
+                    "platformId": "red_j16_2",
+                    "platformName": "red_j16_2",
+                    "role": "打击",
+                    "taskId": "",
+                    "task": "导弹攻击",
+                    "startTimeOffset": "PT60M",
+                    "endTimeOffset": "PT75M",
+                    "weapon": {
+                      "weaponType": "空舰导弹",
+                      "weaponName": "空射反舰导弹"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "killChainId": "KC003",
+            "killChainName": "对蓝方驱逐舰2打击链",
+            "description": "通过侦察-瞄准-交战流程打击蓝方驱逐舰 blue_ddg_burke_2。",
+            "expectedDuration": "PT75M",
+            "phaseSequence": "1",
+            "taskSuccessCriteria": [
+              {
+                "indicator": "目标毁伤",
+                "operator": ">=",
+                "value": 60
+              }
+            ],
+            "TargetList": [
+              {
+                "targetSequence": 3,
+                "targetID": "blue_ddg_burke_2",
+                "targetName": "蓝方驱逐舰2"
+              }
+            ],
+            "LinkList": [
+              {
+                "linkId": "LK003-1",
+                "linkTaskName": "目标信息共享",
+                "linkType": "巡航",
+                "taskType": "发现",
+                "description": "共享自 KC001 空中侦察环节获取的蓝方驱逐舰2目标信息。",
+                "startCondition": [
+                  {
+                    "type": "事件",
+                    "time": "",
+                    "priority": 1,
+                    "eventId": "LK001-1完成",
+                    "eventType": ""
+                  }
+                ],
+                "successCriteria": "目标信息已分发至各攻击平台。",
+                "platforms": []
+              },
+              {
+                "linkId": "LK003-2",
+                "linkTaskName": "电磁干扰掩护",
+                "linkType": "激光攻击",
+                "taskType": "瞄准",
+                "description": "J-16D在潜艇攻击阶段对蓝方驱逐舰2可能的活动区域进行电磁干扰，压制其防空与反潜能力。",
+                "startCondition": [
+                  {
+                    "type": "时间",
+                    "time": "2026-04-10 12:50:00",
+                    "priority": 1,
+                    "eventId": "",
+                    "eventType": ""
+                  }
+                ],
+                "successCriteria": "敌方雷达/通信信号受到有效压制。",
+                "platforms": [
+                  {
+                    "platformId": "red_j16d_1",
+                    "platformName": "red_j16d_1",
+                    "role": "干扰",
+                    "taskId": "",
+                    "task": "电磁干扰",
+                    "startTimeOffset": "PT50M",
+                    "endTimeOffset": "PT75M",
+                    "weapon": {
+                      "weaponType": "电子战吊舱",
+                      "weaponName": "电磁干扰装置"
+                    }
+                  }
+                ]
+              },
+              {
+                "linkId": "LK003-3",
+                "linkTaskName": "空中补充打击",
+                "linkType": "空对地/舰火力突击",
+                "taskType": "交战",
+                "description": "J-16机群对未被摧毁的蓝方驱逐舰2进行补充导弹打击。",
+                "startCondition": [
+                  {
+                    "type": "事件",
+                    "time": "",
+                    "priority": 1,
+                    "eventId": "观测到蓝方编队混乱",
+                    "eventType": ""
+                  }
+                ],
+                "successCriteria": "导弹命中目标。",
+                "platforms": [
+                  {
+                    "platformId": "red_j16_3",
+                    "platformName": "red_j16_3",
+                    "role": "打击",
+                    "taskId": "",
+                    "task": "导弹攻击",
+                    "startTimeOffset": "PT60M",
+                    "endTimeOffset": "PT75M",
+                    "weapon": {
+                      "weaponType": "空舰导弹",
+                      "weaponName": "空射反舰导弹"
+                    }
+                  },
+                  {
+                    "platformId": "red_j16_4",
+                    "platformName": "red_j16_4",
+                    "role": "打击",
+                    "taskId": "",
+                    "task": "导弹攻击",
+                    "startTimeOffset": "PT60M",
+                    "endTimeOffset": "PT75M",
+                    "weapon": {
+                      "weaponType": "空舰导弹",
+                      "weaponName": "空射反舰导弹"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "killChainId": "KC_PATROL001",
+            "killChainName": "非参战平台巡逻机动链",
+            "description": "为不参战平台提供巡逻/机动的关联链路，避免 relatedKillChain 为空。",
+            "expectedDuration": "PT0H",
+            "phaseSequence": "",
+            "taskSuccessCriteria": [
+              {
+                "indicator": "巡逻机动完成",
+                "operator": ">=",
+                "value": 1
+              }
+            ],
+            "TargetList": [
+              {
+                "targetSequence": 1,
+                "targetID": "blue_aux_supply_1",
+                "targetName": "蓝方补给舰"
+              }
+            ],
+            "LinkList": []
+          }
+        ]
+      }
+    ]
+  },
+  "platformExecutions": {
+    "platformExecutions": [
+      {
+        "platformId": "red_ddg_055_1",
+        "platformName": "red_ddg_055_1",
+        "platformType": "DDG_055",
+        "platformTasks": [
+          {
+            "platformTaskId": "PT001",
+            "platformTaskName": "巡逻监视",
+            "description": "在东海海域执行巡逻任务，监视蓝方驱逐舰和补给舰编队，提供远程信息支援。",
+            "platformTaskType": "巡逻",
+            "relatedKillChain": {
+              "killChainId": "KC001",
+              "relatedLinkId": "LK001-5"
+            },
+            "sensors": [],
+            "target": [
+              "blue_ddg_burke_1",
+              "blue_ddg_burke_2",
+              "blue_aux_supply_1"
+            ],
+            "timing": {
+              "startTime": "T0+PT0H",
+              "endTime": "T0+PT50M"
+            },
+            "weapons": []
+          }
+        ],
+        "initialPosition": {
+          "coordinates": "30.166667,123.500000",
+          "altitude": "0",
+          "heading": "0",
+          "speed": "10"
+        },
+        "route": {
+          "type": "巡逻",
+          "waypoints": [
+            {
+              "altitude": "0",
+              "latitude": "30.166667",
+              "longitude": "123.500000",
+              "speed": "10"
+            },
+            {
+              "altitude": "0",
+              "latitude": "30.266667",
+              "longitude": "123.500000",
+              "speed": "10"
+            },
+            {
+              "altitude": "0",
+              "latitude": "30.266667",
+              "longitude": "123.600000",
+              "speed": "10"
+            },
+            {
+              "altitude": "0",
+              "latitude": "30.166667",
+              "longitude": "123.600000",
+              "speed": "10"
+            },
+            {
+              "altitude": "0",
+              "latitude": "30.166667",
+              "longitude": "123.400000",
+              "speed": "10"
+            },
+            {
+              "altitude": "0",
+              "latitude": "30.200000",
+              "longitude": "123.450000",
+              "speed": "10"
+            }
+          ],
+          "estimatedDuration": "PT50M",
+          "loopType": "循环",
+          "atEndOfPath": "继续巡逻"
+        },
+        "commSystem": {
+          "type": "数据链",
+          "bandwidth": "10 Mbps",
+          "latency": "100 ms",
+          "range": "100 km"
+        },
+        "commander": "红方指挥官",
+        "missionProfile": {
+          "role": "信息支援",
+          "attackPattern": "区域监视"
+        }
+      },
+      {
+        "platformId": "red_ddg_055_2",
+        "platformName": "red_ddg_055_2",
+        "platformType": "DDG_055",
+        "platformTasks": [
+          {
+            "platformTaskId": "PT001_DDG055_2",
+            "platformTaskName": "后方区域巡逻",
+            "description": "在后方区域进行巡逻，提供远程信息支援和监视，配合潜艇和空中兵力作战。",
+            "platformTaskType": "巡逻",
+            "relatedKillChain": {
+              "killChainId": "KC001",
+              "relatedLinkId": "LK001-5"
+            },
+            "sensors": [],
+            "target": [],
+            "timing": {
+              "startTime": "T0+PT0H",
+              "endTime": "T0+PT50M"
+            },
+            "weapons": []
+          }
+        ],
+        "initialPosition": {
+          "coordinates": "29.833333333333332,123.83333333333333",
+          "altitude": "0",
+          "heading": "0",
+          "speed": "10"
+        },
+        "route": {
+          "type": "巡逻",
+          "waypoints": [
+            {
+              "altitude": "0",
+              "latitude": "29.833333333333332",
+              "longitude": "123.83333333333333",
+              "speed": "10"
+            },
+            {
+              "altitude": "0",
+              "latitude": "29.84",
+              "longitude": "123.83",
+              "speed": "10"
+            },
+            {
+              "altitude": "0",
+              "latitude": "29.83",
+              "longitude": "123.85",
+              "speed": "10"
+            },
+            {
+              "altitude": "0",
+              "latitude": "29.82",
+              "longitude": "123.84",
+              "speed": "10"
+            },
+            {
+              "altitude": "0",
+              "latitude": "29.835",
+              "longitude": "123.82",
+              "speed": "10"
+            },
+            {
+              "altitude": "0",
+              "latitude": "29.83",
+              "longitude": "123.83",
+              "speed": "10"
+            }
+          ],
+          "estimatedDuration": "PT50M",
+          "loopType": "循环",
+          "atEndOfPath": "保持巡逻"
+        },
+        "commSystem": {
+          "type": "战术数据链",
+          "bandwidth": "100 Mbps",
+          "latency": "50 ms",
+          "range": "150 km"
+        },
+        "commander": "红方海上指挥所",
+        "missionProfile": {
+          "role": "信息支援",
+          "attackPattern": "区域监视"
+        }
+      },
+      {
+        "platformId": "red_sub_039c_1",
+        "platformName": "red_sub_039c_1",
+        "platformType": "SUB_039C",
+        "platformTasks": [
+          {
+            "platformTaskId": "TASK_SUB_CRUISE",
+            "platformTaskName": "潜艇隐蔽接敌",
+            "description": "潜艇利用水声优势秘密向蓝方编队机动，进行目标确认。",
+            "platformTaskType": "巡航",
+            "relatedKillChain": {
+              "killChainId": "KC001",
+              "relatedLinkId": "LK001-2"
+            },
+            "sensors": [],
+            "target": [],
+            "timing": {
+              "startTime": "T0+PT0H",
+              "endTime": "T0+PT50M"
+            },
+            "weapons": []
+          },
+          {
+            "platformTaskId": "TASK_SUB_ATTACK",
+            "platformTaskName": "潜艇反舰导弹发射",
+            "description": "潜艇在最佳攻击阵位向蓝方高价值目标齐射潜射反舰导弹。",
+            "platformTaskType": "地对地导弹发射",
+            "relatedKillChain": {
+              "killChainId": "KC001",
+              "relatedLinkId": "LK001-3"
+            },
+            "sensors": [],
+            "target": [
+              "blue_aux_supply_1",
+              "blue_ddg_burke_1",
+              "blue_ddg_burke_2"
+            ],
+            "timing": {
+              "startTime": "T0+PT50M",
+              "endTime": "T0+PT60M"
+            },
+            "weapons": [
+              {
+                "name": "YJ-18反舰导弹",
+                "type": "反舰导弹",
+                "quantity": 4
+              }
+            ]
+          }
+        ],
+        "initialPosition": {
+          "coordinates": "30.5,126.16666666666667",
+          "altitude": "60",
+          "heading": "0",
+          "speed": "5"
+        },
+        "route": {
+          "type": "隐蔽航线",
+          "waypoints": [
+            {
+              "altitude": "60",
+              "latitude": "30.5",
+              "longitude": "126.16666666666667",
+              "speed": "10"
+            },
+            {
+              "altitude": "60",
+              "latitude": "30.6",
+              "longitude": "126.5",
+              "speed": "10"
+            },
+            {
+              "altitude": "60",
+              "latitude": "30.7",
+              "longitude": "126.8",
+              "speed": "10"
+            },
+            {
+              "altitude": "60",
+              "latitude": "30.5",
+              "longitude": "127.0",
+              "speed": "10"
+            },
+            {
+              "altitude": "60",
+              "latitude": "30.4",
+              "longitude": "127.2",
+              "speed": "10"
+            },
+            {
+              "altitude": "60",
+              "latitude": "30.35",
+              "longitude": "127.3",
+              "speed": "10"
+            }
+          ],
+          "estimatedDuration": "PT60M",
+          "loopType": "none",
+          "atEndOfPath": "返航"
+        },
+        "commSystem": {
+          "type": "水下通信数据链",
+          "bandwidth": "1Mbps",
+          "latency": "200ms",
+          "range": "20km"
+        },
+        "commander": "红方潜艇艇长",
+        "missionProfile": {
+          "role": "突击",
+          "attackPattern": "隐蔽突袭"
+        }
+      },
+      {
+        "platformId": "red_j16_1",
+        "platformName": "red_j16_1",
+        "platformType": "AC_J16",
+        "platformTasks": [
+          {
+            "platformTaskId": "PT_red_j16_1_01",
+            "platformTaskName": "巡航侦察任务",
+            "description": "在东海海域进行广域电磁侦察与监视，精确定位蓝方编队并为潜艇提供目标信息。",
+            "platformTaskType": "巡航",
+            "relatedKillChain": {
+              "killChainId": "KC001",
+              "relatedLinkId": "LK001-1"
+            },
+            "sensors": [],
+            "target": [],
+            "timing": {
+              "startTime": "T0+PT0H",
+              "endTime": "T0+PT50M"
+            },
+            "weapons": []
+          }
+        ],
+        "initialPosition": {
+          "coordinates": "30.0,122.0",
+          "altitude": "7620",
+          "heading": "0",
+          "speed": "250"
+        },
+        "route": {
+          "type": "飞行",
+          "waypoints": [
+            {
+              "altitude": "7620",
+              "latitude": "30.0",
+              "longitude": "122.0",
+              "speed": "250"
+            },
+            {
+              "altitude": "7620",
+              "latitude": "30.0",
+              "longitude": "122.5",
+              "speed": "250"
+            },
+            {
+              "altitude": "7620",
+              "latitude": "30.5",
+              "longitude": "122.5",
+              "speed": "250"
+            },
+            {
+              "altitude": "7620",
+              "latitude": "30.5",
+              "longitude": "122.0",
+              "speed": "250"
+            },
+            {
+              "altitude": "7620",
+              "latitude": "30.25",
+              "longitude": "121.75",
+              "speed": "250"
+            },
+            {
+              "altitude": "7620",
+              "latitude": "30.0",
+              "longitude": "122.1",
+              "speed": "250"
+            }
+          ],
+          "estimatedDuration": "PT50M",
+          "loopType": "循环",
+          "atEndOfPath": "继续巡逻"
+        },
+        "commSystem": {
+          "type": "数据链",
+          "bandwidth": "10 Mbps",
+          "latency": "50 ms",
+          "range": "100 km"
+        },
+        "commander": "红方空中指挥员",
+        "missionProfile": {
+          "role": "侦察战斗机",
+          "attackPattern": "巡航侦察"
+        }
+      },
+      {
+        "platformId": "red_j16_2",
+        "platformName": "red_j16_2",
+        "platformType": "战斗机",
+        "platformTasks": [
+          {
+            "platformTaskId": "PT_red_j16_2_01",
+            "platformTaskName": "KC001协同突击",
+            "description": "参与KC001杀伤链，对蓝方水面舰艇编队执行协同反舰导弹突击。",
+            "platformTaskType": "空对地/舰火力突击",
+            "relatedKillChain": {
+              "killChainId": "KC001",
+              "relatedLinkId": "LK001-4"
+            },
+            "sensors": [
+              "机载火控雷达",
+              "光电瞄准系统"
+            ],
+            "target": [
+              "blue_ddg_burke_1",
+              "blue_ddg_burke_2",
+              "blue_aux_supply_1"
+            ],
+            "timing": {
+              "startTime": "T0+PT50M",
+              "endTime": "T0+PT75M"
+            },
+            "weapons": [
+              {
+                "name": "YJ-83K反舰导弹",
+                "type": "空射反舰导弹",
+                "quantity": 2
+              }
+            ]
+          },
+          {
+            "platformTaskId": "PT_red_j16_2_02",
+            "platformTaskName": "KC002补充打击",
+            "description": "参与KC002杀伤链，对未被摧毁的蓝方目标进行补充导弹打击。",
+            "platformTaskType": "空对地/舰火力突击",
+            "relatedKillChain": {
+              "killChainId": "KC002",
+              "relatedLinkId": "LK002-3"
+            },
+            "sensors": [
+              "机载火控雷达"
+            ],
+            "target": [
+              "blue_ddg_burke_1",
+              "blue_ddg_burke_2",
+              "blue_aux_supply_1"
+            ],
+            "timing": {
+              "startTime": "T0+PT50M",
+              "endTime": "T0+PT75M"
+            },
+            "weapons": [
+              {
+                "name": "YJ-83K反舰导弹",
+                "type": "空射反舰导弹",
+                "quantity": 2
+              }
+            ]
+          }
+        ],
+        "initialPosition": {
+          "coordinates": "122.16666666666667,30.083333333333332",
+          "altitude": "7620米",
+          "heading": "90.0",
+          "speed": "240.0米/秒"
+        },
+        "route": {
+          "type": "预置航线",
+          "waypoints": [
+            {
+              "altitude": "7620米",
+              "latitude": "30.083333333333332",
+              "longitude": "122.16666666666667",
+              "speed": "240.0米/秒"
+            },
+            {
+              "altitude": "8000米",
+              "latitude": "30.2",
+              "longitude": "123.5",
+              "speed": "250.0米/秒"
+            },
+            {
+              "altitude": "8000米",
+              "latitude": "30.4",
+              "longitude": "125.0",
+              "speed": "250.0米/秒"
+            },
+            {
+              "altitude": "7000米",
+              "latitude": "30.5",
+              "longitude": "126.5",
+              "speed": "220.0米/秒"
+            },
+            {
+              "altitude": "6000米",
+              "latitude": "30.45",
+              "longitude": "127.2",
+              "speed": "200.0米/秒"
+            },
+            {
+              "altitude": "5000米",
+              "latitude": "30.333333333333332",
+              "longitude": "127.5",
+              "speed": "180.0米/秒"
+            },
+            {
+              "altitude": "8000米",
+              "latitude": "30.1",
+              "longitude": "126.8",
+              "speed": "220.0米/秒"
+            },
+            {
+              "altitude": "8000米",
+              "latitude": "30.0",
+              "longitude": "125.0",
+              "speed": "240.0米/秒"
+            }
+          ],
+          "estimatedDuration": "PT90M",
+          "loopType": "不循环",
+          "atEndOfPath": "返航"
+        },
+        "commSystem": {
+          "type": "数据链",
+          "bandwidth": "2Mbps",
+          "latency": "100ms",
+          "range": "300公里"
+        },
+        "commander": "红方空中编队指挥官",
+        "missionProfile": {
+          "role": "空对地攻击机",
+          "attackPattern": "高空突防-俯冲攻击"
+        }
+      },
+      {
+        "platformId": "red_j16_3",
+        "platformName": "red_j16_3",
+        "platformType": "AC_J16",
+        "platformTasks": [
+          {
+            "platformTaskId": "PT_red_j16_3_KC001",
+            "platformTaskName": "参与KC001空中火力突击",
+            "description": "作为红方J-16战斗机，参与杀伤链KC001，执行空对地/舰火力突击任务，攻击蓝方驱逐舰和补给舰。",
+            "platformTaskType": "空对地/舰火力突击",
+            "relatedKillChain": {
+              "killChainId": "KC001",
+              "relatedLinkId": "LK001-4"
+            },
+            "sensors": [],
+            "target": [
+              "blue_ddg_burke_1",
+              "blue_ddg_burke_2",
+              "blue_aux_supply_1"
+            ],
+            "timing": {
+              "startTime": "T0+PT1H",
+              "endTime": "T0+PT1H15M"
+            },
+            "weapons": [
+              {
+                "name": "YJ-12反舰导弹",
+                "type": "反舰导弹",
+                "quantity": 2
+              }
+            ]
+          },
+          {
+            "platformTaskId": "PT_red_j16_3_KC003",
+            "platformTaskName": "参与KC003空中火力突击",
+            "description": "作为红方J-16战斗机，参与杀伤链KC003，执行空对地/舰火力突击任务，对蓝方目标进行补充打击。",
+            "platformTaskType": "空对地/舰火力突击",
+            "relatedKillChain": {
+              "killChainId": "KC003",
+              "relatedLinkId": "LK003-3"
+            },
+            "sensors": [],
+            "target": [
+              "blue_ddg_burke_1",
+              "blue_ddg_burke_2",
+              "blue_aux_supply_1"
+            ],
+            "timing": {
+              "startTime": "T0+PT1H",
+              "endTime": "T0+PT1H15M"
+            },
+            "weapons": [
+              {
+                "name": "YJ-12反舰导弹",
+                "type": "反舰导弹",
+                "quantity": 2
+              }
+            ]
+          }
+        ],
+        "initialPosition": {
+          "coordinates": "122.08333333333333,29.916666666666668",
+          "altitude": "7315",
+          "heading": "90",
+          "speed": "250"
+        },
+        "route": {
+          "type": "custom",
+          "waypoints": [
+            {
+              "altitude": "7315",
+              "latitude": "29.916667",
+              "longitude": "122.083333",
+              "speed": "250"
+            },
+            {
+              "altitude": "10000",
+              "latitude": "30.000000",
+              "longitude": "123.000000",
+              "speed": "300"
+            },
+            {
+              "altitude": "10000",
+              "latitude": "30.083333",
+              "longitude": "124.000000",
+              "speed": "300"
+            },
+            {
+              "altitude": "8000",
+              "latitude": "30.166667",
+              "longitude": "126.000000",
+              "speed": "400"
+            },
+            {
+              "altitude": "5000",
+              "latitude": "30.166667",
+              "longitude": "127.250000",
+              "speed": "500"
+            },
+            {
+              "altitude": "6000",
+              "latitude": "30.000000",
+              "longitude": "126.500000",
+              "speed": "500"
+            }
+          ],
+          "estimatedDuration": "PT1H15M",
+          "loopType": "none",
+          "atEndOfPath": "return"
+        },
+        "commSystem": {
+          "type": "数据链",
+          "bandwidth": "10 Mbps",
+          "latency": "50 ms",
+          "range": "300 km"
+        },
+        "commander": "红方空中指挥官",
+        "missionProfile": {
+          "role": "攻击机",
+          "attackPattern": "多轴突击"
+        }
+      },
+      {
+        "platformId": "red_j16_4",
+        "platformName": "red_j16_4",
+        "platformType": "战斗机",
+        "platformTasks": [
+          {
+            "platformTaskId": "PT001_red_j16_4",
+            "platformTaskName": "空中反舰火力突击",
+            "description": "执行空对舰导弹攻击，打击蓝方驱逐舰和补给舰编队。",
+            "platformTaskType": "空对地/舰火力突击",
+            "relatedKillChain": {
+              "killChainId": "KC001",
+              "relatedLinkId": "LK001-4"
+            },
+            "sensors": [
+              "机载雷达",
+              "光电瞄准系统"
+            ],
+            "target": [
+              "blue_ddg_burke_1",
+              "blue_ddg_burke_2",
+              "blue_aux_supply_1"
+            ],
+            "timing": {
+              "startTime": "T0+PT60M",
+              "endTime": "T0+PT75M"
+            },
+            "weapons": [
+              {
+                "name": "YJ-83反舰导弹",
+                "type": "反舰导弹",
+                "quantity": 4
+              }
+            ]
+          }
+        ],
+        "initialPosition": {
+          "coordinates": "30.033333333333335,122.25",
+          "altitude": "7315",
+          "heading": "0",
+          "speed": "250"
+        },
+        "route": {
+          "type": "飞行航线",
+          "waypoints": [
+            {
+              "altitude": "7315",
+              "latitude": "30.033333333333335",
+              "longitude": "122.25",
+              "speed": "250"
+            },
+            {
+              "altitude": "8000",
+              "latitude": "30.05",
+              "longitude": "122.5",
+              "speed": "300"
+            },
+            {
+              "altitude": "10000",
+              "latitude": "30.1",
+              "longitude": "123.5",
+              "speed": "300"
+            },
+            {
+              "altitude": "8000",
+              "latitude": "30.0",
+              "longitude": "125.0",
+              "speed": "250"
+            },
+            {
+              "altitude": "5000",
+              "latitude": "30.1",
+              "longitude": "126.5",
+              "speed": "300"
+            },
+            {
+              "altitude": "3000",
+              "latitude": "30.166666666666668",
+              "longitude": "127.25",
+              "speed": "400"
+            },
+            {
+              "altitude": "6000",
+              "latitude": "30.0",
+              "longitude": "127.0",
+              "speed": "400"
+            },
+            {
+              "altitude": "8000",
+              "latitude": "30.05",
+              "longitude": "124.0",
+              "speed": "300"
+            }
+          ],
+          "estimatedDuration": "PT45M",
+          "loopType": "无",
+          "atEndOfPath": "返航"
+        },
+        "commSystem": {
+          "type": "数据链",
+          "bandwidth": "50Mbps",
+          "latency": "20ms",
+          "range": "200km"
+        },
+        "commander": "红方空中指挥员",
+        "missionProfile": {
+          "role": "攻击机",
+          "attackPattern": "饱和攻击"
+        }
+      },
+      {
+        "platformId": "red_j16d_1",
+        "platformName": "red_j16d_1",
+        "platformType": "AC_J16D",
+        "platformTasks": [
+          {
+            "platformTaskId": "PT_red_j16d_1_1",
+            "platformTaskName": "电磁侦察巡航",
+            "description": "在东海海域进行广域电磁侦察与监视，精确定位蓝方编队。",
+            "platformTaskType": "巡航",
+            "relatedKillChain": {
+              "killChainId": "KC001",
+              "relatedLinkId": "LK001-1"
+            },
+            "sensors": [],
+            "target": [],
+            "timing": {
+              "startTime": "T0+PT0H",
+              "endTime": "T0+PT50M"
+            },
+            "weapons": []
+          },
+          {
+            "platformTaskId": "PT_red_j16d_1_2",
+            "platformTaskName": "电磁干扰与压制",
+            "description": "对蓝方可能进行反潜作业的区域或支援兵力进行电磁干扰，全程压制蓝方防空与通信。",
+            "platformTaskType": "激光攻击",
+            "relatedKillChain": {
+              "killChainId": "KC003",
+              "relatedLinkId": "LK003-2"
+            },
+            "sensors": [],
+            "target": [
+              "blue_ddg_burke_1",
+              "blue_ddg_burke_2",
+              "blue_aux_supply_1"
+            ],
+            "timing": {
+              "startTime": "T0+PT50M",
+              "endTime": "T0+PT75M"
+            },
+            "weapons": []
+          }
+        ],
+        "initialPosition": {
+          "coordinates": "30.133333333333333,123.0",
+          "altitude": "8534",
+          "heading": "0",
+          "speed": "250"
+        },
+        "route": {
+          "type": "planned",
+          "waypoints": [
+            {
+              "altitude": "8534",
+              "latitude": "30.133333333333333",
+              "longitude": "123.0",
+              "speed": "250"
+            },
+            {
+              "altitude": "8534",
+              "latitude": "30.133333333333333",
+              "longitude": "124.0",
+              "speed": "250"
+            },
+            {
+              "altitude": "8534",
+              "latitude": "30.2",
+              "longitude": "126.0",
+              "speed": "250"
+            },
+            {
+              "altitude": "8534",
+              "latitude": "30.25",
+              "longitude": "127.0",
+              "speed": "250"
+            },
+            {
+              "altitude": "8534",
+              "latitude": "30.3",
+              "longitude": "127.5",
+              "speed": "250"
+            },
+            {
+              "altitude": "8534",
+              "latitude": "30.4",
+              "longitude": "128.0",
+              "speed": "250"
+            },
+            {
+              "altitude": "8534",
+              "latitude": "30.133333333333333",
+              "longitude": "125.0",
+              "speed": "250"
+            }
+          ],
+          "estimatedDuration": "PT75M",
+          "loopType": "none",
+          "atEndOfPath": "return"
+        },
+        "commSystem": {
+          "type": "数据链",
+          "bandwidth": "10Mbps",
+          "latency": "低延迟",
+          "range": "500km"
+        },
+        "commander": "红方指挥官",
+        "missionProfile": {
+          "role": "电子战飞机",
+          "attackPattern": "电磁压制"
+        }
+      }
+    ]
+  }
+}

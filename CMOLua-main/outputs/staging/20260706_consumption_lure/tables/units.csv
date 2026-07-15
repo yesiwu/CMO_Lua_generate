@@ -1,0 +1,9 @@
+﻿﻿id,name,type,dbid_pending,side,platform_type,platform_class,platform_category,lat,lon,alt,loadout_id_pending,loadlist_count,unit_zh_hint,group_name
+red_ddg_1,red_ddg_1,Ship,,红方,DDG_055,驱逐舰,水面装备,30.25,124.75,0,,0,055驱逐舰1,红方混合编队
+red_ddg_2,red_ddg_2,Ship,,红方,DDG_052D,驱逐舰,水面装备,29.75,125.25,0,,0,052D驱逐舰2,红方混合编队
+red_sub_1,red_sub_1,Submarine,,红方,SUB_039C,潜艇,水面装备,30.0,126.0,60,,0,039C潜艇1,红方混合编队
+red_ac_1,red_ac_1,Aircraft,,红方,AC_J16,战斗机,航空装备,29.0,123.5,7620,,0,J-16战斗机1,红方混合编队
+red_ew_1,red_ew_1,Aircraft,,红方,EW_EA18G,电子战飞机,航空装备,28.5,124.0,9144,,0,EA-18G电子战飞机1,红方混合编队
+blue_ddg_1,蓝方驱逐舰1,Ship,,蓝方,,,水面装备,28.833333333333332,126.33333333333333,0,,0,蓝方驱逐舰1,蓝方目标
+blue_ddg_2,蓝方驱逐舰2,Ship,,蓝方,,,水面装备,28.5,126.66666666666667,0,,0,蓝方驱逐舰2,蓝方目标
+blue_aux_1,蓝方补给舰,Ship,,蓝方,,,水面装备,28.166666666666668,126.83333333333333,0,,0,蓝方补给舰,蓝方目标

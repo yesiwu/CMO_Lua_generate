@@ -1,0 +1,4 @@
+﻿﻿id,name_zh,side,object_type,affiliation,military_service,lat,lon,alt,priority_level,target_status,phase_seq,phase_name,dbid_pending
+blue_ddg_1,蓝方驱逐舰1,蓝方,水面装备,蓝方,海军,28.833333333333332,126.33333333333333,0,1,活动,3,空中力量决定性突击,
+blue_ddg_2,蓝方驱逐舰2,蓝方,水面装备,蓝方,海军,28.5,126.66666666666667,0,1,活动,3,空中力量决定性突击,
+blue_aux_1,蓝方补给舰,蓝方,水面装备,蓝方,海军,28.166666666666668,126.83333333333333,0,2,活动,3,空中力量决定性突击,

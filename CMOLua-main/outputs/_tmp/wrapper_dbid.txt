@@ -1,0 +1,37 @@
+﻿[
+  {
+    "dbid": 2496,
+    "name": "J-15 Flying Shark [Su-33 Copy]",
+    "type": "Aircraft",
+    "country": 2018,
+    "description": "PLANAF"
+  },
+  {
+    "dbid": 3311,
+    "name": "J-15S Flying Shark",
+    "type": "Aircraft",
+    "country": 2018,
+    "description": "PLANAF, Twin-Seat"
+  },
+  {
+    "dbid": 4817,
+    "name": "J-15D Roaring Shark",
+    "type": "Aircraft",
+    "country": 2018,
+    "description": "PLANAF, EW Variant, Carrier Capable"
+  },
+  {
+    "dbid": 4957,
+    "name": "J-15D Growler Shark",
+    "type": "Aircraft",
+    "country": 2018,
+    "description": "PLANAF"
+  },
+  {
+    "dbid": 6098,
+    "name": "J-15B Flying Shark [Su-33 Copy]",
+    "type": "Aircraft",
+    "country": 2018,
+    "description": "PLANAF, CATOBAR"
+  }
+]

@@ -1,0 +1,195 @@
+﻿=== 3 艘航母全字段 ===
+
+DBID=2007  Type 001 Kuznetsov [16 Liaoning]
+  ID = 2007
+  Category = 2001
+  Type = 2001
+  Comments = Ex-Riga/Varyag
+  OperatorCountry = 2018
+  OperatorService = 2212
+  YearCommissioned = 2012
+  YearDecommissioned = 0
+  Length = 304.5
+  Beam = 38.0
+  Draft = 10.5
+  Height = 0.0
+  DisplacementEmpty = 0
+  DisplacementStandard = 55000
+  DisplacementFull = 67500
+  Crew = 2626
+  ArmorBelt = 2002
+  ArmorBulkheads = 1001
+  ArmorDeck = 1001
+  ArmorBridge = 2001
+  ArmorCIC = 1001
+  ArmorEngineering = 2002
+  ArmorRudder = 1001
+  DamagePoints = 5560
+  FOCSeaState = 0
+  MaxSeaState = 6
+  RepairCapacity = 0
+  TroopCapacity = 100
+  CargoCapacity = 10125
+  MissileDefense = 32
+  CSGen = 1600
+  Ergonomics = 3000
+  OODADetectionCycle = 5
+  OODATargetingCycle = 15
+  OODAEvasiveCycle = 3
+  PhysicalSizeCode = 2006
+  Hypothetical = 0
+  Cargo_Type = 2000
+  Cargo_Mass = 10125.0
+  Cargo_Area = 1375.0
+  Cargo_Crew = 100.0
+  Cargo_Volume = 0
+  Cost = 0
+  Deprecated = 0
+
+DBID=3187  Type 002 Kuznetsov Mod [17 Shandong]
+  ID = 3187
+  Category = 2001
+  Type = 2001
+  Comments = Type 001A
+  OperatorCountry = 2018
+  OperatorService = 2212
+  YearCommissioned = 2019
+  YearDecommissioned = 0
+  Length = 304.5
+  Beam = 38.0
+  Draft = 10.5
+  Height = 0.0
+  DisplacementEmpty = 0
+  DisplacementStandard = 55000
+  DisplacementFull = 67500
+  Crew = 2626
+  ArmorBelt = 2002
+  ArmorBulkheads = 1001
+  ArmorDeck = 1001
+  ArmorBridge = 2001
+  ArmorCIC = 1001
+  ArmorEngineering = 2002
+  ArmorRudder = 1001
+  DamagePoints = 5560
+  FOCSeaState = 0
+  MaxSeaState = 6
+  RepairCapacity = 0
+  TroopCapacity = 100
+  CargoCapacity = 10125
+  MissileDefense = 32
+  CSGen = 1600
+  Ergonomics = 3000
+  OODADetectionCycle = 5
+  OODATargetingCycle = 15
+  OODAEvasiveCycle = 3
+  PhysicalSizeCode = 2006
+  Hypothetical = 0
+  Cargo_Type = 2000
+  Cargo_Mass = 10125.0
+  Cargo_Area = 1375.0
+  Cargo_Crew = 100.0
+  Cargo_Volume = 0
+  Cost = 0
+  Deprecated = 0
+
+DBID=3466  Type 003 [18 Fujian]
+  ID = 3466
+  Category = 2001
+  Type = 2001
+  Comments = -
+  OperatorCountry = 2018
+  OperatorService = 2212
+  YearCommissioned = 2025
+  YearDecommissioned = 0
+  Length = 300.0
+  Beam = 40.0
+  Draft = 10.0
+  Height = 0.0
+  DisplacementEmpty = 0
+  DisplacementStandard = 85000
+  DisplacementFull = 100000
+  Crew = 2500
+  ArmorBelt = 2002
+  ArmorBulkheads = 1001
+  ArmorDeck = 1001
+  ArmorBridge = 2001
+  ArmorCIC = 1001
+  ArmorEngineering = 2002
+  ArmorRudder = 1001
+  DamagePoints = 7840
+  FOCSeaState = 0
+  MaxSeaState = 6
+  RepairCapacity = 0
+  TroopCapacity = 100
+  CargoCapacity = 10125
+  MissileDefense = 32
+  CSGen = 1600
+  Ergonomics = 3000
+  OODADetectionCycle = 5
+  OODATargetingCycle = 15
+  OODAEvasiveCycle = 3
+  PhysicalSizeCode = 2006
+  Hypothetical = 0
+  Cargo_Type = 2000
+  Cargo_Mass = 10125.0
+  Cargo_Area = 1375.0
+  Cargo_Crew = 100.0
+  Cargo_Volume = 0
+  Cost = 0
+  Deprecated = 0
+
+=== EnumShipType (全部 / 含 Carrier) ===
+   2001  CV - Aircraft Carrier
+   2002  CVA - Attack Carrier
+   2003  CVB - Large Aircraft Carrier
+   2004  CVE - Escort Aircraft Carrier
+   2005  CVGH - Guided Missile Helicopter Carrier
+   2006  CVH - Helicopter Carrier
+   2007  CVL - Light Aircraft Carrier
+   2008  CVN - Nuclear Powered Aircraft Carrier
+   2009  CVS - Seaplane Carrier
+   2010  CVS - Anti-Submarine Aircraft Carrier
+   2011  AVT - Training Carrier
+   3006  BCGN - Nuclear Powered Guided Missile Battle Cruiser
+   3101  C - Cruiser
+   3102  CA - Heavy Cruiser
+   3103  CAG - Heavy Guided Missile Cruiser
+   3104  CB - Large Cruiser
+   3105  CBG - Large Guided Missile Cruiser
+   3106  CG - Guided Missile Cruiser
+   3107  CGH - Guided Missile Helicopter Cruiser
+   3108  CGN - Nuclear Powered Guided Missile Cruiser
+   3109  CL - Light Cruiser
+   3110  CLAA - Light Anti-Aircraft Cruiser
+   3111  CLC - Light Command Cruiser
+   3112  CLG - Light Guided Missile Cruiser
+   3113  CLH - Light Helicopter Cruiser
+   3114  CS - Scout Cruiser
+   3201  D - Destroyer
+   3202  DD - Destroyer
+   3203  DDG - Guided Missile Destroyer
+   3204  DDH - Helicopter Destroyer
+   3205  DDK - ASW Submarine Killer Destroyer
+   3206  DDR - Radar Picket Destroyer
+   3207  DE - Destroyer Escort
+   3208  DEG - Guided Missile Destroyer Escort
+   3209  DER - Radar Picket Destroyer Escort
+   3210  DL - Destroyer
+   3211  DLG - Guided Missile Destroyer
+   3212  DM - Destroyer Minelayer (converted destroyer) 
+   3301  F - Frigate
+   3302  FF - Frigate
+   3303  FFG - Guided Missile Frigate
+   3305  PF - Patrol Frigate
+   4008  LCVP - Vehicle and Personnel Landing Craft
+   4014  LPH - Amphibious Assault Helicopter Carrier
+   5002  AD - Destroyer Tender
+   5031  ATC - Armored Troop Carrier (Tango Boat) 
+   5040  AD - Destroyer Tender
+
+=== Enum 表中含 'Ship' / 'Type' 的 ===
+  EnumShipCategory
+  EnumShipCode
+  EnumShipCSGen
+  EnumShipPhysicalSize
+  EnumShipType

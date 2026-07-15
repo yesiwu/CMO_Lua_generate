@@ -1,0 +1,218 @@
+{
+  "$schema": "https://command-ops.schema.json",
+  "$comment": "CMO Lua 专用作战方案 JSON Schema — 完整覆盖打击逻辑",
+  "schemaVersion": "1.0",
+
+  "basicInfo": {
+    "scenarioName": "场景名称",
+    "scenarioTime": "2025/10/27 15:00:00",
+    "description": "作战方案描述"
+  },
+
+  "sides": {
+    "red": {
+      "name": "红方",
+      "color": "255,0,0",
+      "emcon": "Radar=Active;Sonar=Passive;OECM=Passive",
+      "doctrine": {
+        "weapon_control_status_surface": 0,
+        "weapon_control_status_air": 0,
+        "weapon_control_status_subsurface": 0,
+        "weapon_control_status_land": 0
+      }
+    },
+    "blue": {
+      "name": "蓝方",
+      "color": "0,0,255",
+      "emcon": "Radar=Active;Sonar=Active;OECM=Active",
+      "doctrine": {
+        "weapon_control_status_surface": 0,
+        "weapon_control_status_air": 0,
+        "weapon_control_status_subsurface": 0,
+        "weapon_control_status_land": 0
+      }
+    }
+  },
+
+  "units": {
+    "$comment": "所有单位定义，每个单位必须有 missionAssignments 数组（可为空表示静止）",
+    "unit_001": {
+      "name": "红方J-16D_01",
+      "side": "red",
+      "type": "Aircraft",
+      "dbid": 4632,
+      "loadoutId": 753,
+      "latitude": 9.91,
+      "longitude": 115.53,
+      "altitude": 1500,
+      "heading": 0,
+      "speed": 250,
+      "missionAssignments": [
+        {
+          "missionName": "M04_J16D电子战",
+          "isActive": true,
+          "patrolType": "SEAD",
+          "targetSide": "blue"
+        }
+      ]
+    },
+    "unit_002": {
+      "name": "红方H-6K_01",
+      "side": "red",
+      "type": "Aircraft",
+      "dbid": 140,
+      "loadoutId": 87,
+      "latitude": 9.71,
+      "longitude": 115.32,
+      "altitude": 1000,
+      "heading": 90,
+      "speed": 300,
+      "missionAssignments": [
+        {
+          "missionName": "M02_H6K轰炸打击",
+          "isActive": true,
+          "strike": true,
+          "targets": ["blue_cvn_01", "blue_ddg_01"],
+          "flightSize": 4,
+          "minAircraftReq": 2
+        }
+      ]
+    },
+    "unit_003": {
+      "name": "红方DF26发射车_01",
+      "side": "red",
+      "type": "Facility",
+      "dbid": 2879,
+      "latitude": 18.54,
+      "longitude": 110.01,
+      "altitude": 1,
+      "heading": 90,
+      "speed": 0,
+      "missionAssignments": [
+        {
+          "missionName": "M01_DF26打击",
+          "isActive": true,
+          "strike": true,
+          "targets": ["blue_cvn_01"],
+          "consumableStrike": 1,
+          "oneShot": true
+        }
+      ]
+    },
+    "unit_004": {
+      "name": "蓝方CVN_01",
+      "side": "blue",
+      "type": "Ship",
+      "dbid": 34,
+      "latitude": -0.659581,
+      "longitude": 105.813746,
+      "heading": 270,
+      "speed": 15,
+      "missionAssignments": [
+        {
+          "missionName": "M11_蓝方CAP",
+          "isActive": true,
+          "patrolType": "FighterCAP",
+          "flightSize": 4
+        }
+      ]
+    }
+  },
+
+  "missions": {
+    "$comment": "所有任务定义，含巡逻区域和目标列表（Strike任务必须有targets）",
+    "M01_DF26打击": {
+      "side": "red",
+      "type": "strike",
+      "subtype": "naval",
+      "description": "DF-26 反舰弹道导弹对蓝方航母编队打击",
+      "isActive": false,
+      "targetSide": "blue",
+      "targets": ["blue_cvn_01"],
+      "patrolZone": [],
+      "activatesAt": "T30"
+    },
+    "M02_H6K轰炸打击": {
+      "side": "red",
+      "type": "strike",
+      "subtype": "naval",
+      "description": "H-6K 轰炸机对蓝方舰艇打击",
+      "isActive": false,
+      "targetSide": "blue",
+      "targets": ["blue_cvn_01", "blue_ddg_01"],
+      "activatesAt": "T40"
+    },
+    "M04_J16D电子战": {
+      "side": "red",
+      "type": "patrol",
+      "subtype": "SEAD",
+      "description": "J-16D 电磁压制",
+      "isActive": true,
+      "patrolZone": ["RP-EW-1", "RP-EW-2", "RP-EW-3", "RP-EW-4"],
+      "activatesAt": "T0"
+    },
+    "M11_蓝方CAP": {
+      "side": "blue",
+      "type": "patrol",
+      "subtype": "air",
+      "description": "F-35 战斗空中巡逻",
+      "isActive": true,
+      "patrolZone": ["B-RP-CAP-1", "B-RP-CAP-2", "B-RP-CAP-3", "B-RP-CAP-4"],
+      "activatesAt": "T0"
+    }
+  },
+
+  "events": {
+    "$comment": "时间事件链，驱动任务激活和状态切换",
+    "T0": {
+      "timeSeconds": 0,
+      "description": "场景加载",
+      "actions": [
+        { "type": "message", "side": "red", "text": "【Phase 1】侦察与部署阶段" },
+        { "type": "message", "side": "blue", "text": "【警戒】编队进入戒备状态" }
+      ]
+    },
+    "T30": {
+      "timeSeconds": 1800,
+      "description": "T+30分钟 联合火力突击开始",
+      "actions": [
+        { "type": "activateMission", "mission": "M01_DF26打击" },
+        { "type": "message", "side": "red", "text": "【Phase 2】DF-26 反舰弹道导弹开火！" },
+        { "type": "message", "side": "blue", "text": "【警报】弹道导弹来袭！启动反导拦截！" }
+      ]
+    },
+    "T40": {
+      "timeSeconds": 2400,
+      "description": "T+40分钟 空中打击编队前出",
+      "actions": [
+        { "type": "activateMission", "mission": "M02_H6K轰炸打击" },
+        { "type": "message", "side": "red", "text": "【空中突击】H-6K + J-16 机群发起导弹攻击！" }
+      ]
+    }
+  },
+
+  "victoryConditions": {
+    "red": [
+      { "unit": "blue_cvn_01", "threshold": 70, "score": 100, "text": "蓝方CVN击毁" }
+    ],
+    "blue": [
+      { "unit": "red_ddg_055_01", "threshold": 60, "score": 100, "text": "红方055击伤" }
+    ]
+  },
+
+  "referencePoints": {
+    "$comment": "巡逻区域参考点，必须在 missions 中引用 PatrolZone",
+    "red": [
+      { "name": "RP-EW-1", "latitude": 3.0, "longitude": 108.0 },
+      { "name": "RP-EW-2", "latitude": 3.0, "longitude": 112.0 },
+      { "name": "RP-EW-3", "latitude": -1.0, "longitude": 112.0 },
+      { "name": "RP-EW-4", "latitude": -1.0, "longitude": 108.0 }
+    ],
+    "blue": [
+      { "name": "B-RP-CAP-1", "latitude": 2.0, "longitude": 104.0 },
+      { "name": "B-RP-CAP-2", "latitude": 2.0, "longitude": 108.0 },
+      { "name": "B-RP-CAP-3", "latitude": -2.0, "longitude": 108.0 },
+      { "name": "B-RP-CAP-4", "latitude": -2.0, "longitude": 104.0 }
+    ]
+  }
+}

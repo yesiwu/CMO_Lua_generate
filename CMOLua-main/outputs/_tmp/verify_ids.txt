@@ -1,0 +1,117 @@
+﻿=== dbid=3883 是什么 ===
+  {'ID': 3883, 'Name': 'Type 055 Renhai [101 Nanchang]', 'Type': 3106, 'OperatorCountry': 2018}
+
+=== 真正 055A 全部候选 (含 055/RenHai/Nanchang/Tpye 055) ===
+  {'ID': 2834, 'Name': 'Type 055 Renhai [101 Nanchang]', 'OperatorCountry': 2018, 'YearCommissioned': 2020}
+  {'ID': 3883, 'Name': 'Type 055 Renhai [101 Nanchang]', 'OperatorCountry': 2018, 'YearCommissioned': 2022}
+
+=== dbid=2862 是什么 ===
+  {'ID': 2862, 'Name': 'CG 59 Princeton [Ticonderoga Baseline 3, VLS]', 'Type': 3106, 'OperatorCountry': 2101}
+
+=== CG-59 / Princeton / Ticonderoga 候选 ===
+  {'ID': 40, 'Name': 'CG 56 San Jacinto [Ticonderoga Baseline 3, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 1989}
+  {'ID': 42, 'Name': 'CG 47 Ticonderoga [Baseline 0, Mk26]', 'OperatorCountry': 2101, 'YearCommissioned': 1984}
+  {'ID': 110, 'Name': 'CG 52 Bunker Hill [Ticonderoga Baseline 2, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 1987}
+  {'ID': 309, 'Name': 'CG 70 Lake Erie [Ticonderoga Baseline 4, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 2002}
+  {'ID': 411, 'Name': 'CG 52 Bunker Hill [Ticonderoga Baseline 2, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 2002}
+  {'ID': 431, 'Name': 'CG 52 Bunker Hill [Ticonderoga Baseline 2, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 1994}
+  {'ID': 503, 'Name': 'CG 47 Ticonderoga [Baseline 0, Mk26]', 'OperatorCountry': 2101, 'YearCommissioned': 2000}
+  {'ID': 512, 'Name': 'CG 49 Vincennes [Ticonderoga Baseline 1, Mk26]', 'OperatorCountry': 2101, 'YearCommissioned': 1985}
+  {'ID': 513, 'Name': 'CG 54 Antietam [Ticonderoga Baseline 3, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 1987}
+  {'ID': 515, 'Name': 'CG 54 Antietam [Ticonderoga Baseline 3, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 1991}
+  {'ID': 516, 'Name': 'CG 54 Antietam [Ticonderoga Baseline 3, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 2002}
+  {'ID': 523, 'Name': 'CG 54 Antietam [Ticonderoga Baseline 3, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 1994}
+  {'ID': 525, 'Name': 'CG 47 Ticonderoga [Baseline 0, Mk26]', 'OperatorCountry': 2101, 'YearCommissioned': 1983}
+  {'ID': 527, 'Name': 'CG 52 Bunker Hill [Ticonderoga Baseline 2, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 1998}
+  {'ID': 532, 'Name': 'CG 68 Anzio [Ticonderoga Baseline 4, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 1992}
+  {'ID': 535, 'Name': 'CG 68 Anzio [Ticonderoga Baseline 4, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 2002}
+  {'ID': 545, 'Name': 'CG 47 Ticonderoga [Baseline 0, Mk26]', 'OperatorCountry': 2101, 'YearCommissioned': 1998}
+  {'ID': 546, 'Name': 'CG 49 Vincennes [Ticonderoga Baseline 1, Mk26]', 'OperatorCountry': 2101, 'YearCommissioned': 1998}
+  {'ID': 547, 'Name': 'CG 52 Bunker Hill [Ticonderoga Baseline 2, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 1989}
+  {'ID': 548, 'Name': 'CG 54 Antietam [Ticonderoga Baseline 3, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 1998}
+  {'ID': 549, 'Name': 'CG 56 San Jacinto [Ticonderoga Baseline 3, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 1998}
+  {'ID': 550, 'Name': 'CG 59 Princeton [Ticonderoga Baseline 3, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 1998}
+  {'ID': 551, 'Name': 'CG 68 Anzio [Ticonderoga Baseline 4, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 1998}
+  {'ID': 579, 'Name': 'CG 56 San Jacinto [Ticonderoga Baseline 3, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 1994}
+  {'ID': 582, 'Name': 'CG 59 Princeton [Ticonderoga Baseline 3, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 1994}
+  {'ID': 583, 'Name': 'CG 68 Anzio [Ticonderoga Baseline 4, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 1994}
+  {'ID': 588, 'Name': 'CG 52 Bunker Hill [Ticonderoga Baseline 2, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 2008}
+  {'ID': 590, 'Name': 'CG 54 Antietam [Ticonderoga Baseline 3, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 2008}
+  {'ID': 598, 'Name': 'CG 56 San Jacinto [Ticonderoga Baseline 3, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 2008}
+  {'ID': 599, 'Name': 'CG 59 Princeton [Ticonderoga Baseline 3, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 2008}
+  {'ID': 601, 'Name': 'CG 68 Anzio [Ticonderoga Baseline 4, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 2008}
+  {'ID': 602, 'Name': 'CG 70 Lake Erie [Ticonderoga Baseline 4, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 2008}
+  {'ID': 628, 'Name': 'CG 56 San Jacinto [Ticonderoga Baseline 3, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 1991}
+  {'ID': 702, 'Name': 'CG 47 Ticonderoga [Baseline 0, Mk26]', 'OperatorCountry': 2101, 'YearCommissioned': 1991}
+  {'ID': 736, 'Name': 'CG 52 Bunker Hill [Ticonderoga Baseline 2, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 1991}
+  {'ID': 754, 'Name': 'CG 70 Lake Erie [Ticonderoga Baseline 4, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 1994}
+  {'ID': 756, 'Name': 'CG 70 Lake Erie [Ticonderoga Baseline 4, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 1998}
+  {'ID': 763, 'Name': 'CG 52 Bunker Hill [Ticonderoga Baseline 2, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 2005}
+  {'ID': 767, 'Name': 'CG 56 San Jacinto [Ticonderoga Baseline 3, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 2002}
+  {'ID': 770, 'Name': 'CG 54 Antietam [Ticonderoga Baseline 3, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 2005}
+  {'ID': 781, 'Name': 'CG 56 San Jacinto [Ticonderoga Baseline 3, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 2005}
+  {'ID': 786, 'Name': 'CG 59 Princeton [Ticonderoga Baseline 3, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 2005}
+  {'ID': 791, 'Name': 'CG 68 Anzio [Ticonderoga Baseline 4, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 2005}
+  {'ID': 795, 'Name': 'CG 70 Lake Erie [Ticonderoga Baseline 4, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 2005}
+  {'ID': 954, 'Name': 'CG 59 Princeton [Ticonderoga Baseline 3, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 1991}
+  {'ID': 973, 'Name': 'CG 49 Vincennes [Ticonderoga Baseline 1, Mk26]', 'OperatorCountry': 2101, 'YearCommissioned': 2000}
+  {'ID': 977, 'Name': 'CG 59 Princeton [Ticonderoga Baseline 3, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 1989}
+  {'ID': 978, 'Name': 'CG 59 Princeton [Ticonderoga Baseline 3, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 2002}
+  {'ID': 1054, 'Name': 'CG 49 Vincennes [Ticonderoga Baseline 1, Mk26]', 'OperatorCountry': 2101, 'YearCommissioned': 1991}
+  {'ID': 1058, 'Name': 'CG 52 Bunker Hill [Ticonderoga Baseline 2, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 2000}
+  {'ID': 1059, 'Name': 'CG 54 Antietam [Ticonderoga Baseline 3, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 2000}
+  {'ID': 1060, 'Name': 'CG 56 San Jacinto [Ticonderoga Baseline 3, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 2000}
+  {'ID': 1062, 'Name': 'CG 59 Princeton [Ticonderoga Baseline 3, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 2000}
+  {'ID': 1063, 'Name': 'CG 68 Anzio [Ticonderoga Baseline 4, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 2000}
+  {'ID': 1065, 'Name': 'CG 70 Lake Erie [Ticonderoga Baseline 4, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 2000}
+  {'ID': 1095, 'Name': 'CG 56 San Jacinto [Ticonderoga Baseline 3, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 1996}
+  {'ID': 1856, 'Name': 'CG 54 Antietam [Ticonderoga Baseline 3, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 1996}
+  {'ID': 1857, 'Name': 'CG 52 Bunker Hill [Ticonderoga Baseline 2, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 1996}
+  {'ID': 1858, 'Name': 'CG 59 Princeton [Ticonderoga Baseline 3, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 1996}
+  {'ID': 1859, 'Name': 'CG 68 Anzio [Ticonderoga Baseline 4, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 1996}
+  {'ID': 1860, 'Name': 'CG 70 Lake Erie [Ticonderoga Baseline 4, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 1996}
+  {'ID': 1995, 'Name': 'CG 47 Ticonderoga [Baseline 0, Mk26]', 'OperatorCountry': 2101, 'YearCommissioned': 1989}
+  {'ID': 1996, 'Name': 'CG 49 Vincennes [Ticonderoga Baseline 1, Mk26]', 'OperatorCountry': 2101, 'YearCommissioned': 1989}
+  {'ID': 2123, 'Name': 'CG 52 Bunker Hill [Ticonderoga Baseline 2, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 2012}
+  {'ID': 2124, 'Name': 'CG 54 Antietam [Ticonderoga Baseline 3, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 2012}
+  {'ID': 2125, 'Name': 'CG 56 San Jacinto [Ticonderoga Baseline 3, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 2012}
+  {'ID': 2126, 'Name': 'CG 59 Princeton [Ticonderoga Baseline 3, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 2012}
+  {'ID': 2127, 'Name': 'CG 68 Anzio [Ticonderoga Baseline 4, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 2012}
+  {'ID': 2128, 'Name': 'CG 70 Lake Erie [Ticonderoga Baseline 4, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 2012}
+  {'ID': 2156, 'Name': 'CG 70 Lake Erie [Ticonderoga Baseline 4, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 2010}
+  {'ID': 2157, 'Name': 'CG 68 Anzio [Ticonderoga Baseline 4, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 2010}
+  {'ID': 2158, 'Name': 'CG 59 Princeton [Ticonderoga Baseline 3, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 2010}
+  {'ID': 2159, 'Name': 'CG 56 San Jacinto [Ticonderoga Baseline 3, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 2010}
+  {'ID': 2160, 'Name': 'CG 54 Antietam [Ticonderoga Baseline 3, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 2010}
+  {'ID': 2161, 'Name': 'CG 52 Bunker Hill [Ticonderoga Baseline 2, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 2010}
+  {'ID': 2337, 'Name': 'CG 52 Bunker Hill [Ticonderoga Baseline 2, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 2015}
+  {'ID': 2338, 'Name': 'CG 54 Antietam [Ticonderoga Baseline 3, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 2015}
+  {'ID': 2339, 'Name': 'CG 56 San Jacinto [Ticonderoga Baseline 3, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 2015}
+  {'ID': 2340, 'Name': 'CG 59 Princeton [Ticonderoga Baseline 3, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 2015}
+  {'ID': 2341, 'Name': 'CG 68 Anzio [Ticonderoga Baseline 4, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 2015}
+  {'ID': 2342, 'Name': 'CG 70 Lake Erie [Ticonderoga Baseline 4, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 2015}
+  {'ID': 2859, 'Name': 'CG 52 Bunker Hill [Ticonderoga Baseline 2, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 2018}
+  {'ID': 2860, 'Name': 'CG 54 Antietam [Ticonderoga Baseline 3, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 2018}
+  {'ID': 2861, 'Name': 'CG 56 San Jacinto [Ticonderoga Baseline 3, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 2018}
+  {'ID': 2862, 'Name': 'CG 59 Princeton [Ticonderoga Baseline 3, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 2018}
+  {'ID': 2863, 'Name': 'CG 68 Anzio [Ticonderoga Baseline 4, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 2018}
+  {'ID': 2864, 'Name': 'CG 70 Lake Erie [Ticonderoga Baseline 4, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 2018}
+  {'ID': 3149, 'Name': 'CG 71 Cape St. George [Ticonderoga Baseline 4, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 2018}
+  {'ID': 3152, 'Name': 'CG 62 Chancellorsville [Ticonderoga Baseline 4, VLS]', 'OperatorCountry': 2101, 'YearCommissioned': 2015}
+
+=== YJ-83K / C-802AK weapon dbid ===
+  {'ID': 1552, 'Name': 'C-801 [YJ-8, CSS-N-4 Sardine]', 'Comments': '1990, Surface, Fixed Fin'}
+  {'ID': 246, 'Name': 'C-801A [YJ-8A, CSS-N-4 Sardine]', 'Comments': '1993, Surface, Folding Fin, Iranian Noor 1'}
+  {'ID': 2132, 'Name': 'C-801K [YJ-81K]', 'Comments': '1999, Air'}
+  {'ID': 1014, 'Name': 'C-802', 'Comments': '1995, Iranian Noor 2, Not Adopted by China'}
+  {'ID': 3715, 'Name': 'C-802A', 'Comments': '2020'}
+  {'ID': 3476, 'Name': 'C-802A [YJ-83, CSS-N-8 Saccade]', 'Comments': '1999, Export'}
+  {'ID': 2408, 'Name': 'CM-200 Ghader [C-802 Mod]', 'Comments': 'Iran, 2012, CM-200A if Air-Launched, Qader'}
+  {'ID': 3437, 'Name': 'YJ-8 [C-801]', 'Comments': 'China, 1987, Limited deployment'}
+  {'ID': 2133, 'Name': 'YJ-81K [C-801K]', 'Comments': '1999, Air'}
+  {'ID': 3440, 'Name': 'YJ-82 [YJ-802Q]', 'Comments': '1995'}
+  {'ID': 541, 'Name': 'YJ-83 [C-802A, CSS-N-8 Saccade]', 'Comments': '1999'}
+  {'ID': 4392, 'Name': 'YJ-83B [CM-802B]', 'Comments': '2021, YJ-83J'}
+  {'ID': 2137, 'Name': 'YJ-83K [C-802AK]', 'Comments': 'Aircraft'}
+  {'ID': 3943, 'Name': 'YJ-83KB [CM-802B]', 'Comments': 'Aircraft'}
+  {'ID': 3438, 'Name': 'YJ-8A [C-801A]', 'Comments': 'China, 1993'}

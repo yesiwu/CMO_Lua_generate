@@ -1,0 +1,807 @@
+{
+  "version": "phase2",
+  "plan": "消耗与诱歼作战方案",
+  "resolved_at": "2026-07-06",
+  "scenario": {
+    "name": "消耗与诱歼作战方案",
+    "side": "红方",
+    "combat_time": "2026-04-10 10:00:00",
+    "side_red": "红方",
+    "side_blue": "蓝方"
+  },
+  "selected_dbids": {
+    "red_ddg_1": {
+      "dbid": 3883,
+      "name_en": "Type 055 Renhai [101 Nanchang]",
+      "platform_type": "DDG_055",
+      "class": "Ship",
+      "loadout_strategy": "default (no LoadoutID — will use ScenEdit_AddReloadsToUnit)",
+      "notes": "JSON says DDG_055; DB has 2834 and 3883, user picked 3883 (used in all.lua history)."
+    },
+    "red_ddg_2": {
+      "dbid": 2296,
+      "name_en": "Type 052D Luyang III [172 Kunming]",
+      "platform_type": "DDG_052D",
+      "class": "Ship",
+      "loadout_strategy": "default"
+    },
+    "red_sub_1": {
+      "dbid": 124,
+      "name_en": "Type 039G1 Song",
+      "platform_type": "SUB_039C",
+      "class": "Submarine",
+      "loadout_strategy": "default (no LoadoutID for submarine)"
+    },
+    "red_ac_1": {
+      "dbid": 2853,
+      "name_en": "J-16 Flying Shark [Su-30MKK Copy]",
+      "platform_type": "AC_J16",
+      "class": "Aircraft",
+      "loadout_strategy": "Aircraft, will add YJ-83 via ScenEdit_AddReloadsToUnit (skip LoadoutID)"
+    },
+    "red_ew_1": {
+      "dbid": 343,
+      "name_en": "EA-18G Growler",
+      "platform_type": "EW_EA18G",
+      "class": "Aircraft",
+      "loadout_strategy": "Aircraft, will add EMP weapons via ScenEdit_AddReloadsToUnit"
+    },
+    "blue_ddg_1": {
+      "dbid": 112,
+      "name_en": "DDG 51 Arleigh Burke [Arleigh Burke Flight I]",
+      "class": "Ship",
+      "platform_type": "AEGIS_BURKE_FLIGHT_I"
+    },
+    "blue_ddg_2": {
+      "dbid": 797,
+      "name_en": "DDG 51 Arleigh Burke [Arleigh Burke Flight I]",
+      "class": "Ship",
+      "platform_type": "AEGIS_BURKE_FLIGHT_I"
+    },
+    "blue_aux_1": {
+      "dbid": 26,
+      "name_en": "T-AO 187 Henry J. Kaiser [Mod Cimarron]",
+      "class": "Ship",
+      "platform_type": "OILER"
+    },
+    "weapon_yj18": {
+      "dbid": 2868,
+      "name_en": "YJ-18 [3M54E Klub Copy]",
+      "name_zh": "鹰击-18反舰导弹 / YJ-18反舰导弹(潜艇同型号)",
+      "category": "anti-ship missile"
+    },
+    "weapon_yj83": {
+      "dbid": 541,
+      "name_en": "YJ-83 [C-802A, CSS-N-8 Saccade]",
+      "name_zh": "YJ-83反舰导弹",
+      "category": "anti-ship missile"
+    }
+  },
+  "loadout_notes": {
+    "red_ac_1": "DB has LoadoutID 1821 and 3272 for ComponentID=2853, but DataLoadoutWeapons schema doesn't directly map ID->WeaponID cleanly. Using ScenEdit_AddReloadsToUnit per mount is safer.",
+    "red_ew_1": "DB has LoadoutID 102, 963, 995 for ComponentID=343. Same caveat as above."
+  },
+  "units": [
+    {
+      "id": "red_ddg_1",
+      "side": "红方",
+      "type": "Ship",
+      "dbid": 3883,
+      "name_en": "Type 055 Renhai [101 Nanchang]",
+      "platform_type_zh": "DDG_055",
+      "platform_class_zh": "驱逐舰",
+      "lat": "30.25",
+      "lon": "124.75",
+      "alt": "0",
+      "loadlist_count": 0
+    },
+    {
+      "id": "red_ddg_2",
+      "side": "红方",
+      "type": "Ship",
+      "dbid": 2296,
+      "name_en": "Type 052D Luyang III [172 Kunming]",
+      "platform_type_zh": "DDG_052D",
+      "platform_class_zh": "驱逐舰",
+      "lat": "29.75",
+      "lon": "125.25",
+      "alt": "0",
+      "loadlist_count": 0
+    },
+    {
+      "id": "red_sub_1",
+      "side": "红方",
+      "type": "Submarine",
+      "dbid": 124,
+      "name_en": "Type 039G1 Song",
+      "platform_type_zh": "SUB_039C",
+      "platform_class_zh": "潜艇",
+      "lat": "30.0",
+      "lon": "126.0",
+      "alt": "60",
+      "loadlist_count": 0
+    },
+    {
+      "id": "red_ac_1",
+      "side": "红方",
+      "type": "Aircraft",
+      "dbid": 2853,
+      "name_en": "J-16 Flying Shark [Su-30MKK Copy]",
+      "platform_type_zh": "AC_J16",
+      "platform_class_zh": "战斗机",
+      "lat": "29.0",
+      "lon": "123.5",
+      "alt": "7620",
+      "loadlist_count": 0
+    },
+    {
+      "id": "red_ew_1",
+      "side": "红方",
+      "type": "Aircraft",
+      "dbid": 343,
+      "name_en": "EA-18G Growler",
+      "platform_type_zh": "EW_EA18G",
+      "platform_class_zh": "电子战飞机",
+      "lat": "28.5",
+      "lon": "124.0",
+      "alt": "9144",
+      "loadlist_count": 0
+    },
+    {
+      "id": "blue_ddg_1",
+      "side": "蓝方",
+      "type": "Ship",
+      "dbid": 112,
+      "name_en": "DDG 51 Arleigh Burke [Arleigh Burke Flight I]",
+      "platform_type_zh": "",
+      "platform_class_zh": "",
+      "lat": "28.833333333333332",
+      "lon": "126.33333333333333",
+      "alt": "0",
+      "loadlist_count": 0
+    },
+    {
+      "id": "blue_ddg_2",
+      "side": "蓝方",
+      "type": "Ship",
+      "dbid": 797,
+      "name_en": "DDG 51 Arleigh Burke [Arleigh Burke Flight I]",
+      "platform_type_zh": "",
+      "platform_class_zh": "",
+      "lat": "28.5",
+      "lon": "126.66666666666667",
+      "alt": "0",
+      "loadlist_count": 0
+    },
+    {
+      "id": "blue_aux_1",
+      "side": "蓝方",
+      "type": "Ship",
+      "dbid": 26,
+      "name_en": "T-AO 187 Henry J. Kaiser [Mod Cimarron]",
+      "platform_type_zh": "",
+      "platform_class_zh": "",
+      "lat": "28.166666666666668",
+      "lon": "126.83333333333333",
+      "alt": "0",
+      "loadlist_count": 0
+    }
+  ],
+  "targets_blue": [
+    {
+      "id": "blue_ddg_1",
+      "name_zh": "蓝方驱逐舰1",
+      "side": "蓝方",
+      "object_type": "水面装备",
+      "lat": "28.833333333333332",
+      "lon": "126.33333333333333",
+      "alt": "0",
+      "priority": 1,
+      "phase_seq": "3",
+      "phase_name": "空中力量决定性突击",
+      "dbid": 112,
+      "name_en": "DDG 51 Arleigh Burke [Arleigh Burke Flight I]"
+    },
+    {
+      "id": "blue_ddg_2",
+      "name_zh": "蓝方驱逐舰2",
+      "side": "蓝方",
+      "object_type": "水面装备",
+      "lat": "28.5",
+      "lon": "126.66666666666667",
+      "alt": "0",
+      "priority": 1,
+      "phase_seq": "3",
+      "phase_name": "空中力量决定性突击",
+      "dbid": 797,
+      "name_en": "DDG 51 Arleigh Burke [Arleigh Burke Flight I]"
+    },
+    {
+      "id": "blue_aux_1",
+      "name_zh": "蓝方补给舰",
+      "side": "蓝方",
+      "object_type": "水面装备",
+      "lat": "28.166666666666668",
+      "lon": "126.83333333333333",
+      "alt": "0",
+      "priority": 2,
+      "phase_seq": "3",
+      "phase_name": "空中力量决定性突击",
+      "dbid": 26,
+      "name_en": "T-AO 187 Henry J. Kaiser [Mod Cimarron]"
+    }
+  ],
+  "weapons": [
+    {
+      "weapon_name_zh": "鹰击-18反舰导弹",
+      "weapon_type": "反舰导弹",
+      "dbid": 2868,
+      "qty_max": 4,
+      "platform_used": "red_ddg_1"
+    },
+    {
+      "weapon_name_zh": "YJ-18反舰导弹",
+      "weapon_type": "反舰导弹",
+      "dbid": 2868,
+      "qty_max": 4,
+      "platform_used": "red_sub_1"
+    },
+    {
+      "weapon_name_zh": "YJ-83反舰导弹",
+      "weapon_type": "反舰导弹",
+      "dbid": 541,
+      "qty_max": 2,
+      "platform_used": "red_ac_1"
+    }
+  ],
+  "waypoints": [
+    {
+      "platform_id": "red_ddg_1",
+      "seq": 1,
+      "lat": "30.25",
+      "lon": "124.75",
+      "alt": "0",
+      "speed": "15"
+    },
+    {
+      "platform_id": "red_ddg_1",
+      "seq": 2,
+      "lat": "29.8",
+      "lon": "125.2",
+      "alt": "0",
+      "speed": "25"
+    },
+    {
+      "platform_id": "red_ddg_1",
+      "seq": 3,
+      "lat": "29.4",
+      "lon": "125.7",
+      "alt": "0",
+      "speed": "25"
+    },
+    {
+      "platform_id": "red_ddg_1",
+      "seq": 4,
+      "lat": "29.2",
+      "lon": "126.1",
+      "alt": "0",
+      "speed": "20"
+    },
+    {
+      "platform_id": "red_ddg_1",
+      "seq": 5,
+      "lat": "29.0",
+      "lon": "126.0",
+      "alt": "0",
+      "speed": "20"
+    },
+    {
+      "platform_id": "red_ddg_1",
+      "seq": 6,
+      "lat": "29.3",
+      "lon": "125.5",
+      "alt": "0",
+      "speed": "25"
+    },
+    {
+      "platform_id": "red_ddg_1",
+      "seq": 7,
+      "lat": "29.7",
+      "lon": "125.0",
+      "alt": "0",
+      "speed": "25"
+    },
+    {
+      "platform_id": "red_ddg_1",
+      "seq": 8,
+      "lat": "30.1",
+      "lon": "124.6",
+      "alt": "0",
+      "speed": "15"
+    },
+    {
+      "platform_id": "red_ddg_2",
+      "seq": 1,
+      "lat": "29.75",
+      "lon": "125.25",
+      "alt": "0",
+      "speed": "20"
+    },
+    {
+      "platform_id": "red_ddg_2",
+      "seq": 2,
+      "lat": "29.5",
+      "lon": "125.5",
+      "alt": "0",
+      "speed": "25"
+    },
+    {
+      "platform_id": "red_ddg_2",
+      "seq": 3,
+      "lat": "29.25",
+      "lon": "125.75",
+      "alt": "0",
+      "speed": "25"
+    },
+    {
+      "platform_id": "red_ddg_2",
+      "seq": 4,
+      "lat": "29.0",
+      "lon": "126.0",
+      "alt": "0",
+      "speed": "20"
+    },
+    {
+      "platform_id": "red_ddg_2",
+      "seq": 5,
+      "lat": "28.75",
+      "lon": "126.25",
+      "alt": "0",
+      "speed": "15"
+    },
+    {
+      "platform_id": "red_ddg_2",
+      "seq": 6,
+      "lat": "28.5",
+      "lon": "126.5",
+      "alt": "0",
+      "speed": "10"
+    },
+    {
+      "platform_id": "red_sub_1",
+      "seq": 1,
+      "lat": "30.0",
+      "lon": "126.0",
+      "alt": "60",
+      "speed": "5"
+    },
+    {
+      "platform_id": "red_sub_1",
+      "seq": 2,
+      "lat": "29.8",
+      "lon": "126.1",
+      "alt": "60",
+      "speed": "5"
+    },
+    {
+      "platform_id": "red_sub_1",
+      "seq": 3,
+      "lat": "29.6",
+      "lon": "126.2",
+      "alt": "60",
+      "speed": "5"
+    },
+    {
+      "platform_id": "red_sub_1",
+      "seq": 4,
+      "lat": "29.4",
+      "lon": "126.3",
+      "alt": "60",
+      "speed": "5"
+    },
+    {
+      "platform_id": "red_sub_1",
+      "seq": 5,
+      "lat": "29.2",
+      "lon": "126.4",
+      "alt": "60",
+      "speed": "0"
+    },
+    {
+      "platform_id": "red_sub_1",
+      "seq": 6,
+      "lat": "29.0",
+      "lon": "126.5",
+      "alt": "60",
+      "speed": "8"
+    },
+    {
+      "platform_id": "red_sub_1",
+      "seq": 7,
+      "lat": "29.2",
+      "lon": "126.6",
+      "alt": "60",
+      "speed": "8"
+    },
+    {
+      "platform_id": "red_sub_1",
+      "seq": 8,
+      "lat": "29.5",
+      "lon": "126.5",
+      "alt": "60",
+      "speed": "5"
+    },
+    {
+      "platform_id": "red_ac_1",
+      "seq": 1,
+      "lat": "29.0",
+      "lon": "123.5",
+      "alt": "7620",
+      "speed": "200"
+    },
+    {
+      "platform_id": "red_ac_1",
+      "seq": 2,
+      "lat": "29.1",
+      "lon": "123.6",
+      "alt": "5000",
+      "speed": "250"
+    },
+    {
+      "platform_id": "red_ac_1",
+      "seq": 3,
+      "lat": "28.8",
+      "lon": "125.0",
+      "alt": "100",
+      "speed": "300"
+    },
+    {
+      "platform_id": "red_ac_1",
+      "seq": 4,
+      "lat": "28.833333333333332",
+      "lon": "126.33333333333333",
+      "alt": "100",
+      "speed": "300"
+    },
+    {
+      "platform_id": "red_ac_1",
+      "seq": 5,
+      "lat": "28.5",
+      "lon": "126.66666666666667",
+      "alt": "100",
+      "speed": "300"
+    },
+    {
+      "platform_id": "red_ac_1",
+      "seq": 6,
+      "lat": "28.166666666666668",
+      "lon": "126.83333333333333",
+      "alt": "100",
+      "speed": "300"
+    },
+    {
+      "platform_id": "red_ac_1",
+      "seq": 7,
+      "lat": "28.0",
+      "lon": "127.0",
+      "alt": "5000",
+      "speed": "400"
+    },
+    {
+      "platform_id": "red_ac_1",
+      "seq": 8,
+      "lat": "29.0",
+      "lon": "124.0",
+      "alt": "5000",
+      "speed": "350"
+    },
+    {
+      "platform_id": "red_ew_1",
+      "seq": 1,
+      "lat": "28.5",
+      "lon": "124.0",
+      "alt": "9144",
+      "speed": "250"
+    },
+    {
+      "platform_id": "red_ew_1",
+      "seq": 2,
+      "lat": "28.8",
+      "lon": "125.5",
+      "alt": "9144",
+      "speed": "250"
+    },
+    {
+      "platform_id": "red_ew_1",
+      "seq": 3,
+      "lat": "29.1",
+      "lon": "126.3",
+      "alt": "8000",
+      "speed": "220"
+    },
+    {
+      "platform_id": "red_ew_1",
+      "seq": 4,
+      "lat": "29.3",
+      "lon": "126.6",
+      "alt": "8000",
+      "speed": "220"
+    },
+    {
+      "platform_id": "red_ew_1",
+      "seq": 5,
+      "lat": "29.0",
+      "lon": "126.9",
+      "alt": "8000",
+      "speed": "220"
+    },
+    {
+      "platform_id": "red_ew_1",
+      "seq": 6,
+      "lat": "28.2",
+      "lon": "125.0",
+      "alt": "9144",
+      "speed": "250"
+    }
+  ],
+  "timings": [
+    {
+      "kind": "combatPhase",
+      "phase_seq": "1",
+      "phase_name": "水面编队前出诱敌",
+      "absolute_start": "2026-04-10 10:00:00",
+      "absolute_end": "2026-04-10 10:30:00",
+      "duration_iso": "PT30M"
+    },
+    {
+      "kind": "combatPhase",
+      "phase_seq": "2",
+      "phase_name": "电磁佯动与防空消耗",
+      "absolute_start": "2026-04-10 10:30:00",
+      "absolute_end": "2026-04-10 11:00:00",
+      "duration_iso": "PT30M"
+    },
+    {
+      "kind": "combatPhase",
+      "phase_seq": "3",
+      "phase_name": "空中力量决定性突击",
+      "absolute_start": "2026-04-10 11:00:00",
+      "absolute_end": "2026-04-10 11:15:00",
+      "duration_iso": "PT15M"
+    },
+    {
+      "kind": "combatPhase",
+      "phase_seq": "4",
+      "phase_name": "水面编队撤离与评估",
+      "absolute_start": "2026-04-10 11:15:00",
+      "absolute_end": "2026-04-10 11:45:00",
+      "duration_iso": "PT30M"
+    },
+    {
+      "kind": "killChainLinkStart",
+      "kill_chain_id": "kc1",
+      "link_id": "l1_1",
+      "link_name": "诱敌巡航",
+      "absolute_time": "2026-04-10 10:00:00",
+      "type": "时间"
+    },
+    {
+      "kind": "killChainLinkStart",
+      "kill_chain_id": "kc1",
+      "link_id": "l1_2",
+      "link_name": "电磁干扰",
+      "absolute_time": "2026-04-10 10:30:00",
+      "type": "时间"
+    },
+    {
+      "kind": "killChainLinkStart",
+      "kill_chain_id": "kc1",
+      "link_id": "l1_3",
+      "link_name": "空中瞄准",
+      "absolute_time": "2026-04-10 11:00:00",
+      "type": "时间"
+    },
+    {
+      "kind": "killChainLinkStart",
+      "kill_chain_id": "kc1",
+      "link_id": "l1_4",
+      "link_name": "空中交战",
+      "absolute_time": "2026-04-10 11:05:00",
+      "type": "时间"
+    },
+    {
+      "kind": "killChainLinkStart",
+      "kill_chain_id": "kc1",
+      "link_id": "l1_5",
+      "link_name": "潜艇交战",
+      "absolute_time": "2026-04-10 11:05:00",
+      "type": "时间"
+    },
+    {
+      "kind": "killChainLinkStart",
+      "kill_chain_id": "kc2",
+      "link_id": "l2_1",
+      "link_name": "诱敌巡航",
+      "absolute_time": "2026-04-10 10:00:00",
+      "type": "时间"
+    },
+    {
+      "kind": "killChainLinkStart",
+      "kill_chain_id": "kc2",
+      "link_id": "l2_2",
+      "link_name": "电磁干扰",
+      "absolute_time": "2026-04-10 10:30:00",
+      "type": "时间"
+    },
+    {
+      "kind": "killChainLinkStart",
+      "kill_chain_id": "kc2",
+      "link_id": "l2_3",
+      "link_name": "空中瞄准",
+      "absolute_time": "2026-04-10 11:00:00",
+      "type": "时间"
+    },
+    {
+      "kind": "killChainLinkStart",
+      "kill_chain_id": "kc2",
+      "link_id": "l2_4",
+      "link_name": "空中交战",
+      "absolute_time": "2026-04-10 11:05:00",
+      "type": "时间"
+    },
+    {
+      "kind": "killChainLinkStart",
+      "kill_chain_id": "kc3",
+      "link_id": "l3_1",
+      "link_name": "诱敌巡航",
+      "absolute_time": "2026-04-10 10:00:00",
+      "type": "时间"
+    },
+    {
+      "kind": "killChainLinkStart",
+      "kill_chain_id": "kc3",
+      "link_id": "l3_2",
+      "link_name": "电磁干扰",
+      "absolute_time": "2026-04-10 10:30:00",
+      "type": "时间"
+    },
+    {
+      "kind": "killChainLinkStart",
+      "kill_chain_id": "kc3",
+      "link_id": "l3_3",
+      "link_name": "空中瞄准",
+      "absolute_time": "2026-04-10 11:00:00",
+      "type": "时间"
+    },
+    {
+      "kind": "killChainLinkStart",
+      "kill_chain_id": "kc3",
+      "link_id": "l3_4",
+      "link_name": "空中交战",
+      "absolute_time": "2026-04-10 11:05:00",
+      "type": "时间"
+    }
+  ],
+  "platform_tasks": [
+    {
+      "platform_id": "red_ddg_1",
+      "task_id": "task_red_ddg_1_1",
+      "task_name": "前出诱敌与巡航",
+      "task_type": "巡航",
+      "kill_chain": "kc1",
+      "link_id": "l1_1",
+      "targets": "blue_ddg_1;blue_ddg_2;blue_aux_1",
+      "timing_start": "T0+PT0H",
+      "timing_end": "T0+PT45M",
+      "weapons": ""
+    },
+    {
+      "platform_id": "red_ddg_1",
+      "task_id": "task_red_ddg_1_2",
+      "task_name": "补充导弹攻击",
+      "task_type": "空对地/舰火力突击",
+      "kill_chain": "kc1",
+      "link_id": "l1_1",
+      "targets": "blue_ddg_1;blue_ddg_2;blue_aux_1",
+      "timing_start": "T0+PT60M",
+      "timing_end": "T0+PT70M",
+      "weapons": "鹰击-18反舰导弹x4"
+    },
+    {
+      "platform_id": "red_ddg_2",
+      "task_id": "task_red_ddg_2_1",
+      "task_name": "前出诱敌巡航",
+      "task_type": "巡航",
+      "kill_chain": "kc1",
+      "link_id": "l1_1",
+      "targets": "",
+      "timing_start": "T0+PT0H",
+      "timing_end": "T0+PT30M",
+      "weapons": ""
+    },
+    {
+      "platform_id": "red_sub_1",
+      "task_id": "pt_red_sub_1_1",
+      "task_name": "潜艇反舰导弹齐射",
+      "task_type": "地对地导弹发射",
+      "kill_chain": "kc1",
+      "link_id": "l1_5",
+      "targets": "blue_ddg_1;blue_ddg_2;blue_aux_1",
+      "timing_start": "T0+PT1H",
+      "timing_end": "T0+PT1H15M",
+      "weapons": "YJ-18反舰导弹x4"
+    },
+    {
+      "platform_id": "red_ac_1",
+      "task_id": "pt_red_ac_1_1",
+      "task_name": "对蓝方驱逐舰1火力突击",
+      "task_type": "空对地/舰火力突击",
+      "kill_chain": "kc1",
+      "link_id": "l1_4",
+      "targets": "blue_ddg_1",
+      "timing_start": "T0+PT1H",
+      "timing_end": "T0+PT1H5M",
+      "weapons": "YJ-83反舰导弹x2"
+    },
+    {
+      "platform_id": "red_ac_1",
+      "task_id": "pt_red_ac_1_2",
+      "task_name": "对蓝方驱逐舰2火力突击",
+      "task_type": "空对地/舰火力突击",
+      "kill_chain": "kc2",
+      "link_id": "l2_4",
+      "targets": "blue_ddg_2",
+      "timing_start": "T0+PT1H5M",
+      "timing_end": "T0+PT1H10M",
+      "weapons": "YJ-83反舰导弹x2"
+    },
+    {
+      "platform_id": "red_ac_1",
+      "task_id": "pt_red_ac_1_3",
+      "task_name": "对蓝方补给舰火力突击",
+      "task_type": "空对地/舰火力突击",
+      "kill_chain": "kc3",
+      "link_id": "l3_4",
+      "targets": "blue_aux_1",
+      "timing_start": "T0+PT1H10M",
+      "timing_end": "T0+PT1H15M",
+      "weapons": "YJ-83反舰导弹x2"
+    },
+    {
+      "platform_id": "red_ew_1",
+      "task_id": "PT_red_ew_1_01",
+      "task_name": "红方电子战飞机前出巡航与干扰阵位建立",
+      "task_type": "巡航",
+      "kill_chain": "kc1",
+      "link_id": "l1_2",
+      "targets": "blue_ddg_1;blue_ddg_2;blue_aux_1",
+      "timing_start": "T0+PT30M",
+      "timing_end": "T0+PT60M",
+      "weapons": ""
+    },
+    {
+      "platform_id": "red_ew_1",
+      "task_id": "PT_red_ew_1_02",
+      "task_name": "红方电子战飞机侧翼伴飞干扰",
+      "task_type": "巡航",
+      "kill_chain": "kc2",
+      "link_id": "l2_2",
+      "targets": "blue_ddg_1;blue_ddg_2;blue_aux_1",
+      "timing_start": "T0+PT60M",
+      "timing_end": "T0+PT75M",
+      "weapons": ""
+    },
+    {
+      "platform_id": "red_ew_1",
+      "task_id": "PT_red_ew_1_03",
+      "task_name": "红方电子战飞机掩护突击编队撤离",
+      "task_type": "巡航",
+      "kill_chain": "kc3",
+      "link_id": "l3_2",
+      "targets": "blue_ddg_1;blue_ddg_2;blue_aux_1",
+      "timing_start": "T0+PT75M",
+      "timing_end": "T0+PT105M",
+      "weapons": ""
+    }
+  ]
+}

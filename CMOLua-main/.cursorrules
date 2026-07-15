@@ -1,0 +1,42 @@
+# CMO Lua — Command: Modern Operations
+
+> 本文件是 SKILL.md 的入口引导。完整规范请查阅 `SKILL.md`。
+
+## 快速入口
+
+| 主题 | 跳转位置 |
+|------|---------|
+| MCP 数据库查询（禁止硬编码 DBID） | `SKILL.md` — 行为红线、MCP 调用时机 |
+| Lua API 用法（Unit/Mission/Event 等） | `SKILL.md` — 关键规则、API 参考 |
+| **真延时打击（TOT 事件驱动）** | `SKILL.md` — 真延时打击（TOT 事件驱动）专章 |
+| **航母舰载机作战（建阵营+齐射+RTB 全流程）** | `SKILL.md` — §5.7 航母舰载机作战标准模板 |
+| 常见错误及解决方案 | `SKILL.md` — 常见错误速查、常见陷阱 |
+| 代码模板参考 | `SKILL.md` — 参考知识库 |
+| 输出文件保存位置 | `SKILL.md` — 输出成果保存位置 |
+
+## 立即可用的 MCP 工具
+
+| 工具 | 用途 |
+|------|------|
+| `query_dbid("F-16")` | 自然语言查询 DBID |
+| `read_query("SELECT ...")` | 执行 SQL 查询 LoadoutID |
+| `get_dbid_by_name("F-22A")` | 精确名称查找 |
+| `describe_table("DataAircraft")` | 查看表结构 |
+
+## 快速自审清单
+
+生成代码前检查：
+
+- [ ] `dbid` 通过 MCP 查询（严禁硬编码）
+- [ ] Aircraft 有 `LoadoutID`（数值类型）
+- [ ] `type` 为 `Aircraft` / `Ship` / `Submarine` / `Facility`（非 Air/Ground）
+- [ ] 使用 GUID 而非名称引用单位
+- [ ] `errors/index.md` 无匹配问题
+- [ ] 多脚本单位名一致性：所有脚本的 `CLEAR_LIST` / `AMMO` / `STRIKE` 与 `main.lua` 的 `name=` 完全一致
+- [ ] **真延时打击：使用 `ScenEdit_SetTrigger` + `qty=1` 逐枚调度**（禁止同步 for + `qty=N` 假延时）
+- [ ] **`contact_settle_delay ≥ 15` 秒**，且已叠加到每枚弹的 delay
+- [ ] **`fireAt` 函数是全局函数**（不带 `local`）
+- [ ] **建阵营用 table**：`ScenEdit_AddSide({name=..., color=...})`，禁止传字符串
+- [ ] **舰载机 RTB 设 `base` + `homebase` 双重字段**（只设一个 J-15 会在原地盘旋）
+
+> 详细规范、完整 API 示例、MCP 安装说明均在 `SKILL.md`。

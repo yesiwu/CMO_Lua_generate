@@ -1,0 +1,18 @@
+﻿﻿kind,tag,phase_seq,phase_name,absolute_start,absolute_end,duration_iso,relative_start_seconds,startCondition_type,kill_chain_id,link_id
+combatPhase,phase_1,1,水面编队前出诱敌,2026-04-10 10:00:00,2026-04-10 10:30:00,PT30M,,,,
+combatPhase,phase_2,2,电磁佯动与防空消耗,2026-04-10 10:30:00,2026-04-10 11:00:00,PT30M,,,,
+combatPhase,phase_3,3,空中力量决定性突击,2026-04-10 11:00:00,2026-04-10 11:15:00,PT15M,,,,
+combatPhase,phase_4,4,水面编队撤离与评估,2026-04-10 11:15:00,2026-04-10 11:45:00,PT30M,,,,
+killChainLinkStart,l1_1,,诱敌巡航,2026-04-10 10:00:00,,,,时间,kc1,l1_1
+killChainLinkStart,l1_2,,电磁干扰,2026-04-10 10:30:00,,,,时间,kc1,l1_2
+killChainLinkStart,l1_3,,空中瞄准,2026-04-10 11:00:00,,,,时间,kc1,l1_3
+killChainLinkStart,l1_4,,空中交战,2026-04-10 11:05:00,,,,时间,kc1,l1_4
+killChainLinkStart,l1_5,,潜艇交战,2026-04-10 11:05:00,,,,时间,kc1,l1_5
+killChainLinkStart,l2_1,,诱敌巡航,2026-04-10 10:00:00,,,,时间,kc2,l2_1
+killChainLinkStart,l2_2,,电磁干扰,2026-04-10 10:30:00,,,,时间,kc2,l2_2
+killChainLinkStart,l2_3,,空中瞄准,2026-04-10 11:00:00,,,,时间,kc2,l2_3
+killChainLinkStart,l2_4,,空中交战,2026-04-10 11:05:00,,,,时间,kc2,l2_4
+killChainLinkStart,l3_1,,诱敌巡航,2026-04-10 10:00:00,,,,时间,kc3,l3_1
+killChainLinkStart,l3_2,,电磁干扰,2026-04-10 10:30:00,,,,时间,kc3,l3_2
+killChainLinkStart,l3_3,,空中瞄准,2026-04-10 11:00:00,,,,时间,kc3,l3_3
+killChainLinkStart,l3_4,,空中交战,2026-04-10 11:05:00,,,,时间,kc3,l3_4

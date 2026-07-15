@@ -1,0 +1,15 @@
+﻿balance: OK
+lines: 406
+size: 14246
+[OK]   fireAt 全局
+[OK]   scheduleOne 局部
+[OK]   contact_settle 全局
+[OK]   mode='1' 字符串
+[OK]   Time Trigger
+[OK]   qty=1 逐枚
+[OK]   Event 自清理
+[OK]   tag 时间戳
+[OK]   autodetectable
+[OK]   蓝方 wcs=0
+[OK]   side 红蓝
+[OK]   不硬编瞎写 DBID

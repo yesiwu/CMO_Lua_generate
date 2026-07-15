@@ -1,0 +1,97 @@
+{
+  "stage": 2,
+  "plan": "消耗与诱歼作战方案",
+  "resolved_at": "2026-07-06",
+  "platforms": {
+    "red_ddg_1": {
+      "type_code": "DDG_055",
+      "english_query": "Type 055 destroyer Renhai-class",
+      "candidates": [],
+      "selected_dbid": null,
+      "selected_idx": null
+    },
+    "red_ddg_2": {
+      "type_code": "DDG_052D",
+      "english_query": "Type 052D Luyang destroyer",
+      "candidates": [],
+      "selected_dbid": null,
+      "selected_idx": null
+    },
+    "red_sub_1": {
+      "type_code": "SUB_039C",
+      "english_query": "Type 039B 039C submarine Song-class",
+      "candidates": [],
+      "selected_dbid": null,
+      "selected_idx": null
+    },
+    "red_ac_1": {
+      "type_code": "AC_J16",
+      "english_query": "J-16 multirole fighter",
+      "candidates": [],
+      "selected_dbid": null,
+      "selected_idx": null
+    },
+    "red_ew_1": {
+      "type_code": "EW_EA18G",
+      "english_query": "EA-18G Growler electronic warfare aircraft",
+      "candidates": [],
+      "selected_dbid": null,
+      "selected_idx": null
+    }
+  },
+  "weapons": {},
+  "targets_blue": {},
+  "loadouts": {},
+  "queries_log": [
+    {
+      "category": "platform",
+      "query": "Type 055 destroyer Renhai-class",
+      "num_results": 0
+    },
+    {
+      "category": "platform",
+      "query": "Type 052D Luyang destroyer",
+      "num_results": 0
+    },
+    {
+      "category": "platform",
+      "query": "Type 039B 039C submarine Song-class",
+      "num_results": 0
+    },
+    {
+      "category": "platform",
+      "query": "J-16 multirole fighter",
+      "num_results": 0
+    },
+    {
+      "category": "platform",
+      "query": "EA-18G Growler electronic warfare aircraft",
+      "num_results": 0
+    },
+    {
+      "category": "blue_target",
+      "query": "Arleigh Burke Flight I DDG",
+      "num_results": 0
+    },
+    {
+      "category": "blue_target",
+      "query": "Arleigh Burke Flight IIA DDG",
+      "num_results": 0
+    },
+    {
+      "category": "blue_target",
+      "query": "Supply ship fleet replenishment oiler",
+      "num_results": 0
+    },
+    {
+      "category": "weapon",
+      "query": "YJ-18 anti-ship missile",
+      "num_results": 0
+    },
+    {
+      "category": "weapon",
+      "query": "YJ-83 anti-ship missile",
+      "num_results": 0
+    }
+  ]
+}

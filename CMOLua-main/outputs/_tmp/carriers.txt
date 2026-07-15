@@ -1,0 +1,65 @@
+﻿=== DataShip schema 前 20 列 ===
+  ID INTEGER
+  Category INTEGER
+  Type INTEGER
+  Name TEXT
+  Comments TEXT
+  OperatorCountry INTEGER
+  OperatorService INTEGER
+  YearCommissioned INTEGER
+  YearDecommissioned INTEGER
+  Length DOUBLE
+  Beam DOUBLE
+  Draft DOUBLE
+  Height DOUBLE
+  DisplacementEmpty INTEGER
+  DisplacementStandard INTEGER
+  DisplacementFull INTEGER
+  Crew INTEGER
+  ArmorBelt INTEGER
+  ArmorBulkheads INTEGER
+  ArmorDeck INTEGER
+
+=== 中国/PLAN 相关枚举 ===
+  {'ID': 2018, 'Description': 'China', 'YearStart': 0, 'YearEnd': 0}
+
+=== Liaoning / Shandong / Fujian (主名匹配) ===
+  {'ID': 2007, 'Name': 'Type 001 Kuznetsov [16 Liaoning]', 'Comments': 'Ex-Riga/Varyag', 'OperatorCountry': 2018}
+  {'ID': 3187, 'Name': 'Type 002 Kuznetsov Mod [17 Shandong]', 'Comments': 'Type 001A', 'OperatorCountry': 2018}
+  {'ID': 3466, 'Name': 'Type 003 [18 Fujian]', 'Comments': '-', 'OperatorCountry': 2018}
+  {'ID': 4666, 'Name': 'Type 632 Fujian', 'Comments': 'Fulin(?)', 'OperatorCountry': 2018}
+
+=== 模糊匹配 航母 (carrier/PLAN) ===
+
+=== OperatorCountry=2018 (中国) 所有 Ship (前 30) ===
+共 100 条 PLAN 船舶
+  {'ID': 61, 'Name': 'Type 051D Luda I [109 Kaifeng]', 'Comments': 'Mod 2B, Crotale, Upgr to Type 051DT'}
+  {'ID': 62, 'Name': 'Type 051 Luda II [105 Jinan]', 'Comments': '1x, Mod 1A, Helo'}
+  {'ID': 63, 'Name': 'Type 052 Luhu [112 Harbin]', 'Comments': '-'}
+  {'ID': 64, 'Name': 'Type 053H1 Jianghu II [533 Taizhou]', 'Comments': '-'}
+  {'ID': 98, 'Name': 'Type 065 Jiangnan [Pr.50 Riga Mod, 529 Haikou]', 'Comments': '-'}
+  {'ID': 99, 'Name': 'Type 021 Huangfeng [Pr.205 Osa I Copy]', 'Comments': 'Exact OOS Unkn'}
+  {'ID': 100, 'Name': 'Type 925 Dajiang [121 Changxingdao]', 'Comments': '-'}
+  {'ID': 167, 'Name': 'Type 053H Jianghu I [516 Jiujiang]', 'Comments': '-'}
+  {'ID': 168, 'Name': 'Type 053H1Q Jianghu IV [544 Siping]', 'Comments': '1x, Type 053HT'}
+  {'ID': 169, 'Name': 'Type 053K Jiangdong [531 Yingtan]', 'Comments': '2x'}
+  {'ID': 180, 'Name': 'Type 037 Hainan [605 Zhaoyuan]', 'Comments': '-'}
+  {'ID': 346, 'Name': 'Type 053H2G Jiangwei [539 Anqing]', 'Comments': '4x'}
+  {'ID': 348, 'Name': 'Type 922II Dalang I [503 Nanjiu]', 'Comments': '2x'}
+  {'ID': 349, 'Name': 'Type 037 Hainan [605 Zhaoyuan]', 'Comments': 'SJD-3'}
+  {'ID': 350, 'Name': 'Type 073IIY Yudao [800 Dongyun]', 'Comments': '2x, OOS Unkn'}
+  {'ID': 352, 'Name': 'Type XXX Qiongsha [830 Nanyun]', 'Comments': '-'}
+  {'ID': 354, 'Name': 'Type 814A Dadie [Beidiao 900]', 'Comments': '-'}
+  {'ID': 388, 'Name': 'Type 024 Hoku [Pr.183R Komar Mod]', 'Comments': 'Exact OOS Unkn'}
+  {'ID': 534, 'Name': 'Type 051D Luda I [108 Xining]', 'Comments': 'Mod 2'}
+  {'ID': 557, 'Name': 'Pr.956E Sovremenny III [136 Hangzhou]', 'Comments': '2x'}
+  {'ID': 651, 'Name': 'Type 053H1G Jianghu V [558 Zigong]', 'Comments': '-'}
+  {'ID': 654, 'Name': 'Type 903 Fuchi [886 Qiandaohu]', 'Comments': '2x'}
+  {'ID': 660, 'Name': 'Type 908 Fusu [Komandarm Fedko Class, 885 Qinghaihu]', 'Comments': '-'}
+  {'ID': 690, 'Name': 'Type 052B Luyang I [168 Guangzhou]', 'Comments': '2x'}
+  {'ID': 696, 'Name': 'Type 052C Luyang II [170 Lanzhou]', 'Comments': '-'}
+  {'ID': 700, 'Name': 'Type 052 Luhu [113 Qingdao]', 'Comments': '-'}
+  {'ID': 705, 'Name': 'Type 051 Luda I [106 Xian]', 'Comments': 'Mod 1'}
+  {'ID': 708, 'Name': 'Type 051G Luda III [165 Zhanjiang]', 'Comments': '2x, Mod 3, Type 825/981 ECM'}
+  {'ID': 713, 'Name': 'Type 053H2 Jianghu III [536 Wuhu]', 'Comments': '1x'}
+  {'ID': 720, 'Name': 'Type 053H2 Jianghu III [537 Cangzhou]', 'Comments': '2x, YJ-8A'}

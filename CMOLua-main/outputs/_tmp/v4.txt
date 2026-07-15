@@ -1,0 +1,24 @@
+﻿balance: OK
+[OK]   AddSide 用 table
+[OK]   阵营颜色
+[OK]   scheduleOne 拆 qty
+[OK]   scheduleRtb 全局
+[OK]   RTB Time 触发器
+[OK]   RTB 强设 course
+[OK]   RTB 设 homebase
+[OK]   RTB 设 base
+[OK]   fireAt 全局
+[OK]   contact_settle 全局
+[OK]   Time Trigger
+[OK]   Event 自清理
+[OK]   tag 时间戳
+[OK]   autodetectable
+[OK]   蓝方 wcs=0
+[OK]   side 中文
+[OK]   DBID 实测集合
+[OK]   mode='1' 字符串
+[OK]   OMNI awareness
+[OK]   H 敌对
+[OK]   RTB 时间线打印
+
+通过 21/21 项

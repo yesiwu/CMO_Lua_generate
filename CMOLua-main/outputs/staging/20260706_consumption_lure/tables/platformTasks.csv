@@ -1,0 +1,11 @@
+﻿﻿platform_id,task_id,task_name,task_type,related_killChain,related_link,targets,timing_start,timing_end,weapons
+red_ddg_1,task_red_ddg_1_1,前出诱敌与巡航,巡航,kc1,l1_1,blue_ddg_1;blue_ddg_2;blue_aux_1,T0+PT0H,T0+PT45M,
+red_ddg_1,task_red_ddg_1_2,补充导弹攻击,空对地/舰火力突击,kc1,l1_1,blue_ddg_1;blue_ddg_2;blue_aux_1,T0+PT60M,T0+PT70M,鹰击-18反舰导弹x4
+red_ddg_2,task_red_ddg_2_1,前出诱敌巡航,巡航,kc1,l1_1,,T0+PT0H,T0+PT30M,
+red_sub_1,pt_red_sub_1_1,潜艇反舰导弹齐射,地对地导弹发射,kc1,l1_5,blue_ddg_1;blue_ddg_2;blue_aux_1,T0+PT1H,T0+PT1H15M,YJ-18反舰导弹x4
+red_ac_1,pt_red_ac_1_1,对蓝方驱逐舰1火力突击,空对地/舰火力突击,kc1,l1_4,blue_ddg_1,T0+PT1H,T0+PT1H5M,YJ-83反舰导弹x2
+red_ac_1,pt_red_ac_1_2,对蓝方驱逐舰2火力突击,空对地/舰火力突击,kc2,l2_4,blue_ddg_2,T0+PT1H5M,T0+PT1H10M,YJ-83反舰导弹x2
+red_ac_1,pt_red_ac_1_3,对蓝方补给舰火力突击,空对地/舰火力突击,kc3,l3_4,blue_aux_1,T0+PT1H10M,T0+PT1H15M,YJ-83反舰导弹x2
+red_ew_1,PT_red_ew_1_01,红方电子战飞机前出巡航与干扰阵位建立,巡航,kc1,l1_2,blue_ddg_1;blue_ddg_2;blue_aux_1,T0+PT30M,T0+PT60M,
+red_ew_1,PT_red_ew_1_02,红方电子战飞机侧翼伴飞干扰,巡航,kc2,l2_2,blue_ddg_1;blue_ddg_2;blue_aux_1,T0+PT60M,T0+PT75M,
+red_ew_1,PT_red_ew_1_03,红方电子战飞机掩护突击编队撤离,巡航,kc3,l3_2,blue_ddg_1;blue_ddg_2;blue_aux_1,T0+PT75M,T0+PT105M,

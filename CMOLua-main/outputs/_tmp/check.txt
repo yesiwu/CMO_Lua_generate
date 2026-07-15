@@ -1,0 +1,13 @@
+﻿balance: OK
+lines: 406
+size: 14246
+python : Traceback (most recent call last):
+所在位置 C:\Users\user\AppData\Local\Temp\ps-script-c5ff9dc6-c8c3-4095-badf-39814fd6b2a3.ps1:101 字符: 1
++ python "C:\Users\user\.codex\skills\CMOLua-main\outputs\_tmp\check_lu ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Traceback (most recent call last)::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  File "C:\Users\user\.codex\skills\CMOLua-main\outputs\_tmp\check_lua.py", line 61, in <module>
+    print(("\u2713 " if ok else "\u2717 ") + name)
+UnicodeEncodeError: 'gbk' codec can't encode character '\u2713' in position 0: illegal multibyte sequence
