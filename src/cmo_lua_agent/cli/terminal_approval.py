@@ -16,6 +16,7 @@ PermissionHook 可以调用本模块提供的审批器，在终端中展示
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 
 
@@ -28,24 +29,38 @@ class TerminalApprover:
         approved = approver(tool_name, arguments)
     """
 
+    def __init__(
+        self,
+        *,
+        pause: Callable[[], None] | None = None,
+        resume: Callable[[], None] | None = None,
+    ) -> None:
+        self._pause = pause
+        self._resume = resume
+
     def __call__(
         self,
         tool_name: str,
         arguments: dict[str, Any],
     ) -> bool:
-        print()
-        print("=" * 60)
-        print(f"工具请求执行：{tool_name}")
-        print(f"调用参数：{arguments}")
-        print("=" * 60)
-
         try:
+            if self._pause is not None:
+                self._pause()
+
+            print()
+            print("=" * 60)
+            print(f"工具请求执行：{tool_name}")
+            print(f"调用参数：{arguments}")
+            print("=" * 60)
             answer = input(
                 "是否允许执行？[y/N] "
             ).strip().lower()
         except (EOFError, KeyboardInterrupt):
             print()
             return False
+        finally:
+            if self._resume is not None:
+                self._resume()
 
         return answer in {
             "y",

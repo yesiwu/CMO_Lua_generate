@@ -1,0 +1,18 @@
+{
+  "cmoExecutable": "D:\\CMO\\Command\\bin\\Debug\\Command.exe",
+  "scenario": "D:\\CMO\\Command\\bin\\Debug\\Scenarios\\批量脚本测试2.scen",
+  "outputDirectory": "D:\\CMO\\CmoBatchRunner\\Results",
+  "collectionProfile": "combat-minimal",
+  "simulation": {
+    "enabled": true,
+    "pulseSeconds": 1,
+    "stopWhenScenarioEnds": true,
+    "wallTimeoutSeconds": 300
+  },
+  "jobs": [
+    {
+      "name": "all",
+      "script": "D:\\pythonproject\\CMO_Lua_generate\\Lua\\all1v1.lua"
+    }
+  ]
+}

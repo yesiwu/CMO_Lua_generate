@@ -31,6 +31,7 @@ class AgentEventType(str, Enum):
     LLM_COMPLETED = "llm_completed"
 
     TOOL_STARTED = "tool_started"
+    TOOL_PROGRESS = "tool_progress"
     TOOL_COMPLETED = "tool_completed"
     TOOL_FAILED = "tool_failed"
 
@@ -50,6 +51,7 @@ class AgentEventType(str, Enum):
             AgentEventType.LLM_COMPLETED: "模型调用完成",
 
             AgentEventType.TOOL_STARTED: "工具开始执行",
+            AgentEventType.TOOL_PROGRESS: "工具执行进度",
             AgentEventType.TOOL_COMPLETED: "工具执行完成",
             AgentEventType.TOOL_FAILED: "工具执行失败",
 

@@ -39,6 +39,7 @@ from cmo_lua_agent.orchestration.events import (
     AgentEventType,
 )
 from cmo_lua_agent.orchestration.ui_state import (
+    ToolExecutionState,
     ToolStatus,
     TranscriptItem,
     TranscriptItemType,
@@ -85,6 +86,7 @@ class TerminalDisplay:
         refresh_per_second: int = 10,
         max_argument_length: int = 120,
         max_result_length: int = 300,
+        max_transcript_items: int = 80,
     ) -> None:
         """
         初始化终端显示器。
@@ -127,9 +129,13 @@ class TerminalDisplay:
         self._refresh_per_second = refresh_per_second
         self._max_argument_length = max_argument_length
         self._max_result_length = max_result_length
+        self._max_transcript_items = max_transcript_items
 
         self._live: Live | None = None
         self._started = False
+        self._header_printed = False
+        self._assistant_stream_open = False
+        self._live_suspended_for_llm = False
 
         # 后续 AgentLoop 可能在异步线程中发事件，
         # 使用锁保护 UIState 和 Rich Live 更新。
@@ -163,6 +169,10 @@ class TerminalDisplay:
             if self._started:
                 return
 
+            if not self._header_printed:
+                self._console.print(self._render_header())
+                self._header_printed = True
+
             self._live = Live(
                 self.render(),
                 console=self._console,
@@ -172,6 +182,9 @@ class TerminalDisplay:
                 auto_refresh=True,
                 transient=False,
                 screen=False,
+                # Live 原地刷新时必须限制高度；visible 会在每次刷新
+                # 追加完整 transcript，导致 Logo 和历史内容不断重复。
+                vertical_overflow="ellipsis",
                 redirect_stdout=True,
                 redirect_stderr=True,
             )
@@ -246,6 +259,8 @@ class TerminalDisplay:
         标记当前 Agent 请求被用户中断。
         """
         with self._lock:
+            self._close_assistant_stream()
+            self._live_suspended_for_llm = False
             self._state.interrupted = True
             self._state.is_running = False
             self._state.current_activity = None
@@ -270,7 +285,22 @@ class TerminalDisplay:
         """
         try:
             with self._lock:
+                if event.type is AgentEventType.LLM_STARTED:
+                    self._live_suspended_for_llm = self._started
+                    if self._started:
+                        self.stop()
+
                 self._apply_event(event)
+                self._write_permanent_event(event)
+
+                if event.type is AgentEventType.LLM_COMPLETED:
+                    should_resume = self._live_suspended_for_llm
+                    self._live_suspended_for_llm = False
+                    if should_resume:
+                        self.start()
+                elif event.type is AgentEventType.AGENT_FAILED:
+                    self._live_suspended_for_llm = False
+
                 self.refresh()
         except Exception as exc:
             self._last_display_error = (
@@ -303,14 +333,9 @@ class TerminalDisplay:
         """
         将当前 UIState 渲染为一个 Rich Renderable。
         """
-        renderables: list[RenderableType] = [
-            self._render_header(),
-        ]
-
-        if self._state.transcript:
-            renderables.append(
-                self._render_transcript()
-            )
+        # Transcript is append-only terminal output. Live renders only the
+        # short-lived activity and footer so refreshes never duplicate history.
+        renderables: list[RenderableType] = []
 
         activity = self._render_activity()
 
@@ -322,6 +347,91 @@ class TerminalDisplay:
         )
 
         return Group(*renderables)
+
+    def _write_permanent_event(self, event: AgentEvent) -> None:
+        """Append stable transcript lines outside the Live render area."""
+        if event.type is AgentEventType.LLM_STARTED:
+            self._assistant_stream_open = False
+            return
+
+        if event.type is AgentEventType.TEXT_DELTA:
+            text = event.message or self._to_str(event.data.get("text"))
+            if not text:
+                return
+            if not self._assistant_stream_open:
+                self._console.print("\n● ", end="", style="bold magenta")
+                self._assistant_stream_open = True
+            self._console.print(text, end="", markup=False, highlight=False)
+            return
+
+        if event.type is AgentEventType.LLM_COMPLETED:
+            self._close_assistant_stream()
+            return
+
+        if event.type is AgentEventType.TOOL_STARTED:
+            name = self._to_str(event.data.get("tool_name")) or "unknown_tool"
+            self._console.print(f"\n→ {name}", style="bold yellow")
+            arguments = event.data.get("arguments")
+            if isinstance(arguments, dict) and arguments:
+                self._console.print(self._render_arguments(arguments))
+            return
+
+        if event.type in {AgentEventType.TOOL_COMPLETED, AgentEventType.TOOL_FAILED}:
+            name = self._to_str(event.data.get("tool_name")) or "unknown_tool"
+            duration = event.data.get("duration_seconds", 0.0)
+            marker = "✓" if event.type is AgentEventType.TOOL_COMPLETED else "✗"
+            style = "bold green" if marker == "✓" else "bold red"
+            self._console.print(f"{marker} {name} · {float(duration):.2f}s", style=style)
+            summary = self._summarize_tool_result(event.message)
+            if summary:
+                self._console.print(f"  {summary}", style="dim" if marker == "✓" else "red")
+            return
+
+        if event.type is AgentEventType.AGENT_FAILED:
+            self._close_assistant_stream()
+            self._console.print(Panel(event.message or "Agent 执行失败", title="Agent 执行失败", border_style="red"))
+
+    def _close_assistant_stream(self) -> None:
+        """Terminate a raw streaming line before another terminal block."""
+        if not self._assistant_stream_open:
+            return
+        self._console.print()
+        self._assistant_stream_open = False
+
+    def _summarize_tool_result(self, content: str) -> str:
+        if not content:
+            return ""
+        try:
+            data = json.loads(content)
+        except (TypeError, ValueError):
+            return self._truncate_text(content, 180)
+        if not isinstance(data, dict):
+            return self._truncate_text(content, 180)
+        parts: list[str] = []
+        if "success" in data:
+            parts.append("执行成功" if data.get("success") else "执行失败")
+        if isinstance(data.get("duration_seconds"), (int, float)):
+            parts.append(f"耗时 {data['duration_seconds']:.1f} 秒")
+        success_count = data.get("batch_success_count")
+        failure_count = data.get("batch_failure_count")
+        if isinstance(success_count, int) and isinstance(failure_count, int):
+            parts.append(f"成功 {success_count}，失败 {failure_count}")
+        error = data.get("error")
+        if isinstance(error, dict):
+            message = error.get("message") or error.get("category")
+            source = error.get("source")
+            line = error.get("line")
+            if source:
+                location = str(source)
+                if isinstance(line, int):
+                    location += f":{line}"
+                parts.append(f"位置 {location}")
+            if message:
+                parts.append(str(message))
+        result_dir = data.get("batch_result_dir")
+        if result_dir:
+            parts.append(f"结果目录 {result_dir}")
+        return " · ".join(parts) or self._truncate_text(content, 180)
 
     def _apply_event(
         self,
@@ -360,6 +470,23 @@ class TerminalDisplay:
         if event_type is AgentEventType.TOOL_STARTED:
             self._handle_tool_started(
                 event
+            )
+            return
+
+        if event_type is AgentEventType.TOOL_PROGRESS:
+            self._state.update_tool_progress(
+                tool_use_id=self._to_str(data.get("tool_use_id")),
+                event_type=self._to_str(data.get("event_type")) or "output",
+                status=self._to_str(data.get("status")) or "running",
+                message=event.message or "工具执行中",
+                detail=self._to_str(data.get("detail")) or None,
+                progress=data.get("progress"),
+                step_id=self._to_str(data.get("step_id")) or None,
+                metadata=(
+                    data.get("metadata")
+                    if isinstance(data.get("metadata"), dict)
+                    else None
+                ),
             )
             return
 
@@ -759,7 +886,12 @@ class TerminalDisplay:
         """
         renderables: list[RenderableType] = []
 
-        for item in self._state.transcript:
+        transcript = self._state.transcript
+        hidden_count = max(0, len(transcript) - self._max_transcript_items)
+        if hidden_count:
+            renderables.append(Text(f"  ... hidden {hidden_count} earlier records ...", style="dim"))
+
+        for item in transcript[-self._max_transcript_items:]:
             rendered = self._render_item(
                 item
             )
@@ -832,8 +964,12 @@ class TerminalDisplay:
             style="bold cyan",
         )
 
+        text = item.text
+        if len(text) > 6000:
+            text = "... (earlier response text hidden) ...\n" + text[-6000:]
+
         content = Text(
-            item.text,
+            text,
             style="bold",
         )
 
@@ -969,20 +1105,8 @@ class TerminalDisplay:
                 )
             )
 
-        if (
-            item.text
-            and item.tool_status
-            in {
-                ToolStatus.SUCCESS,
-                ToolStatus.FAILED,
-            }
-        ):
-            result_style = (
-                "red"
-                if item.tool_status
-                is ToolStatus.FAILED
-                else "dim"
-            )
+        if item.text:
+            result_style = "red" if item.tool_status is ToolStatus.FAILED else ("cyan" if item.tool_status is ToolStatus.RUNNING else "dim")
 
             result_text = self._truncate_text(
                 item.text,
@@ -1070,6 +1194,15 @@ class TerminalDisplay:
         """
         渲染当前活动和 spinner。
         """
+        if self._state.active_tools:
+            return Group(
+                Text(),
+                *(
+                    self._render_tool_execution(execution)
+                    for execution in self._state.active_tools.values()
+                ),
+            )
+
         activity = (
             self._state.current_activity
         )
@@ -1088,6 +1221,47 @@ class TerminalDisplay:
                 style="magenta",
             ),
         )
+
+    @staticmethod
+    def _render_tool_execution(execution: ToolExecutionState) -> RenderableType:
+        lines: list[RenderableType] = [
+            Text(f"{execution.tool_name}", style="bold yellow")
+        ]
+        for step in execution.steps.values():
+            if step.status == "running":
+                spinner_text = Text(step.message, style="magenta")
+                if step.progress is not None:
+                    spinner_text.append(f"  {step.progress * 100:.0f}%", style="dim")
+                lines.append(
+                    Spinner(
+                        "dots",
+                        text=spinner_text,
+                        style="magenta",
+                    )
+                )
+                if step.detail:
+                    lines.append(Text(f"      {step.detail}", style="dim"))
+                continue
+            elif step.status == "success":
+                marker = "✓"
+                style = "green"
+            elif step.status == "failed":
+                marker = "✗"
+                style = "red"
+            else:
+                marker = "!"
+                style = "yellow"
+            line = Text()
+            line.append(f"  {marker} ", style=style)
+            line.append(step.message)
+            lines.append(line)
+            if step.detail:
+                lines.append(Text(f"      {step.detail}", style="dim"))
+        for output_line in execution.output_lines[-3:]:
+            lines.append(Text(f"      {output_line}", style="dim"))
+        if len(lines) == 1 and execution.summary:
+            lines.append(Text(f"  {execution.summary}", style="magenta"))
+        return Group(*lines)
 
     def _render_footer(self) -> RenderableType:
         """

@@ -41,6 +41,8 @@ from typing import Any
 from cmo_lua_agent.llm.client import ClaudeClient
 from cmo_lua_agent.orchestration.events import AgentEvent, AgentEventType
 from cmo_lua_agent.tools.tool_base.registry import ToolRegistry
+from cmo_lua_agent.tools.tool_base.context import ToolContext
+from cmo_lua_agent.tools.tool_base.progress import ToolProgressEvent, ToolProgressReporter
 
 
 logger = logging.getLogger(__name__)
@@ -121,6 +123,7 @@ class AgentLoop:
         """
         agent_started_at = perf_counter()
         completed_turns = 0
+        safe_message_count = len(messages)
 
         self._emit(
             AgentEvent(
@@ -165,10 +168,19 @@ class AgentLoop:
                     )
 
                 messages.append({"role": "user", "content": tool_results})
+                safe_message_count = len(messages)
 
             raise RuntimeError(f"Agent 超过最大循环次数：{self._max_turns}")
 
+        except KeyboardInterrupt:
+            # An interrupted tool call has no tool_result. Remove the
+            # incomplete assistant tool_use so the next API request remains
+            # protocol-valid.
+            del messages[safe_message_count:]
+            raise
+
         except Exception as exc:
+            del messages[safe_message_count:]
             self._emit(
                 AgentEvent(
                     type=AgentEventType.AGENT_FAILED,
@@ -266,7 +278,20 @@ class AgentLoop:
             )
 
             tool_started_at = perf_counter()
-            result = self._tool_registry.dispatch(name=tool_name, arguments=arguments)
+            reporter = ToolProgressReporter(
+                tool_use_id=tool_use_id,
+                tool_name=tool_name,
+                callback=self._emit_tool_progress,
+            )
+            result = self._tool_registry.dispatch(
+                name=tool_name,
+                arguments=arguments,
+                context=ToolContext(
+                    tool_use_id=tool_use_id,
+                    tool_name=tool_name,
+                    progress=reporter,
+                ),
+            )
             duration_seconds = perf_counter() - tool_started_at
             event_type = AgentEventType.TOOL_FAILED if result.is_error else AgentEventType.TOOL_COMPLETED
 
@@ -293,6 +318,25 @@ class AgentLoop:
                 tool_result["is_error"] = True
             tool_results.append(tool_result)
         return tool_results
+
+    def _emit_tool_progress(self, progress: ToolProgressEvent) -> None:
+        self._emit(
+            AgentEvent(
+                type=AgentEventType.TOOL_PROGRESS,
+                message=progress.message,
+                data={
+                    "tool_use_id": progress.tool_use_id,
+                    "tool_name": progress.tool_name,
+                    "event_type": progress.event_type,
+                    "status": progress.status,
+                    "detail": progress.detail,
+                    "progress": progress.progress,
+                    "step_id": progress.step_id,
+                    "parent_step_id": progress.parent_step_id,
+                    "metadata": progress.metadata,
+                },
+            )
+        )
 
     def _emit(self, event: AgentEvent) -> None:
         """

@@ -22,6 +22,7 @@ from typing import Any
 
 from cmo_lua_agent.hooks.manager import HookManager
 from cmo_lua_agent.tools.tool_base.base import BaseTool, ToolResult
+from cmo_lua_agent.tools.tool_base.context import ToolContext
 
 
 logger = logging.getLogger(__name__)
@@ -104,6 +105,8 @@ class ToolRegistry:
         self,
         name: str,
         arguments: dict[str, Any],
+        *,
+        context: ToolContext | None = None,
     ) -> ToolResult:
         """
         根据工具名称执行工具。
@@ -119,7 +122,7 @@ class ToolRegistry:
                 is_error=True,
             )
 
-        context: dict[str, Any] = {
+        hook_context: dict[str, Any] = {
             "tool_name": name,
             "arguments": arguments,
             "tool": tool,
@@ -129,10 +132,14 @@ class ToolRegistry:
             if self._hook_manager is not None:
                 self._hook_manager.emit(
                     "before_tool_call",
-                    context,
+                    hook_context,
                 )
 
-            raw_result = tool.execute(arguments)
+            raw_result = (
+                tool.execute(arguments, context=context)
+                if context is not None
+                else tool.execute(arguments)
+            )
 
             result = self._normalize_result(
                 raw_result
@@ -145,7 +152,7 @@ class ToolRegistry:
             )
 
             self._emit_error_hook(
-                context=context,
+                context=hook_context,
                 result=result,
                 exception=exc,
             )
@@ -162,7 +169,7 @@ class ToolRegistry:
             )
 
             self._emit_error_hook(
-                context=context,
+                context=hook_context,
                 result=result,
                 exception=exc,
             )
@@ -174,7 +181,7 @@ class ToolRegistry:
                 self._hook_manager.emit(
                     "after_tool_call",
                     {
-                        **context,
+                        **hook_context,
                         "result": result,
                     },
                 )
@@ -192,6 +199,8 @@ class ToolRegistry:
         self,
         name: str,
         arguments: dict[str, Any],
+        *,
+        context: ToolContext | None = None,
     ) -> ToolResult:
         """
         兼容现有代码中的 execute() 调用。
@@ -201,6 +210,7 @@ class ToolRegistry:
         return self.dispatch(
             name=name,
             arguments=arguments,
+            context=context,
         )
 
     @staticmethod

@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from cmo_lua_agent.tools.tool_base.base import BaseTool
+from cmo_lua_agent.tools.tool_base.context import ToolContext
 
 
 class ReadFileTool(BaseTool):
@@ -37,20 +38,20 @@ class ReadFileTool(BaseTool):
         self._workdir = workdir.resolve()
 
     def _safe_path(self, raw_path: str) -> Path:
-        path = (self._workdir / raw_path).resolve()
+        candidate = Path(raw_path).expanduser()
 
-        if not path.is_relative_to(self._workdir):
-            raise ValueError(
-                f"路径超出工作区：{raw_path}"
-            )
+        if candidate.is_absolute():
+            return candidate.resolve()
 
-        return path
+        return (self._workdir / candidate).resolve()
 
-    def execute(self, arguments: dict[str, Any]) -> str:
+    def execute(self, arguments: dict[str, Any], context: ToolContext | None = None) -> str:
         raw_path = arguments["path"]
         limit = arguments.get("limit")
 
         path = self._safe_path(raw_path)
+        if context is not None:
+            context.progress.tool_started("读取文件")
         lines = path.read_text(
             encoding="utf-8",
             errors="replace",
@@ -61,4 +62,7 @@ class ReadFileTool(BaseTool):
             lines = lines[:limit]
             lines.append(f"... ({remaining} more lines)")
 
-        return "\n".join(lines)
+        result = "\n".join(lines)
+        if context is not None:
+            context.progress.tool_completed("文件读取完成", detail=f"{len(lines)} 行")
+        return result

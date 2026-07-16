@@ -51,6 +51,31 @@ class ToolStatus(str, Enum):
     FAILED = "failed"
 
 
+MAX_TOOL_OUTPUT_LINES = 8
+
+
+@dataclass
+class ToolStepState:
+    step_id: str
+    message: str
+    status: str = "pending"
+    detail: str | None = None
+    progress: float | None = None
+
+
+@dataclass
+class ToolExecutionState:
+    tool_use_id: str
+    tool_name: str
+    arguments: dict[str, Any] = field(default_factory=dict)
+    status: str = "running"
+    summary: str = ""
+    current_step_id: str | None = None
+    steps: dict[str, ToolStepState] = field(default_factory=dict)
+    output_lines: list[str] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
 @dataclass
 class TranscriptItem:
     """
@@ -137,6 +162,7 @@ class UIState:
     tool_item_indexes: dict[str, int] = field(
         default_factory=dict
     )
+    active_tools: dict[str, ToolExecutionState] = field(default_factory=dict)
 
     # ── 当前运行状态 ──────────────────────────────
 
@@ -241,6 +267,11 @@ class UIState:
         self.tool_item_indexes[tool_use_id] = (
             len(self.transcript) - 1
         )
+        self.active_tools[tool_use_id] = ToolExecutionState(
+            tool_use_id=tool_use_id,
+            tool_name=tool_name,
+            arguments=dict(arguments),
+        )
 
     def finish_tool(
         self,
@@ -282,6 +313,56 @@ class UIState:
 
         item.text = content
         item.duration_seconds = duration_seconds
+        self.active_tools.pop(tool_use_id, None)
+
+    def update_tool_progress(
+        self,
+        *,
+        tool_use_id: str,
+        event_type: str,
+        status: str,
+        message: str,
+        detail: str | None = None,
+        progress: float | None = None,
+        step_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        item_index = self.tool_item_indexes.get(tool_use_id)
+        if item_index is None:
+            return
+        item = self.transcript[item_index]
+        execution = self.active_tools.get(tool_use_id)
+        if execution is None:
+            return
+
+        execution.summary = message
+        execution.metadata.update(dict(metadata or {}))
+
+        if event_type == "output":
+            output = message + (f" — {detail}" if detail else "")
+            execution.output_lines.append(output)
+            del execution.output_lines[:-MAX_TOOL_OUTPUT_LINES]
+        elif step_id is not None and event_type.startswith("step_"):
+            step = execution.steps.get(step_id)
+            if step is None:
+                step = ToolStepState(step_id=step_id, message=message)
+                execution.steps[step_id] = step
+            step.message = message
+            step.status = status
+            step.detail = detail
+            step.progress = progress
+            if status == "running":
+                execution.current_step_id = step_id
+            elif execution.current_step_id == step_id:
+                execution.current_step_id = None
+        elif event_type in {"tool_completed", "tool_failed"}:
+            execution.status = status
+
+        suffix = f" — {detail}" if detail else ""
+        if progress is None:
+            item.text = message + suffix
+        else:
+            item.text = f"{message} ({progress * 100:.0f}%)" + suffix
 
     def add_system_message(
         self,

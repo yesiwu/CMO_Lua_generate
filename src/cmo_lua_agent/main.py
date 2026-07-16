@@ -13,6 +13,24 @@
 本文件属于项目的依赖组装入口，可以创建并连接各个组件，
 但不应包含具体的 LLM 调用、工具执行、JSON 解析、
 CMO 脚本执行或终端审批实现。
+
+
+main.py
+├── chat 模式
+│   └── InteractiveScenarioService
+│       ├── 使用已积累的策略经验
+│       ├── 根据用户要求批量生成 Lua
+│       ├── 执行、评分和展示结果
+│       └── 允许人工审批和调整
+│
+└── auto 模式
+    └── OptimizationWorkflow
+        ├── CandidateGenerator
+        ├── ScenarioWorkflow
+        ├── CombatEvaluator
+        ├── CandidateSelector
+        ├── ExperienceStore
+        └── OptimizationController
 """
 
 from __future__ import annotations
@@ -68,6 +86,12 @@ def build_parser() -> argparse.ArgumentParser:
         description=(
             "CMO Lua generation and repair agent"
         )
+    )
+    parser.add_argument(
+        "--workdir",
+        type=Path,
+        default=Path(__file__).resolve().parents[2],
+        help="项目工作目录；默认使用项目根目录",
     )
 
     subparsers = parser.add_subparsers(
@@ -150,19 +174,6 @@ def build_chat_components(
         config.llm
     )
 
-    hook_manager = HookManager()
-
-    hook_manager.register(
-        PermissionHook(
-            approval_function=TerminalApprover(),
-        )
-    )
-
-    tool_registry = build_tool_registry(
-        workdir=workdir,
-        hook_manager=hook_manager,
-    )
-
     ui_state = UIState(
         agent_name="军事CMO Lua 自动化Agent ",
         version="0.1.0",
@@ -179,6 +190,22 @@ def build_chat_components(
 
     terminal_display = TerminalDisplay(
         state=ui_state,
+    )
+
+    hook_manager = HookManager()
+
+    hook_manager.register(
+        PermissionHook(
+            approval_function=TerminalApprover(
+                pause=terminal_display.stop,
+                resume=terminal_display.start,
+            ),
+        )
+    )
+
+    tool_registry = build_tool_registry(
+        workdir=workdir,
+        hook_manager=hook_manager,
     )
 
     agent_loop = AgentLoop(
@@ -249,7 +276,7 @@ def main() -> int:
         )
         return 2
 
-    workdir = Path.cwd()
+    workdir = Path(args.workdir).resolve()
 
     if args.command == "chat":
         (

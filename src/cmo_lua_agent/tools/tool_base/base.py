@@ -19,6 +19,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, TypeAlias
 
+from cmo_lua_agent.tools.tool_base.context import ToolContext
+
 
 @dataclass(frozen=True)
 class ToolResult:
@@ -77,6 +79,7 @@ class BaseTool(ABC):
     def execute(
         self,
         arguments: dict[str, Any],
+        context: ToolContext | None = None,
     ) -> ToolReturn:
         """
         执行工具。
