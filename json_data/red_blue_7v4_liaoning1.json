@@ -46,7 +46,7 @@
           "speed": 20,
           "weaponLoad": [
             {
-              "weapon": "YJ-18",
+              "weapon": "YJ-18 [3M54E Klub Copy]",
               "loaded": 16,
               "fired": 8,
               "targets": ["blue_cvn70"]
@@ -64,7 +64,7 @@
           "speed": 20,
           "weaponLoad": [
             {
-              "weapon": "YJ-18",
+              "weapon": "YJ-18 [3M54E Klub Copy]",
               "loaded": 10,
               "fired": 5,
               "targets": ["blue_cg59"]
@@ -97,7 +97,7 @@
           "speed": "起飞后设定",
           "weaponLoad": [
             {
-              "weapon": "YJ-83K",
+              "weapon": "YJ-83K [C-802AK]",
               "weaponDbid": 2137,
               "loaded": 4,
               "fired": 4,
@@ -118,7 +118,7 @@
           "speed": "起飞后设定",
           "weaponLoad": [
             {
-              "weapon": "YJ-83K",
+              "weapon": "YJ-83K [C-802AK]",
               "weaponDbid": 2137,
               "loaded": 4,
               "fired": 4,
@@ -180,28 +180,28 @@
     {
       "id": "red_055_group",
       "shooters": ["red_055_1", "red_055_2"],
-      "weapon": "YJ-18",
+      "weapon": "YJ-18 [3M54E Klub Copy]",
       "loaded": 16,
       "fired": 13,
       "targets": ["blue_ddg113_1", "blue_ddg113_2"]
     },
     {
       "shooter": "red_052d_1",
-      "weapon": "YJ-18",
+      "weapon": "YJ-18 [3M54E Klub Copy]",
       "loaded": 16,
       "fired": 8,
       "targets": ["blue_cvn70"]
     },
     {
       "shooter": "red_052d_2",
-      "weapon": "YJ-18",
+      "weapon": "YJ-18 [3M54E Klub Copy]",
       "loaded": 10,
       "fired": 5,
       "targets": ["blue_cg59"]
     },
     {
       "shooter": "red_j15_1",
-      "weapon": "YJ-83K",
+      "weapon": "YJ-83K [C-802AK]",
       "weaponDbid": 2137,
       "loadoutId": 9682,
       "loaded": 4,
@@ -210,7 +210,7 @@
     },
     {
       "shooter": "red_j15_2",
-      "weapon": "YJ-83K",
+      "weapon": "YJ-83K [C-802AK]",
       "weaponDbid": 2137,
       "loadoutId": 9682,
       "loaded": 4,
@@ -219,11 +219,11 @@
     }
   ],
   "missileSummary": {
-    "YJ-18": {
+    "YJ-18 [3M54E Klub Copy]": {
       "loaded": 42,
       "fired": 26
     },
-    "YJ-83K": {
+    "YJ-83K [C-802AK]": {
       "loaded": 8,
       "fired": 8
     },

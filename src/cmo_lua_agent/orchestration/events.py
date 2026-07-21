@@ -35,6 +35,7 @@ class AgentEventType(str, Enum):
     TOOL_COMPLETED = "tool_completed"
     TOOL_FAILED = "tool_failed"
 
+    AGENT_NEEDS_INPUT = "agent_needs_input"
     AGENT_COMPLETED = "agent_completed"
     AGENT_FAILED = "agent_failed"
 
@@ -55,6 +56,7 @@ class AgentEventType(str, Enum):
             AgentEventType.TOOL_COMPLETED: "工具执行完成",
             AgentEventType.TOOL_FAILED: "工具执行失败",
 
+            AgentEventType.AGENT_NEEDS_INPUT: "需要补充用户输入",
             AgentEventType.AGENT_COMPLETED: "Agent 处理完成",
             AgentEventType.AGENT_FAILED: "Agent 处理失败",
         }

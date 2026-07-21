@@ -1,5 +1,11 @@
 """
 StrategySpec: structured specification of a Lua generation task.
+定义结构化战术：
+攻击时机
+目标优先级
+武器分配
+风险等级
+防御策略
 """
 from __future__ import annotations
 

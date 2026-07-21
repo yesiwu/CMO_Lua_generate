@@ -359,7 +359,11 @@ class TerminalDisplay:
             if not text:
                 return
             if not self._assistant_stream_open:
-                self._console.print("\n● ", end="", style="bold magenta")
+                self._console.print(
+                    "\n●[模型回答] ",
+                    end="",
+                    style="bold magenta",
+                )
                 self._assistant_stream_open = True
             self._console.print(text, end="", markup=False, highlight=False)
             return
@@ -385,6 +389,17 @@ class TerminalDisplay:
             summary = self._summarize_tool_result(event.message)
             if summary:
                 self._console.print(f"  {summary}", style="dim" if marker == "✓" else "red")
+            return
+
+        if event.type is AgentEventType.AGENT_NEEDS_INPUT:
+            self._close_assistant_stream()
+            self._console.print(
+                Panel(
+                    event.message or "需要补充信息才能继续。",
+                    title="需要补充信息",
+                    border_style="yellow",
+                )
+            )
             return
 
         if event.type is AgentEventType.AGENT_FAILED:
@@ -428,6 +443,9 @@ class TerminalDisplay:
                 parts.append(f"位置 {location}")
             if message:
                 parts.append(str(message))
+            suggested_tool = error.get("suggested_tool")
+            if suggested_tool:
+                parts.append(f"建议使用 {suggested_tool}")
         result_dir = data.get("batch_result_dir")
         if result_dir:
             parts.append(f"结果目录 {result_dir}")
@@ -508,6 +526,10 @@ class TerminalDisplay:
             self._handle_agent_completed(
                 event
             )
+            return
+
+        if event_type is AgentEventType.AGENT_NEEDS_INPUT:
+            self._handle_agent_needs_input(event)
             return
 
         if event_type is AgentEventType.AGENT_FAILED:
@@ -775,6 +797,18 @@ class TerminalDisplay:
         # 不在这里添加 final_text。
         # 模型正文已经通过 TEXT_DELTA 写入 transcript，
         # 再添加一次会导致最终回答重复显示。
+
+    def _handle_agent_needs_input(
+        self,
+        event: AgentEvent,
+    ) -> None:
+        """将可继续处理的阻塞情况显示为普通状态，而不是 Agent 异常。"""
+        self._state.finish_assistant_message()
+        self._state.is_running = False
+        self._state.current_activity = None
+        self._state.add_system_message(
+            event.message or "需要补充信息才能继续。"
+        )
 
     def _handle_agent_failed(
         self,

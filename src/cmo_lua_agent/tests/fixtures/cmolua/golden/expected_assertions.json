@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "scenario_id": "red_blue_7v4_liaoning",
+  "minimum_length": 1000,
+  "required_fragments": [
+    "红方",
+    "蓝方",
+    "ScenEdit_AddSide",
+    "ScenEdit_AddUnit"
+  ],
+  "required_unit_names": [
+    "Red-055-1",
+    "Red-055-2",
+    "Red-052D-1",
+    "Red-052D-2",
+    "红方辽宁舰",
+    "J-15-RED-01",
+    "J-15-RED-02",
+    "DDG 113-1",
+    "DDG 113-2",
+    "Blue-DBID-2862",
+    "Blue-DBID-3551"
+  ],
+  "required_dbids": [
+    3883,
+    4936,
+    2007,
+    2496,
+    4299,
+    2862,
+    3551,
+    2137,
+    9682
+  ],
+  "required_any_groups": {
+    "main": [
+      "function main",
+      "main = function",
+      "-- main",
+      "[main]"
+    ],
+    "clear": [
+      "function clear",
+      "clear = function",
+      "-- clear",
+      "[clear]"
+    ],
+    "reload": [
+      "function reload",
+      "reload = function",
+      "-- reload",
+      "[reload]"
+    ],
+    "attack_ship": [
+      "attack-ship",
+      "attack_ship",
+      "attack ship"
+    ],
+    "attack_air": [
+      "attack-air",
+      "attack_air",
+      "attack air"
+    ]
+  },
+  "forbidden_fragments": [
+    "DumpAmmo(",
+    "remove_weapon("
+  ]
+}

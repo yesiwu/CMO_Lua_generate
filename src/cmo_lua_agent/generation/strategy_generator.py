@@ -1,5 +1,7 @@
 """
 StrategyGenerator: converts a StrategySpec into a text prompt for the LLM.
+
+依据stragy spec一次性生成多个策略，
 """
 from __future__ import annotations
 

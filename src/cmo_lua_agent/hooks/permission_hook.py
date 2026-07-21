@@ -21,6 +21,10 @@ ApprovalFunction = Callable[
 ]
 
 
+class ToolApprovalDeniedError(PermissionError):
+    """仅用于表示审批策略拒绝了某次工具调用。"""
+
+
 class PermissionHook:
     """
     PermissionHook 负责：
@@ -48,7 +52,7 @@ class PermissionHook:
             return
 
         if self._approval_function is None:
-            raise PermissionError(
+            raise ToolApprovalDeniedError(
                 f"工具 {tool.name} 需要人工审批，"
                 "但当前运行模式没有配置审批方式"
             )
@@ -59,6 +63,6 @@ class PermissionHook:
         )
 
         if not approved:
-            raise PermissionError(
+            raise ToolApprovalDeniedError(
                 f"用户拒绝执行工具 {tool.name}"
             )

@@ -1,0 +1,15 @@
+{
+  "platform_resolutions": {
+    "red_055_1": {"category": "ship", "dbid": 3883},
+    "red_055_2": {"category": "ship", "dbid": 3883},
+    "red_052d_1": {"category": "ship", "dbid": 2296},
+    "red_052d_2": {"category": "ship", "dbid": 3586},
+    "red_liaoning": {"category": "ship", "dbid": 2007},
+    "red_j15_1": {"category": "aircraft", "dbid": 2496},
+    "red_j15_2": {"category": "aircraft", "dbid": 2496},
+    "blue_ddg113_1": {"category": "ship", "dbid": 4299},
+    "blue_ddg113_2": {"category": "ship", "dbid": 4299},
+    "blue_cg59": {"category": "ship", "dbid": 2862},
+    "blue_cvn70": {"category": "ship", "dbid": 3551}
+  }
+}

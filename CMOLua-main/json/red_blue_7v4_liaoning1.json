@@ -1,0 +1,240 @@
+{
+  "scenario": {
+    "id": "red_blue_7v4_liaoning",
+    "name": "红蓝 7V4 辽宁舰协同反舰场景",
+    "time": "2026-07-08 08:00:00",
+    "timeZone": "UTC+8",
+    "summary": "红方 7 个作战单元对蓝方 4 个水面目标实施反舰打击。"
+  },
+  "sides": {
+    "red": {
+      "name": "红方",
+      "unitCount": 7,
+      "units": [
+        {
+          "id": "red_055_1",
+          "name": "Red-055-1",
+          "dbid": 3883,
+          "type": "055",
+          "latitude": 24.8324,
+          "longitude": 128.5830,
+          "heading": 135,
+          "speed": 20,
+          "weaponLoad": [],
+          "note": "055 双舰编队弹药与发射量按合计记录，见 strikePlan 中 red_055_group。"
+        },
+        {
+          "id": "red_055_2",
+          "name": "Red-055-2",
+          "dbid": 3883,
+          "type": "055",
+          "latitude": 26.0,
+          "longitude": 130.0,
+          "heading": 135,
+          "speed": 20,
+          "weaponLoad": [],
+          "note": "055 双舰编队弹药与发射量按合计记录，见 strikePlan 中 red_055_group。"
+        },
+        {
+          "id": "red_052d_1",
+          "name": "Red-052D-1",
+          "dbid": 2296,
+          "type": "052D",
+          "latitude": 21.1437,
+          "longitude": 123.4510,
+          "heading": 115,
+          "speed": 20,
+          "weaponLoad": [
+            {
+              "weapon": "YJ-18",
+              "loaded": 16,
+              "fired": 8,
+              "targets": ["blue_cvn70"]
+            }
+          ]
+        },
+        {
+          "id": "red_052d_2",
+          "name": "Red-052D-2",
+          "dbid": 4936,
+          "type": "052D",
+          "latitude": 18.2035,
+          "longitude": 123.9880,
+          "heading": 50,
+          "speed": 20,
+          "weaponLoad": [
+            {
+              "weapon": "YJ-18",
+              "weaponDbid": 2868,
+              "loaded": 10,
+              "fired": 5,
+              "targets": ["blue_cg59"]
+            }
+          ]
+        },
+        {
+          "id": "red_liaoning",
+          "name": "红方辽宁舰",
+          "dbid": 2007,
+          "type": "CV",
+          "latitude": 25.0,
+          "longitude": 130.0,
+          "heading": 90,
+          "speed": 20,
+          "weaponLoad": [],
+          "aircraftCarried": ["red_j15_1", "red_j15_2"],
+          "note": "辽宁舰不装载反舰弹，作为 J-15 母舰。"
+        },
+        {
+          "id": "red_j15_1",
+          "name": "J-15-RED-01",
+          "dbid": 2496,
+          "type": "J-15",
+          "base": "red_liaoning",
+          "loadoutId": 9682,
+          "latitude": "随辽宁舰",
+          "longitude": "随辽宁舰",
+          "heading": "起飞后设定",
+          "speed": "起飞后设定",
+          "weaponLoad": [
+            {
+              "weapon": "YJ-83K",
+              "weaponDbid": 2137,
+              "loaded": 4,
+              "fired": 4,
+              "targets": ["blue_cvn70"]
+            }
+          ]
+        },
+        {
+          "id": "red_j15_2",
+          "name": "J-15-RED-02",
+          "dbid": 2496,
+          "type": "J-15",
+          "base": "red_liaoning",
+          "loadoutId": 9682,
+          "latitude": "随辽宁舰",
+          "longitude": "随辽宁舰",
+          "heading": "起飞后设定",
+          "speed": "起飞后设定",
+          "weaponLoad": [
+            {
+              "weapon": "YJ-83K",
+              "weaponDbid": 2137,
+              "loaded": 4,
+              "fired": 4,
+              "targets": ["blue_cg59"]
+            }
+          ]
+        }
+      ]
+    },
+    "blue": {
+      "name": "蓝方",
+      "unitCount": 4,
+      "units": [
+        {
+          "id": "blue_ddg113_1",
+          "name": "DDG 113-1",
+          "dbid": 4299,
+          "type": "DDG 113",
+          "latitude": 21.5419,
+          "longitude": 129.9125,
+          "heading": 294.05,
+          "speed": 0
+        },
+        {
+          "id": "blue_ddg113_2",
+          "name": "DDG 113-2",
+          "dbid": 4299,
+          "type": "DDG 113",
+          "latitude": 22.0,
+          "longitude": 131.0,
+          "heading": 294.05,
+          "speed": 0,
+          "note": "除坐标外，其余参数按第一艘 DDG 113 设置。"
+        },
+        {
+          "id": "blue_cg59",
+          "name": "Blue-DBID-2862",
+          "dbid": 2862,
+          "type": "CG-59",
+          "latitude": 21.61,
+          "longitude": 130.1791,
+          "heading": 294.58,
+          "speed": 0
+        },
+        {
+          "id": "blue_cvn70",
+          "name": "Blue-DBID-3551",
+          "dbid": 3551,
+          "type": "CVN-70",
+          "latitude": 21.42,
+          "longitude": 130.1713,
+          "heading": 293.16,
+          "speed": 0
+        }
+      ]
+    }
+  },
+  "strikePlan": [
+    {
+      "id": "red_055_group",
+      "shooters": ["red_055_1", "red_055_2"],
+      "weapon": "YJ-18",
+      "loaded": 16,
+      "fired": 13,
+      "targets": ["blue_ddg113_1", "blue_ddg113_2"]
+    },
+    {
+      "shooter": "red_052d_1",
+      "weapon": "YJ-18",
+      "loaded": 16,
+      "fired": 8,
+      "targets": ["blue_cvn70"]
+    },
+    {
+      "shooter": "red_052d_2",
+      "weapon": "YJ-18",
+      "loaded": 10,
+      "fired": 5,
+      "targets": ["blue_cg59"]
+    },
+    {
+      "shooter": "red_j15_1",
+      "weapon": "YJ-83K",
+      "weaponDbid": 2137,
+      "loadoutId": 9682,
+      "loaded": 4,
+      "fired": 4,
+      "targets": ["blue_cvn70"]
+    },
+    {
+      "shooter": "red_j15_2",
+      "weapon": "YJ-83K",
+      "weaponDbid": 2137,
+      "loadoutId": 9682,
+      "loaded": 4,
+      "fired": 4,
+      "targets": ["blue_cg59"]
+    }
+  ],
+  "missileSummary": {
+    "YJ-18": {
+      "loaded": 42,
+      "fired": 26
+    },
+    "YJ-83K": {
+      "loaded": 8,
+      "fired": 8
+    },
+    "totalLoaded": 50,
+    "totalFired": 34
+  },
+  "notes": [
+    "7V4 = 红方 7 个单元：055 x2、052D x2、辽宁舰 x1、J-15 x2；蓝方 4 个单元：DDG 113 x2、CG-59 x1、CVN-70 x1。",
+    "第二艘 DDG 113 坐标为 latitude=22.0、longitude=131.0，其余参数按第一艘 DDG 113 设置。",
+    "第二艘 055 坐标为 latitude=26.0、longitude=130.0。",
+    "辽宁舰不装弹，只搭载 2 架 J-15；J-15 使用 loadoutId=9682，对应 YJ-83K，weaponDbid=2137；每架发射 4 枚。"
+  ]
+}

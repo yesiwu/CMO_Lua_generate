@@ -81,6 +81,7 @@ def test_llm_stream_pauses_live_and_restores_it_after_completion() -> None:
     )
 
     assert display._started is True
+    assert output.getvalue().count("●[模型回答]") == 1
     assert "answer **bold text**" in output.getvalue()
 
     display.stop()
@@ -108,6 +109,27 @@ def test_agent_failure_closes_stream_and_allows_next_turn_to_start() -> None:
     display.start()
     assert display._started is True
     display.stop()
+
+
+def test_agent_needs_input_is_not_rendered_as_agent_failure() -> None:
+    output = StringIO()
+    state = UIState()
+    display = TerminalDisplay(
+        state,
+        console=Console(file=output, force_terminal=False, width=100),
+    )
+
+    display.handle(
+        AgentEvent(
+            type=AgentEventType.AGENT_NEEDS_INPUT,
+            message="请提供场景 JSON 路径。",
+        )
+    )
+
+    assert state.last_error is None
+    assert state.transcript[-1].text == "请提供场景 JSON 路径。"
+    assert "需要补充信息" in output.getvalue()
+    assert "Agent 执行失败" not in output.getvalue()
 
 
 def test_live_renders_structured_tool_step_and_removes_it_on_completion() -> None:

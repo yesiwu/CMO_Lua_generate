@@ -13,6 +13,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from cmo_lua_agent.bootstrap.tool_factory import (
+    CmoLuaToolServices,
+)
 from cmo_lua_agent.core.run_artifact_store import (
     RunArtifactStore,
 )
@@ -32,12 +35,24 @@ from cmo_lua_agent.hooks.manager import (
 from cmo_lua_agent.tools.execute_cmo_tool import (
     ExecuteCmoTool,
 )
+from cmo_lua_agent.tools.edit_file_tool import EditFileTool
+from cmo_lua_agent.tools.create_file_tool import CreateFileTool
+from cmo_lua_agent.tools.create_json_copy_tool import CreateJsonCopyTool
 from cmo_lua_agent.tools.read_file_tool import (
     ReadFileTool,
+)
+from cmo_lua_agent.tools.list_directory_tool import ListDirectoryTool
+from cmo_lua_agent.tools.list_skills_tool import (
+    ListSkillsTool,
+)
+from cmo_lua_agent.tools.load_skill_tool import (
+    LoadSkillTool,
 )
 from cmo_lua_agent.tools.tool_base.registry import (
     ToolRegistry,
 )
+from cmo_lua_agent.tools.generate_cmo_lua_tool import GenerateCmoLuaTool
+from cmo_lua_agent.tools.query_cmo_database_tool import QueryCmoDatabaseTool
 
 
 DEFAULT_CMO_RUNNER_PATH = Path(
@@ -48,6 +63,8 @@ DEFAULT_CMO_CONFIG_PATH = Path(
     r"D:\pythonproject\CMO_Lua_generate\json_data\tot-three.json"
     
 )
+
+PACKAGE_SKILLS_ROOT = Path(__file__).resolve().parents[2] / "skills"
 
 
 def build_tool_registry(
@@ -60,6 +77,7 @@ def build_tool_registry(
     cmo_config_path: Path = (
         DEFAULT_CMO_CONFIG_PATH
     ),
+    cmo_lua_services: CmoLuaToolServices | None = None,
 ) -> ToolRegistry:
     """
     创建并注册项目工具。
@@ -76,6 +94,10 @@ def build_tool_registry(
 
         cmo_config_path:
             CmoBatchRunner 任务 JSON 路径。
+
+        cmo_lua_services:
+            JSON 转 Lua 工具与 CMOLua Skill 工具共享的应用服务。
+            未提供时，仅注册与该依赖无关的基础工具。
 
     Returns:
         完成注册的 ToolRegistry。
@@ -103,6 +125,56 @@ def build_tool_registry(
         )
     )
 
+    registry.register(
+        EditFileTool(
+            workdir=workdir
+        )
+    )
+
+    registry.register(
+        CreateFileTool(
+            workdir=workdir
+        )
+    )
+
+    registry.register(
+        CreateJsonCopyTool(
+            workdir=workdir
+        )
+    )
+
+    registry.register(
+        ListDirectoryTool(
+            workdir=workdir
+        )
+    )
+
+    registry.register(
+        ListSkillsTool(
+            skills_root=PACKAGE_SKILLS_ROOT,
+        )
+    )
+
+    registry.register(
+        LoadSkillTool(
+            skills_root=PACKAGE_SKILLS_ROOT,
+        )
+    )
+
+    if cmo_lua_services is not None:
+        registry.register(
+            GenerateCmoLuaTool(
+                scenario_workflow=(
+                    cmo_lua_services.scenario_workflow
+                ),
+                workdir=workdir,
+            )
+        )
+        registry.register(
+            QueryCmoDatabaseTool(
+                repository=cmo_lua_services.database_repository,
+            )
+        )
     artifact_store = RunArtifactStore(
         runs_dir=workdir / "runs",
     )

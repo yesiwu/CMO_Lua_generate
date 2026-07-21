@@ -21,6 +21,7 @@ import logging
 from typing import Any
 
 from cmo_lua_agent.hooks.manager import HookManager
+from cmo_lua_agent.hooks.permission_hook import ToolApprovalDeniedError
 from cmo_lua_agent.tools.tool_base.base import BaseTool, ToolResult
 from cmo_lua_agent.tools.tool_base.context import ToolContext
 
@@ -87,20 +88,7 @@ class ToolRegistry:
 
         return definitions
 
-    def schemas(
-        self,
-        enabled_toolsets: set[str] | None = None,
-    ) -> list[dict[str, Any]]:
-        """
-        兼容现有代码中的 schemas() 调用。
-
-        它与 get_definitions() 完全等价。
-        后续可以统一使用 get_definitions()。
-        """
-        return self.get_definitions(
-            enabled_toolsets=enabled_toolsets,
-        )
-
+    #
     def dispatch(
         self,
         name: str,
@@ -145,9 +133,26 @@ class ToolRegistry:
                 raw_result
             )
 
-        except PermissionError as exc:
+        except ToolApprovalDeniedError as exc:
             result = ToolResult(
                 content=f"工具权限被拒绝：{exc}",
+                is_error=True,
+            )
+
+            self._emit_error_hook(
+                context=hook_context,
+                result=result,
+                exception=exc,
+            )
+
+            return result
+
+        except PermissionError as exc:
+            result = ToolResult(
+                content=(
+                    f"工具 {name} 访问文件或系统资源失败："
+                    f"{type(exc).__name__}: {exc}"
+                ),
                 is_error=True,
             )
 
@@ -195,23 +200,6 @@ class ToolRegistry:
 
         return result
 
-    def execute(
-        self,
-        name: str,
-        arguments: dict[str, Any],
-        *,
-        context: ToolContext | None = None,
-    ) -> ToolResult:
-        """
-        兼容现有代码中的 execute() 调用。
-
-        它与 dispatch() 完全等价。
-        """
-        return self.dispatch(
-            name=name,
-            arguments=arguments,
-            context=context,
-        )
 
     @staticmethod
     def _normalize_result(

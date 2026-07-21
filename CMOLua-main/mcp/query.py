@@ -11,13 +11,17 @@ mcp_query.py — 智能 MCP 查询 wrapper
   print(query_dbid("J-15"))
   print(read_query("SELECT ID,Name FROM DataShip WHERE ID=2007"))
 """
-import os, json, subprocess, sys
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
 
-# ====== 路径配置（可改）======
-_PY = r"E:\Deep_learning\anconda\python.exe"
-_SCRIPT = r"C:\Users\user\.codex\skills\CMOLua-main\mcp\server.py"
-_DB = r"C:\Users\user\.codex\skills\CMOLua-main\mcp\db\DB3K_504.db3"
-# ==============================
+# 路径跟随当前 Skill 安装位置，不依赖开发者机器上的绝对路径。
+_MCP_DIR = Path(__file__).resolve().parent
+_PY = sys.executable
+_SCRIPT = str(_MCP_DIR / "server.py")
+_DEFAULT_DB = str(_MCP_DIR / "db" / "DB3K_504.db3")
 
 
 def _send(p, msg):
@@ -66,7 +70,8 @@ class McpSession:
     """复用单次连接，避免每次查询都冷启"""
     def __init__(self):
         env = os.environ.copy()
-        env["SQLITE_DB_PATH"] = _DB
+        # 调用方可通过 SQLITE_DB_PATH 指定数据库；未指定时使用 Skill 默认库。
+        env["SQLITE_DB_PATH"] = env.get("SQLITE_DB_PATH", _DEFAULT_DB)
         self.proc = subprocess.Popen(
             [_PY, _SCRIPT],
             stdin=subprocess.PIPE,
@@ -143,9 +148,23 @@ def describe_table(table_name):
     return _get_session().call("describe_table", {"table_name": table_name})
 
 
-def read_query(sql):
-    """任意 SELECT SQL"""
-    return _get_session().call("read_query", {"sql": sql})
+def read_query(
+    sql,
+    params=None,
+    *,
+    fetch_all=True,
+    row_limit=1000,
+):
+    """执行带参数的只读 SELECT 查询。"""
+    return _get_session().call(
+        "read_query",
+        {
+            "sql": sql,
+            "params": list(params or ()),
+            "fetch_all": fetch_all,
+            "row_limit": row_limit,
+        },
+    )
 
 
 # ====== CLI 入口（可直接 python mcp_query.py dbid "J-15"）======

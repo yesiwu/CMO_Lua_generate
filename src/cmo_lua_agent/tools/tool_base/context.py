@@ -10,3 +10,5 @@ class ToolContext:
     tool_use_id: str
     tool_name: str
     progress: ToolProgressReporter
+
+#未来还可在 ToolContext 增加取消信号、调用追踪 ID、运行目录、调用预算等系统能力，而不污染模型暴露的 JSON 参数。
