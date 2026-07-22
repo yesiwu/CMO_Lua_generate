@@ -246,7 +246,7 @@ def test_generator_exception_records_failed_state_and_re_raises(
         )
 
     assert context.state.status is WorkflowStatus.FAILED
-    assert context.state.stage is WorkflowStage.MANIFEST
+    assert context.state.stage is WorkflowStage.GENERATION
     assert context.state.error_code == "generation_failed"
     assert "generator failed" in (context.state.error_message or "")
     assert _read_state(context) == context.state.to_dict()

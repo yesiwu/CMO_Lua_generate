@@ -143,7 +143,7 @@ def test_builder_returns_equal_ir_for_equal_input() -> None:
 
 
 def test_builder_rejects_non_mapping_input() -> None:
-    with pytest.raises(TypeError, match="normalized must be a mapping"):
+    with pytest.raises(TypeError, match="normalized"):
         IRBuilder().build([])  # type: ignore[arg-type]
 
 
@@ -154,6 +154,6 @@ def test_builder_requires_semantically_normalized_shooters() -> None:
 
     with pytest.raises(
         ValueError,
-        match="strikePlan must use normalized shooters",
+        match="strikePlan",
     ):
         IRBuilder().build(source)

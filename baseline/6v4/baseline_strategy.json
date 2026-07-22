@@ -1,0 +1,85 @@
+{
+  "scenario_id": "red_blue_6v4_liaoning",
+  "source_lua": "json_data/6v4.lua",
+  "verified": true,
+  "strategy": {
+    "scenario_id": "red_blue_6v4_liaoning",
+    "attacks": [
+      {
+        "attack_id": "ship-055-ddg113-1",
+        "shooter_id": "red_055_nanchang",
+        "target_ids": ["blue_ddg113_1"],
+        "weapon_dbid": 2868,
+        "fire_quantity": 8,
+        "delay_seconds": 30,
+        "reserve_quantity": 8
+      },
+      {
+        "attack_id": "ship-052d-1-cg59",
+        "shooter_id": "red_052d_1",
+        "target_ids": ["blue_cg59"],
+        "weapon_dbid": 2868,
+        "fire_quantity": 8,
+        "delay_seconds": 30,
+        "reserve_quantity": 8
+      },
+      {
+        "attack_id": "ship-052d-2-cg59",
+        "shooter_id": "red_052d_2",
+        "target_ids": ["blue_cg59"],
+        "weapon_dbid": 2868,
+        "fire_quantity": 5,
+        "delay_seconds": 33,
+        "reserve_quantity": 5
+      },
+      {
+        "attack_id": "air-j15-1-cvn70",
+        "shooter_id": "red_j15_1",
+        "target_ids": ["blue_cvn70"],
+        "weapon_dbid": 2137,
+        "fire_quantity": 4,
+        "delay_seconds": 0,
+        "reserve_quantity": 0
+      },
+      {
+        "attack_id": "air-j15-2-ddg113-2",
+        "shooter_id": "red_j15_2",
+        "target_ids": ["blue_ddg113_2"],
+        "weapon_dbid": 2137,
+        "fire_quantity": 4,
+        "delay_seconds": 0,
+        "reserve_quantity": 0
+      }
+    ],
+    "sorties": [
+      {
+        "sortie_id": "j15-1-cvn70",
+        "aircraft_id": "red_j15_1",
+        "target_id": "blue_cvn70",
+        "base_unit_id": "red_liaoning",
+        "route": [
+          {"latitude": 23.6, "longitude": 129.98},
+          {"latitude": 22.3, "longitude": 129.95}
+        ],
+        "altitude_meters": 8000,
+        "throttle": "Cruise",
+        "fire_delay_seconds": 30,
+        "return_delay_seconds": 600
+      },
+      {
+        "sortie_id": "j15-2-ddg113-2",
+        "aircraft_id": "red_j15_2",
+        "target_id": "blue_ddg113_2",
+        "base_unit_id": "red_liaoning",
+        "route": [
+          {"latitude": 23.65, "longitude": 130.1},
+          {"latitude": 22.45, "longitude": 130.18}
+        ],
+        "altitude_meters": 8000,
+        "throttle": "Cruise",
+        "fire_delay_seconds": 30,
+        "return_delay_seconds": 600
+      }
+    ]
+  }
+}

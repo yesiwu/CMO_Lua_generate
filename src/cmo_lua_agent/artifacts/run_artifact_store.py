@@ -26,10 +26,14 @@ from cmo_lua_agent.artifacts.serializers import (
 )
 # 全链路业务模型
 from cmo_lua_agent.contract import (
+    BaselineStrategy,
+    InitialStrategyHint,
     ResolvedScenarioManifest,
+    ScenarioDefinition,
     ScenarioContract,
     ScenarioIR,
     ScenarioInput,
+    StrategyDifferenceReport,
 )
 
 # RunID 合法正则规则：大小写字母、数字、._-，总长最多128字符
@@ -41,6 +45,7 @@ _VALIDATION_STAGES = {
     "ir": "ir_report",
     "database": "database_report",
     "manifest": "manifest_report",
+    "strategy": "strategy_report",
     "lua_preflight": "lua_preflight_report",
 }
 
@@ -88,6 +93,11 @@ class RunArtifactPaths:
         return self.run_root / "generation"
 
     @property
+    def strategy_dir(self) -> Path:
+        """Phase 1 场景策略派生产物目录。"""
+        return self.run_root / "strategy"
+
+    @property
     def result_dir(self) -> Path:
         """工作流最终汇总结果目录"""
         return self.run_root / "result"
@@ -129,6 +139,10 @@ class RunArtifactPaths:
         return self.validation_dir / "lua_preflight_report.json"
 
     @property
+    def strategy_report(self) -> Path:
+        return self.validation_dir / "strategy_report.json"
+
+    @property
     def scenario_ir(self) -> Path:
         """标准化IR中间模型文件"""
         return self.contract_dir / "scenario_ir.json"
@@ -142,6 +156,22 @@ class RunArtifactPaths:
     def resolved_manifest(self) -> Path:
         """数据库解析完成后的标准场景清单"""
         return self.contract_dir / "resolved_manifest.json"
+
+    @property
+    def scenario_definition(self) -> Path:
+        return self.contract_dir / "scenario_definition.json"
+
+    @property
+    def initial_strategy_hint(self) -> Path:
+        return self.strategy_dir / "initial_strategy_hint.json"
+
+    @property
+    def baseline_strategy(self) -> Path:
+        return self.strategy_dir / "baseline_strategy.json"
+
+    @property
+    def initial_hint_vs_baseline(self) -> Path:
+        return self.strategy_dir / "initial_hint_vs_baseline.json"
 
     @property
     def original_lua(self) -> Path:
@@ -167,6 +197,7 @@ class RunArtifactPaths:
             "validation_dir": str(self.validation_dir),
             "contract_dir": str(self.contract_dir),
             "generation_dir": str(self.generation_dir),
+            "strategy_dir": str(self.strategy_dir),
             "result_dir": str(self.result_dir),
             "source_json": str(self.source_json),
             "schema_report": str(self.schema_report),
@@ -175,9 +206,14 @@ class RunArtifactPaths:
             "database_report": str(self.database_report),
             "manifest_report": str(self.manifest_report),
             "lua_preflight_report": str(self.lua_preflight_report),
+            "strategy_report": str(self.strategy_report),
             "scenario_ir": str(self.scenario_ir),
             "scenario_contract": str(self.scenario_contract),
             "resolved_manifest": str(self.resolved_manifest),
+            "scenario_definition": str(self.scenario_definition),
+            "initial_strategy_hint": str(self.initial_strategy_hint),
+            "baseline_strategy": str(self.baseline_strategy),
+            "initial_hint_vs_baseline": str(self.initial_hint_vs_baseline),
             "original_lua": str(self.original_lua),
             "rejected_lua": str(self.rejected_lua),
             "workflow_result": str(self.workflow_result),
@@ -250,6 +286,7 @@ class RunArtifactStore:
                 paths.validation_dir,
                 paths.contract_dir,
                 paths.generation_dir,
+                paths.strategy_dir,
                 paths.result_dir,
             ):
                 directory.mkdir(exist_ok=False)
@@ -332,6 +369,35 @@ class RunArtifactStore:
             "contract/resolved_manifest.json",
             value,
         )
+
+    def save_scenario_definition(
+        self,
+        value: ScenarioDefinition,
+    ) -> Path:
+        if not isinstance(value, ScenarioDefinition):
+            raise TypeError("value 必须是 ScenarioDefinition")
+        return self.write_json("contract/scenario_definition.json", value)
+
+    def save_initial_strategy_hint(
+        self,
+        value: InitialStrategyHint,
+    ) -> Path:
+        if not isinstance(value, InitialStrategyHint):
+            raise TypeError("value 必须是 InitialStrategyHint")
+        return self.write_json("strategy/initial_strategy_hint.json", value)
+
+    def save_baseline_strategy(self, value: BaselineStrategy) -> Path:
+        if not isinstance(value, BaselineStrategy):
+            raise TypeError("value 必须是 BaselineStrategy")
+        return self.write_json("strategy/baseline_strategy.json", value)
+
+    def save_initial_hint_vs_baseline(
+        self,
+        value: StrategyDifferenceReport,
+    ) -> Path:
+        if not isinstance(value, StrategyDifferenceReport):
+            raise TypeError("value 必须是 StrategyDifferenceReport")
+        return self.write_json("strategy/initial_hint_vs_baseline.json", value)
 
     def save_original_lua(self, text: str) -> Path:
         """保存预检通过、正式可用Lua（独占写入，不可覆盖）"""

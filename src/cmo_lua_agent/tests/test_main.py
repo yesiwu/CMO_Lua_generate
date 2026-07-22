@@ -53,9 +53,9 @@ def test_chat_system_prompt_requires_json_path_before_generation() -> None:
     assert "选择仍须用户明确确认" in prompt
     assert "必须等待用户明确同意后，才调用 edit_file" in prompt
     assert "第二次终端人工审批" in prompt
-    assert "首次修复，使用 create_file" in prompt
-    assert "后续修复应针对该副本使用 edit_file" in prompt
-    assert "修改原文件时才允许 edit_file 指向原文件" in prompt
+    assert "首次修复，默认使用 create_json_copy" in prompt
+    assert "后续修复应针对 create_json_copy 返回的副本使用 edit_file" in prompt
+    assert "只有用户明确输入“修改原文件”时才允许 edit_file 指向原文件" in prompt
 
 
 def test_build_parser_解析run模式新增参数(

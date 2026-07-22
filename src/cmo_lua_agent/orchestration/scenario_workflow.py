@@ -56,7 +56,7 @@ LLM API 调用、subprocess 执行、错误正则解析或数据库 SQL。
 
 """Dependency-injected orchestration for the complete JSON-to-Lua pipeline."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from collections.abc import Mapping
 from typing import Any
@@ -70,8 +70,12 @@ from cmo_lua_agent.contract import (
     ManifestBuildOutput,
     ManifestBuilder,
     ScenarioSchemaValidator,
+    ScenarioDefinitionBuilder,
     ScenarioSemanticValidator,
+    StrategyValidator,
     ValidationResult,
+    diff_initial_hint_against_baseline,
+    load_baseline_strategy,
 )
 from cmo_lua_agent.generation import (
     LuaGenerationResult,
@@ -105,6 +109,13 @@ class ScenarioWorkflow:
     database_resolver: DatabaseResolver
     manifest_builder: ManifestBuilder
     generation_service: LuaGenerationService
+    scenario_definition_builder: ScenarioDefinitionBuilder = field(
+        default_factory=ScenarioDefinitionBuilder
+    )
+    strategy_validator: StrategyValidator = field(
+        default_factory=StrategyValidator
+    )
+    baseline_path: Path | None = None
 
     def run(
         self,
@@ -201,6 +212,44 @@ class ScenarioWorkflow:
                     stage=WorkflowStage.DATABASE,
                     code="database_validation_failed",
                     validation=database_output.validation,
+                )
+
+            phase_one_output = self.scenario_definition_builder.build(
+                database_output.resolved_ir
+            )
+            context.store.save_scenario_definition(
+                phase_one_output.scenario_definition
+            )
+            context.store.save_initial_strategy_hint(
+                phase_one_output.initial_strategy_hint
+            )
+            # 初始提示仅记录旧 JSON 的意图；不以新校验改变旧链路成败。
+            initial_strategy_validation = self.strategy_validator.validate(
+                phase_one_output.initial_strategy_hint.strategy,
+                phase_one_output.scenario_definition,
+            )
+            context.store.save_validation(
+                "strategy",
+                initial_strategy_validation,
+            )
+            if self.baseline_path is not None:
+                baseline = load_baseline_strategy(self.baseline_path)
+                if baseline.scenario_id != phase_one_output.scenario_definition.scenario_id:
+                    raise ValueError(
+                        "已配置 Baseline 的 scenario_id 与输入场景不一致"
+                    )
+                baseline_validation = self.strategy_validator.validate(
+                    baseline.strategy,
+                    phase_one_output.scenario_definition,
+                )
+                if not baseline_validation.valid:
+                    raise ValueError("已配置 Baseline 未通过策略校验")
+                context.store.save_baseline_strategy(baseline)
+                context.store.save_initial_hint_vs_baseline(
+                    diff_initial_hint_against_baseline(
+                        initial_hint=phase_one_output.initial_strategy_hint.strategy,
+                        baseline=baseline,
+                    )
                 )
 
             context.advance(WorkflowStage.MANIFEST)

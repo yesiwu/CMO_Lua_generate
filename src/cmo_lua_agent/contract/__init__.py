@@ -11,6 +11,25 @@ from cmo_lua_agent.contract.scenario_semantic_validator import (
     ScenarioSemanticValidator,
     SemanticValidationOutput,
 )
+from cmo_lua_agent.contract.scenario_definition_builder import (
+    ScenarioDefinitionBuildOutput,
+    ScenarioDefinitionBuilder,
+)
+from cmo_lua_agent.contract.strategy_models import (
+    AttackDirective,
+    BaselineStrategy,
+    InitialStrategyHint,
+    RouteWaypoint,
+    ScenarioDefinition,
+    ScenarioUnit,
+    SortieDirective,
+    StrategyDifferenceReport,
+    StrategySpec,
+    WeaponInventory,
+    diff_initial_hint_against_baseline,
+    load_baseline_strategy,
+)
+from cmo_lua_agent.contract.strategy_validator import StrategyValidator
 from cmo_lua_agent.contract.models import (
     ResolvedScenarioManifest,
     ScenarioContract,
@@ -38,6 +57,21 @@ __all__ = [
     "ValidationIssue",
     "ValidationResult",
     "ValidationSeverity",
+    "AttackDirective",
+    "BaselineStrategy",
+    "InitialStrategyHint",
+    "RouteWaypoint",
+    "ScenarioDefinition",
+    "ScenarioDefinitionBuildOutput",
+    "ScenarioDefinitionBuilder",
+    "ScenarioUnit",
+    "SortieDirective",
+    "StrategyDifferenceReport",
+    "StrategySpec",
+    "StrategyValidator",
+    "WeaponInventory",
+    "diff_initial_hint_against_baseline",
+    "load_baseline_strategy",
 ]
 from cmo_lua_agent.contract.database_resolver import (
     DatabaseResolutionOutput,

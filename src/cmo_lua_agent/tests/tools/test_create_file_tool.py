@@ -52,7 +52,7 @@ def test_create_file_can_create_explicit_text_content(tmp_path: Path) -> None:
 def test_create_file_never_overwrites_or_creates_outside_workspace(tmp_path: Path) -> None:
     target = tmp_path / "exists.json"
     target.write_text("original", encoding="utf-8")
-    outside = tmp_path.parent / "outside.json"
+    outside = tmp_path.parent / f"{tmp_path.name}-outside.json"
     tool = CreateFileTool(workdir=tmp_path)
 
     for arguments in (

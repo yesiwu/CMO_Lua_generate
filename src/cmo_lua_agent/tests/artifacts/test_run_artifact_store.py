@@ -16,6 +16,11 @@ from cmo_lua_agent.contract import (
     ScenarioContract,
     ScenarioIR,
     ScenarioInput,
+    InitialStrategyHint,
+    ScenarioDefinition,
+    ScenarioUnit,
+    StrategyDifferenceReport,
+    StrategySpec,
     ValidationIssue,
     ValidationResult,
     ValidationSeverity,
@@ -153,6 +158,45 @@ def test_unknown_validation_stage_is_rejected(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="validation stage"):
         store.save_validation("other", _validation())
+
+
+def test_save_phase_one_strategy_artifacts_to_separate_fixed_paths(
+    tmp_path: Path,
+) -> None:
+    store = RunArtifactStore.create(tmp_path / "runs", run_id="phase-one")
+    definition = ScenarioDefinition(
+        scenario_id="stable-scenario",
+        units=(
+            ScenarioUnit(
+                unit_id="red-1",
+                side_id="red",
+                name="Red one",
+                platform_type="ship",
+                dbid=100,
+            ),
+        ),
+    )
+    hint = InitialStrategyHint(
+        strategy=StrategySpec(scenario_id="stable-scenario"),
+    )
+    difference = StrategyDifferenceReport(
+        scenario_id="stable-scenario",
+        differences=(),
+    )
+
+    assert store.save_scenario_definition(definition) == (
+        store.paths.scenario_definition
+    )
+    assert store.save_initial_strategy_hint(hint) == (
+        store.paths.initial_strategy_hint
+    )
+    assert store.save_initial_hint_vs_baseline(difference) == (
+        store.paths.initial_hint_vs_baseline
+    )
+    assert store.paths.strategy_dir.is_dir()
+    assert store.save_validation("strategy", _validation()) == (
+        store.paths.strategy_report
+    )
 
 
 def test_save_lua_normalizes_line_endings_and_is_exclusive(tmp_path: Path) -> None:

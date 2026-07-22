@@ -62,7 +62,7 @@ def test_edit_file_keeps_original_when_expected_text_is_not_matched(tmp_path: Pa
 def test_edit_file_rejects_outside_workspace_unknown_arguments_and_binary_extensions(
     tmp_path: Path,
 ) -> None:
-    outside = tmp_path.parent / "outside.json"
+    outside = tmp_path.parent / f"{tmp_path.name}-outside.json"
     outside.write_text("old", encoding="utf-8")
     binary = tmp_path / "payload.db3"
     binary.write_bytes(b"old")

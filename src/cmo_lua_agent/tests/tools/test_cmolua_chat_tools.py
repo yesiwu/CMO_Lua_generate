@@ -148,7 +148,7 @@ def test_generate_tool_delegates_to_workflow_and_reports_progress(tmp_path: Path
 
 
 def test_generate_tool_rejects_source_outside_workspace(tmp_path: Path) -> None:
-    outside = tmp_path.parent / "outside.json"
+    outside = tmp_path.parent / f"{tmp_path.name}-outside.json"
     outside.write_text("{}", encoding="utf-8")
     tool = GenerateCmoLuaTool(
         scenario_workflow=FakeWorkflow(_completed_result(tmp_path)),

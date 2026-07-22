@@ -244,6 +244,7 @@ def _workflow(
     ir_validator: Any | None = None,
     database_resolver: Any | None = None,
     manifest_builder: Any | None = None,
+    baseline_path: Path | None = None,
 ) -> ScenarioWorkflow:
     return ScenarioWorkflow(
         loader=JsonLoader(),
@@ -261,6 +262,7 @@ def _workflow(
         ),
         manifest_builder=manifest_builder or ManifestBuilder(),
         generation_service=generation_service,
+        baseline_path=baseline_path,
     )
 
 
@@ -293,6 +295,11 @@ def test_complete_pipeline_persists_all_standard_artifacts(
     assert Path(paths["manifest_report"]).is_file()
     assert Path(paths["scenario_contract"]).is_file()
     assert Path(paths["resolved_manifest"]).is_file()
+    assert Path(paths["scenario_definition"]).is_file()
+    assert Path(paths["initial_strategy_hint"]).is_file()
+    assert Path(paths["strategy_report"]).is_file()
+    assert not Path(paths["baseline_strategy"]).exists()
+    assert not Path(paths["initial_hint_vs_baseline"]).exists()
     assert Path(paths["lua_preflight_report"]).is_file()
     assert Path(paths["original_lua"]).read_text(
         encoding="utf-8"
@@ -304,6 +311,43 @@ def test_complete_pipeline_persists_all_standard_artifacts(
     persisted = _workflow_result(Path(paths["workflow_result"]))
     assert persisted["success"] is True
     assert persisted["state"]["status"] == "completed"
+
+
+def test_explicit_baseline_configuration_persists_baseline_and_difference(
+    tmp_path: Path,
+) -> None:
+    raw = json.loads(FIXTURE.read_text(encoding="utf-8"))
+    baseline_path = tmp_path / "baseline.json"
+    baseline_path.write_text(
+        json.dumps(
+            {
+                "scenario_id": raw["scenario"]["id"],
+                "source_lua": "verified/example.lua",
+                "verified": True,
+                "strategy": {
+                    "scenario_id": raw["scenario"]["id"],
+                    "attacks": [],
+                    "sorties": [],
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    workflow = _workflow(
+        StubGenerationService(accepted=True),
+        baseline_path=baseline_path,
+    )
+
+    result = workflow.run(
+        FIXTURE,
+        runs_root=tmp_path / "runs",
+        run_id="baseline-configured",
+    )
+
+    paths = result.state.artifact_paths
+    assert result.success is True
+    assert Path(paths["baseline_strategy"]).is_file()
+    assert Path(paths["initial_hint_vs_baseline"]).is_file()
 
 
 def test_schema_failure_stops_before_semantic_database_and_generation(

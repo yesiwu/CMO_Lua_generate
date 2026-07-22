@@ -3,7 +3,9 @@ from __future__ import annotations
 from copy import deepcopy
 
 from cmo_lua_agent.contract import IRBuilder, IRValidator, ScenarioIR
-from test_ir_builder import _normalized_payload
+from cmo_lua_agent.tests.contract.test_ir_builder import (
+    _normalized_payload,
+)
 
 
 def _issue_pairs(result) -> list[tuple[str, str]]:
