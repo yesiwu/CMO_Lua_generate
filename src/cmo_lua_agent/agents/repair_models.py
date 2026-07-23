@@ -21,7 +21,7 @@ from typing import Any
 # CMO仿真统一错误模型
 from cmo_lua_agent.execution.models import CmoError
 # Phase2执行计划模型（每条操作原语载体）
-from cmo_lua_agent.generation.runtime_models import Execution
+from cmo_lua_agent.generation.runtime_models import ExecutionPlan
 
 
 # 错误修复四大分类枚举
@@ -127,7 +127,7 @@ class RuntimeDefectReport:
 class RuntimePatchRegistry:
     def __init__(self, allowed: dict[str, tuple[str, ...]] | None = None) -> None:
         # key：补丁类型；value：该补丁允许作用的primitive原语列表
-        self._allowed = allowed or {"retry_missing_contact": ("prepare_target_contact",)}
+        self._allowed = allowed or {"retry_missing_contact_once": ("prepare_target_contact",)}
 
     @classmethod
     def default(cls) -> "RuntimePatchRegistry":

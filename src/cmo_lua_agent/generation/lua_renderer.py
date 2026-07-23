@@ -481,11 +481,20 @@ def _render_contact(
     target_id = str(operation.parameters["target_id"])
     target_name = context.unit_names[target_id]
     target_side = context.unit_sides[target_id]
-    return [
+    retries = int(operation.parameters.get("contact_retry_attempts", 0))
+    lines = [
         f"runtime_log('operation {operation.operation_id} event {event_name}')",
         f"local target = lookup_unit({_lua_value(target_side)}, {_lua_value(target_name)})",
-        "if target and target.guid then pcall(ScenEdit_SetUnit, {guid=target.guid, autodetectable=true}) end",
     ]
+    if retries:
+        lines.extend([
+            f"if not target then runtime_log('missing_contact operation {operation.operation_id} retry=1') end",
+            f"if not target then target = lookup_unit({_lua_value(target_side)}, {_lua_value(target_name)}) end",
+        ])
+    lines.append("if target and target.guid then pcall(ScenEdit_SetUnit, {guid=target.guid, autodetectable=true}) end")
+    if retries:
+        lines.append(f"if not target then runtime_log('missing_contact operation {operation.operation_id} failed') end")
+    return lines
 
 
 def _render_ship_attack(

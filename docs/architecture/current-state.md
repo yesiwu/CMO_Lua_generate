@@ -169,6 +169,12 @@ LuaRepairAgent
 
 `LuaRepairAgent` 每次最多调用一次结构化 JSON 客户端，不执行、不重试、不修改场景事实或 CMO 原生计分。`RepairErrorRouter` 决定 `retry_eligible`，模型自报的 `agent_confidence` 仅用于展示。`RuntimePatchProposal` 不含 Lua 文本，必须经 `RuntimePatchRegistry` 验证已注册类型、Operation、Runtime 兼容性和评分区域隔离；未注册或不适用的提案会转为 `RuntimeDefectReport`。Phase 4 尚未实现执行循环、修复预算、CMO 自动重跑、候选比较、排行榜、经验系统或 Chat/Auto 默认路径接入。
 
+## 13. Phase 5 单候选评估
+
+`CandidateEvaluationWorkflow` 已提供单个 scored 候选的策略校验、计划编译、确定性 Lua 渲染、CMO 调用、Phase 3 直接评估和统一 `CandidateOutcome` 落盘。它支持受限 `StrategyPatch`，以及唯一已注册的 Runtime Patch `retry_missing_contact_once`：该补丁只复制并更新 `prepare_target_contact` Operation，不修改 Strategy、评分片段或原 Plan。`Phase3RepairSignalMapper` 仅消费 Phase 3 已解析的结构化攻击证据，将 `missing_contact` 回流到受控 Runtime Patch；未支持的动态错误不会扩展为自由 Lua 修复。
+
+Phase 5 仍不生成四候选、不提供 CandidateComparator/排行榜，也未接入 Chat、Auto、Experience 或 Skill。当前普通回归为 `491 passed, 2 skipped`；真实 scored 6v4 Candidate Workflow CMO 验收尚需在具备足够执行窗口时单独运行并记录 run_id、Results 与 Outcome。
+
 ## 11. Phase 3 最小执行反馈闭环
 
 已实现 `Phase3EvaluationService` 与 `Phase3EvaluationHook` 的最小闭环。scored 执行可将 Hook 交给 `CmoRunner`，在 `CmoRunResult` 和运行产物落盘后自动评估，且 Hook 失败只写入 `unscorable` 产物，不改变原始 CMO 执行结论。结果定位只接受 `CmoRunResult` 显式给出的 `batch_result_dir`，不扫描或选择历史最新 Results；仅在唯一 `001_*` job 的 `events.sqlite` 中核验本轮 Lua 脚本名，SQLite 不可用时才读取同 job 的 `combat-summary.csv`。解析器只读取 `side_scores`、场景单位毁伤、计划相关 `weapon_events`、`run_info` 与本 job 的 `lua-output.log`，不会解析完整 AALog 或保留原始事件流。

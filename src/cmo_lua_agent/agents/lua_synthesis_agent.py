@@ -100,6 +100,7 @@ class LuaSynthesisService:
         score_checksum = "none"
         if request.native_score_compilation is None:
             # 无计分：直接渲染基础作战Lua
+            compiled_plan = compiled.plan
             rendered = self._renderer.render(plan=compiled.plan, runtime=request.runtime)
             base_manifest = rendered.to_manifest_dict()
         else:
