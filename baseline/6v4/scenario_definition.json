@@ -1,0 +1,151 @@
+{
+  "scenario_id": "red_blue_6v4_liaoning",
+  "units": [
+    {
+      "unit_id": "red_055_nanchang",
+      "side_id": "red",
+      "name": "Red 055 Nanchang",
+      "platform_type": "ship",
+      "dbid": 3883,
+      "latitude": 24.8324,
+      "longitude": 128.583,
+      "heading": 135,
+      "speed": 20,
+      "weapon_inventory": [
+        {
+          "weapon_dbid": 2868,
+          "weapon_name": "YJ-18 [3M54E Klub Copy]",
+          "max_quantity": 16
+        }
+      ]
+    },
+    {
+      "unit_id": "red_052d_1",
+      "side_id": "red",
+      "name": "Red 052D Kunming",
+      "platform_type": "ship",
+      "dbid": 2296,
+      "latitude": 21.1437,
+      "longitude": 123.451,
+      "heading": 115,
+      "speed": 20,
+      "weapon_inventory": [
+        {
+          "weapon_dbid": 2868,
+          "weapon_name": "YJ-18 [3M54E Klub Copy]",
+          "max_quantity": 16
+        }
+      ]
+    },
+    {
+      "unit_id": "red_052d_2",
+      "side_id": "red",
+      "name": "Red 052D Nanjing",
+      "platform_type": "ship",
+      "dbid": 3586,
+      "latitude": 18.2035,
+      "longitude": 123.988,
+      "heading": 50,
+      "speed": 20,
+      "weapon_inventory": [
+        {
+          "weapon_dbid": 2868,
+          "weapon_name": "YJ-18 [3M54E Klub Copy]",
+          "max_quantity": 10
+        }
+      ]
+    },
+    {
+      "unit_id": "red_liaoning",
+      "side_id": "red",
+      "name": "Red Liaoning",
+      "platform_type": "ship",
+      "dbid": 2007,
+      "latitude": 25.0,
+      "longitude": 130.0,
+      "heading": 90,
+      "speed": 20,
+      "weapon_inventory": []
+    },
+    {
+      "unit_id": "red_j15_1",
+      "side_id": "red",
+      "name": "J-15-1",
+      "platform_type": "aircraft",
+      "dbid": 2496,
+      "loadout_id": 9682,
+      "base_unit_id": "red_liaoning",
+      "weapon_inventory": [
+        {
+          "weapon_dbid": 2137,
+          "weapon_name": "YJ-83K [C-802AK]",
+          "max_quantity": 4
+        }
+      ]
+    },
+    {
+      "unit_id": "red_j15_2",
+      "side_id": "red",
+      "name": "J-15-2",
+      "platform_type": "aircraft",
+      "dbid": 2496,
+      "loadout_id": 9682,
+      "base_unit_id": "red_liaoning",
+      "weapon_inventory": [
+        {
+          "weapon_dbid": 2137,
+          "weapon_name": "YJ-83K [C-802AK]",
+          "max_quantity": 4
+        }
+      ]
+    },
+    {
+      "unit_id": "blue_cvn70",
+      "side_id": "blue",
+      "name": "Blue CVN-70 Carl Vinson",
+      "platform_type": "ship",
+      "dbid": 3551,
+      "latitude": 21.5419,
+      "longitude": 129.9125,
+      "heading": 294,
+      "speed": 0,
+      "weapon_inventory": []
+    },
+    {
+      "unit_id": "blue_cg59",
+      "side_id": "blue",
+      "name": "Blue CG-59 Princeton",
+      "platform_type": "ship",
+      "dbid": 2862,
+      "latitude": 21.61,
+      "longitude": 130.1791,
+      "heading": 295,
+      "speed": 0,
+      "weapon_inventory": []
+    },
+    {
+      "unit_id": "blue_ddg113_1",
+      "side_id": "blue",
+      "name": "Blue DDG-113-1 John Finn",
+      "platform_type": "ship",
+      "dbid": 4299,
+      "latitude": 21.42,
+      "longitude": 130.1713,
+      "heading": 293,
+      "speed": 0,
+      "weapon_inventory": []
+    },
+    {
+      "unit_id": "blue_ddg113_2",
+      "side_id": "blue",
+      "name": "Blue DDG-113-2 John Finn",
+      "platform_type": "ship",
+      "dbid": 4299,
+      "latitude": 21.6,
+      "longitude": 130.2,
+      "heading": 293,
+      "speed": 0,
+      "weapon_inventory": []
+    }
+  ]
+}

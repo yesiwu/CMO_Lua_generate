@@ -1,0 +1,32 @@
+{
+  "cmo_version": "unavailable",
+  "database_version": "DB3K_504",
+  "plan_schema_version": "1.0.0",
+  "compiler_version": "1.0.0",
+  "renderer_version": "1.0.0",
+  "input_checksums": {
+    "baseline_strategy": "9eff354f32c70043c5cc10db6fd564a4c3d65b180d404fd8e18f8cdb8d5cc1cb",
+    "scenario_definition": "83f00667d341719d28acad94df74a3af63c1cdfc5761b75763eab6f88d0cccc5",
+    "source_lua": "5f1d59f1cf4725d2f0908abb621634822b1d1ee81096c79df9b643f7904dbd0b"
+  },
+  "input_sources": {
+    "baseline_strategy": "baseline/6v4/baseline_strategy.json",
+    "scenario_definition": "baseline/6v4/scenario_definition.json",
+    "source_lua": "json_data/6v4.lua"
+  },
+  "notes": [
+    "The source Lua header says 5V3, but this manifest pins the audited scenario_id red_blue_6v4_liaoning.",
+    "Phase 2 renderer output is not the Chat default path until real CMO Golden execution is accepted."
+  ],
+  "runtime_id": "cmo_naval_air_anti_surface",
+  "runtime_version": "1.0.0",
+  "runtime_checksum": "79761eff9885b94e1d52ea0f1ffe757127d9a65ba303b3753b943ae11601dfe9",
+  "scenario_id": "red_blue_6v4_liaoning",
+  "scenario_checksum": "1dddea18f5e7c67d77839de89f434d68e1b7570f2f7759fd1642f93e47084d70",
+  "strategy_checksum": "c6ff6632be0ca9c96e66bea2f5233ab77bf50a1edd60ebb4a08f8d458575617e",
+  "execution_plan_checksum": "aea29e40724d3bff30864e73f0212f0e954699053f3d079544e775addd18e6ac",
+  "lua_checksum": "95288873bfab1bd4678087e17f6af0ea42b6cd11daae543d294bf723f0aae146",
+  "successful_batch_result_dir": "C:\\CMO\\CmoBatchRunner\\Results\\20260722-163539",
+  "successful_run_id": "phase2_golden_6v4_cdrive_2",
+  "verification_status": "verified"
+}

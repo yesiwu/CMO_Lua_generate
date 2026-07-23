@@ -28,6 +28,8 @@ from cmo_lua_agent.contract.strategy_models import (
     WeaponInventory,
     diff_initial_hint_against_baseline,
     load_baseline_strategy,
+    load_scenario_definition,
+    scenario_definition_from_dict,
 )
 from cmo_lua_agent.contract.strategy_validator import StrategyValidator
 from cmo_lua_agent.contract.models import (
@@ -72,6 +74,8 @@ __all__ = [
     "WeaponInventory",
     "diff_initial_hint_against_baseline",
     "load_baseline_strategy",
+    "load_scenario_definition",
+    "scenario_definition_from_dict",
 ]
 from cmo_lua_agent.contract.database_resolver import (
     DatabaseResolutionOutput,

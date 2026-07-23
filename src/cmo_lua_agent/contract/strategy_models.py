@@ -396,6 +396,47 @@ def strategy_spec_from_dict(value: dict[str, Any]) -> StrategySpec:
     )
 
 
+def scenario_definition_from_dict(value: dict[str, Any]) -> ScenarioDefinition:
+    units = tuple(
+        ScenarioUnit(
+            unit_id=item["unit_id"],
+            side_id=item["side_id"],
+            name=item["name"],
+            platform_type=item["platform_type"],
+            dbid=item["dbid"],
+            loadout_id=item.get("loadout_id"),
+            base_unit_id=item.get("base_unit_id"),
+            latitude=item.get("latitude"),
+            longitude=item.get("longitude"),
+            heading=item.get("heading"),
+            speed=item.get("speed"),
+            weapon_inventory=tuple(
+                WeaponInventory(
+                    weapon_dbid=weapon["weapon_dbid"],
+                    weapon_name=weapon["weapon_name"],
+                    max_quantity=weapon["max_quantity"],
+                )
+                for weapon in item.get("weapon_inventory", [])
+            ),
+        )
+        for item in value.get("units", [])
+    )
+    return ScenarioDefinition(
+        scenario_id=value["scenario_id"],
+        units=units,
+    )
+
+
+def load_scenario_definition(path: Path) -> ScenarioDefinition:
+    import json
+
+    source = Path(path).expanduser().resolve(strict=True)
+    payload = json.loads(source.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError("ScenarioDefinition file root must be an object")
+    return scenario_definition_from_dict(payload)
+
+
 def load_baseline_strategy(path: Path) -> BaselineStrategy:
     """读取人工维护的单个已验证 Baseline，不做 Lua 反向解析。"""
 

@@ -98,8 +98,8 @@ class FakeCmoRunner:
                     kind="result_dir",
                     status="success",
                     message="CMO 结果目录已生成",
-                    detail=r"D:\CMO\CmoBatchRunner\Results\test",
-                    result_dir=r"D:\CMO\CmoBatchRunner\Results\test",
+                    detail=r"C:\synthetic-cmo-results\test",
+                    result_dir=r"C:\synthetic-cmo-results\test",
                 )
             )
         return self._record

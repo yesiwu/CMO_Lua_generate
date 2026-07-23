@@ -15,7 +15,7 @@ def test_parser_extracts_scenario_simulation_and_summary() -> None:
             "[2026-07-15 20:04:22]   仿真时间 2026-07-01 00:45:00，现实耗时 2.6 秒，脉冲 1418\n",
             "[2026-07-15 20:04:53] [1/1] 成功，状态=Success，原因=ScenarioEnded，现实耗时=38.919秒\n",
             "[2026-07-15 20:04:53] 执行结束：成功 1，失败 0。\n",
-            "[2026-07-15 20:04:53] 批次目录：D:\\CMO\\CmoBatchRunner\\Results\\20260715-200411\n",
+            "[2026-07-15 20:04:53] 批次目录：C:\\synthetic-cmo-results\\20260715-200411\n",
         ]
     )
 
@@ -37,7 +37,7 @@ def test_parser_extracts_scenario_simulation_and_summary() -> None:
     assert events[4].pulse == 1418
     assert events[6].success_count == 1
     assert events[6].failure_count == 0
-    assert events[7].result_dir == r"D:\CMO\CmoBatchRunner\Results\20260715-200411"
+    assert events[7].result_dir == r"C:\synthetic-cmo-results\20260715-200411"
 
 
 def test_parser_extracts_lua_failure_and_deduplicates_lines() -> None:

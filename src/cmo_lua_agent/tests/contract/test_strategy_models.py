@@ -4,9 +4,11 @@ from pathlib import Path
 
 from cmo_lua_agent.contract import (
     BaselineStrategy,
+    ScenarioDefinition,
     StrategySpec,
     diff_initial_hint_against_baseline,
     load_baseline_strategy,
+    scenario_definition_from_dict,
 )
 
 
@@ -46,3 +48,31 @@ def test_difference_report_is_deterministic_and_identifies_changed_fields() -> N
             "path": "strategy.attacks[ship-055-ddg113-1].fire_quantity",
         }
     ]
+
+
+def test_scenario_definition_from_dict_preserves_weapon_fact_boundary() -> None:
+    definition = scenario_definition_from_dict(
+        {
+            "scenario_id": "red_blue_6v4_liaoning",
+            "units": [
+                {
+                    "unit_id": "red_ship",
+                    "side_id": "red",
+                    "name": "Red Ship",
+                    "platform_type": "ship",
+                    "dbid": 3883,
+                    "weapon_inventory": [
+                        {
+                            "weapon_dbid": 2868,
+                            "weapon_name": "YJ-18",
+                            "max_quantity": 16,
+                        }
+                    ],
+                }
+            ],
+        }
+    )
+
+    assert isinstance(definition, ScenarioDefinition)
+    assert definition.units[0].weapon_inventory[0].weapon_dbid == 2868
+    assert definition.units[0].weapon_inventory[0].max_quantity == 16

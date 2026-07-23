@@ -12,6 +12,7 @@ AgentLoop 不直接依赖具体工具。
 from __future__ import annotations
 
 from pathlib import Path
+import os
 
 from cmo_lua_agent.bootstrap.tool_factory import (
     CmoLuaToolServices,
@@ -56,12 +57,7 @@ from cmo_lua_agent.tools.query_cmo_database_tool import QueryCmoDatabaseTool
 
 
 DEFAULT_CMO_RUNNER_PATH = Path(
-    r"D:\CMO\CmoBatchRunner\CmoBatchRunner.exe"
-)
-
-DEFAULT_CMO_CONFIG_PATH = Path(
-    r"D:\pythonproject\CMO_Lua_generate\json_data\tot-three.json"
-    
+    r"C:\CMO\CmoBatchRunner\CmoBatchRunner.exe"
 )
 
 PACKAGE_SKILLS_ROOT = Path(__file__).resolve().parents[2] / "skills"
@@ -71,12 +67,8 @@ def build_tool_registry(
     *,
     workdir: Path,
     hook_manager: HookManager,
-    cmo_runner_path: Path = (
-        DEFAULT_CMO_RUNNER_PATH
-    ),
-    cmo_config_path: Path = (
-        DEFAULT_CMO_CONFIG_PATH
-    ),
+    cmo_runner_path: Path | None = None,
+    cmo_config_path: Path | None = None,
     cmo_lua_services: CmoLuaToolServices | None = None,
 ) -> ToolRegistry:
     """
@@ -106,13 +98,18 @@ def build_tool_registry(
         workdir
     ).resolve()
 
-    cmo_runner_path = Path(
+    configured_runner = (
         cmo_runner_path
-    ).resolve()
-
-    cmo_config_path = Path(
+        or os.environ.get("CMO_BATCH_RUNNER_PATH")
+        or DEFAULT_CMO_RUNNER_PATH
+    )
+    configured_config = (
         cmo_config_path
-    ).resolve()
+        or os.environ.get("CMO_JOB_CONFIG_PATH")
+        or (workdir / "json_data" / "tot-three.json")
+    )
+    cmo_runner_path = Path(configured_runner).expanduser().resolve()
+    cmo_config_path = Path(configured_config).expanduser().resolve()
 
     registry = ToolRegistry(
         hook_manager=hook_manager,
