@@ -1,0 +1,16 @@
+{
+  "scenario_id": "red_blue_6v4_liaoning",
+  "objectives_version": "1.0.0",
+  "objectives": [
+    {"objective_id": "destroy-blue-cvn70", "objective_kind": "destroy", "target_unit_id": "blue_cvn70", "required": true},
+    {"objective_id": "destroy-blue-cg59", "objective_kind": "destroy", "target_unit_id": "blue_cg59", "required": true},
+    {"objective_id": "destroy-blue-ddg113-1", "objective_kind": "destroy", "target_unit_id": "blue_ddg113_1", "required": true},
+    {"objective_id": "destroy-blue-ddg113-2", "objective_kind": "destroy", "target_unit_id": "blue_ddg113_2", "required": true},
+    {"objective_id": "preserve-red-liaoning", "objective_kind": "preserve", "target_unit_id": "red_liaoning", "required": true},
+    {"objective_id": "preserve-red-055", "objective_kind": "preserve", "target_unit_id": "red_055_nanchang", "required": true},
+    {"objective_id": "preserve-red-052d-1", "objective_kind": "preserve", "target_unit_id": "red_052d_1", "required": true},
+    {"objective_id": "preserve-red-052d-2", "objective_kind": "preserve", "target_unit_id": "red_052d_2", "required": true},
+    {"objective_id": "preserve-red-j15-1", "objective_kind": "preserve", "target_unit_id": "red_j15_1", "required": true},
+    {"objective_id": "preserve-red-j15-2", "objective_kind": "preserve", "target_unit_id": "red_j15_2", "required": true}
+  ]
+}

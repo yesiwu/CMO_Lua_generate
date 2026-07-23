@@ -1,0 +1,11 @@
+{
+  "profile_id": "naval_air_anti_surface",
+  "profile_version": "1.0.0",
+  "score_side_id": "red",
+  "roles": [
+    {"role_kind": "carrier", "enemy_destroyed_points": 200, "own_destroyed_points": 200},
+    {"role_kind": "cruiser", "enemy_destroyed_points": 100, "own_destroyed_points": 100},
+    {"role_kind": "destroyer", "enemy_destroyed_points": 75, "own_destroyed_points": 75},
+    {"role_kind": "carrier_fighter", "enemy_destroyed_points": 20, "own_destroyed_points": 20}
+  ]
+}

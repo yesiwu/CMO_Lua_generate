@@ -1,0 +1,17 @@
+{
+  "catalog_id": "red_blue_6v4_unit_roles",
+  "catalog_version": "1.0.0",
+  "scenario_id": "red_blue_6v4_liaoning",
+  "assignments": [
+    {"unit_id": "blue_cvn70", "role_kind": "carrier", "scoring_status": "scored"},
+    {"unit_id": "blue_cg59", "role_kind": "cruiser", "scoring_status": "scored"},
+    {"unit_id": "blue_ddg113_1", "role_kind": "destroyer", "scoring_status": "scored"},
+    {"unit_id": "blue_ddg113_2", "role_kind": "destroyer", "scoring_status": "scored"},
+    {"unit_id": "red_liaoning", "role_kind": "carrier", "scoring_status": "scored"},
+    {"unit_id": "red_055_nanchang", "role_kind": "cruiser", "scoring_status": "scored"},
+    {"unit_id": "red_052d_1", "role_kind": "destroyer", "scoring_status": "scored"},
+    {"unit_id": "red_052d_2", "role_kind": "destroyer", "scoring_status": "scored"},
+    {"unit_id": "red_j15_1", "role_kind": "carrier_fighter", "scoring_status": "scored"},
+    {"unit_id": "red_j15_2", "role_kind": "carrier_fighter", "scoring_status": "scored"}
+  ]
+}
