@@ -148,6 +148,27 @@ ExecutionPlan + LuaRuntimeProfile + NativeScoreCompilation
 
 2026-07-23 的真实 CMO Golden run 为 `phase32_scored_6v4_cdrive_2`，结果目录 `C:\CMO\CmoBatchRunner\Results\20260723-102542`：Batch 成功 1、失败 0；十条 CMO 原生计分规则均完成注册；两架 J-15 被毁后红方原生分数为 `-40`，与 `carrier_fighter` 的每架 `-20` 规则一致。该信息只作为 Golden 审计记录；项目仍未实现 Results 目录定位、SQLite/CSV 解析、EvidenceReconciler、CombatMetrics 或 Research Reward。
 
+## 12. Phase 4 受控 Agent
+
+Phase 4 已实现两个未接入 Chat 或 Auto 默认路径的受控 Agent：
+
+```text
+LuaSynthesisAgent
+  CREATE: StructuredStrategyClient -> 完整 StrategySpec
+  REVISE: StructuredStrategyClient -> RestrictedStrategyPatch
+  -> StrategyChangeGuard -> StrategyValidator
+  -> ExecutionPlanCompiler -> CapabilityValidator
+  -> LuaRenderer / ScoredLuaAssemblyService -> ArtifactWriter
+
+LuaRepairAgent
+  Structured CmoError -> RepairErrorRouter
+  -> StrategyPatch | RuntimePatchProposal | RuntimeDefectReport
+```
+
+`LuaSynthesisAgent` 不生成自由 Lua，也不执行 CMO。CREATE 模式只接收完整严格的 `StrategySpec`；REVISE 模式仅支持现有叶子字段的 `replace`，数组项必须以 `attack_id` 或 `sortie_id` 核验。`StrategyChangeGuard` 会拒绝未授权路径、祖先/后代路径、字段缺失、数组重排和稳定 ID 不匹配，并输出系统验证的 `verified_changed_paths`。Lua 与 manifest 在全部校验、编译和渲染成功后才由 `ArtifactWriter` 原子写入；文件身份包含场景、策略、Runtime、Renderer、评分片段和 Compiler 的稳定 checksum。
+
+`LuaRepairAgent` 每次最多调用一次结构化 JSON 客户端，不执行、不重试、不修改场景事实或 CMO 原生计分。`RepairErrorRouter` 决定 `retry_eligible`，模型自报的 `agent_confidence` 仅用于展示。`RuntimePatchProposal` 不含 Lua 文本，必须经 `RuntimePatchRegistry` 验证已注册类型、Operation、Runtime 兼容性和评分区域隔离；未注册或不适用的提案会转为 `RuntimeDefectReport`。Phase 4 尚未实现执行循环、修复预算、CMO 自动重跑、候选比较、排行榜、经验系统或 Chat/Auto 默认路径接入。
+
 ## 11. Phase 3 最小执行反馈闭环
 
 已实现 `Phase3EvaluationService` 与 `Phase3EvaluationHook` 的最小闭环。scored 执行可将 Hook 交给 `CmoRunner`，在 `CmoRunResult` 和运行产物落盘后自动评估，且 Hook 失败只写入 `unscorable` 产物，不改变原始 CMO 执行结论。结果定位只接受 `CmoRunResult` 显式给出的 `batch_result_dir`，不扫描或选择历史最新 Results；仅在唯一 `001_*` job 的 `events.sqlite` 中核验本轮 Lua 脚本名，SQLite 不可用时才读取同 job 的 `combat-summary.csv`。解析器只读取 `side_scores`、场景单位毁伤、计划相关 `weapon_events`、`run_info` 与本 job 的 `lua-output.log`，不会解析完整 AALog 或保留原始事件流。
