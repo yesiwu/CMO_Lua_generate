@@ -498,6 +498,27 @@ def test_successful_batch_summary_is_included_in_result(tmp_path: Path) -> None:
     assert payload["batch_failure_count"] == 0
 
 
+def test_completion_hook_runs_after_result_artifact_is_saved(tmp_path: Path) -> None:
+    source_lua = create_source_lua(tmp_path)
+    observed: list[CmoExecutionRecord] = []
+
+    def completion_hook(record: CmoExecutionRecord) -> None:
+        assert record.round_paths.result_path.is_file()
+        observed.append(record)
+
+    runner = CmoRunner(
+        config_path=create_config_file(tmp_path),
+        job_config=FakeJobConfig(),
+        process_runner=FakeProcessRunner(CmoProcessResult(0, False, 1.0, "ok")),
+        artifact_store=RunArtifactStore(runs_dir=tmp_path / "runs"),
+        completion_hook=completion_hook,
+    )
+
+    record = runner.run(lua_path=source_lua, run_id="run_completion_hook")
+
+    assert observed == [record]
+
+
 def test_existing_run_can_create_next_repair_round(
     tmp_path: Path,
 ) -> None:

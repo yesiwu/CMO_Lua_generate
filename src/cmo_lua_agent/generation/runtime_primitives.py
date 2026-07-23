@@ -43,7 +43,10 @@ RUNTIME_ID = "cmo_naval_air_anti_surface"
 RUNTIME_VERSION = "1.0.0"
 
 
-def default_runtime_primitive_registry() -> RuntimePrimitiveRegistry:
+def runtime_primitive_registry_for(
+    runtime_id: str = RUNTIME_ID,
+    runtime_version: str = RUNTIME_VERSION,
+) -> RuntimePrimitiveRegistry:
     """构建默认完整原语注册表，包含全部海空反舰支持原子操作"""
     # 当前Runtime支持的所有原语清单，对应Phase2文档里supported_primitives
     primitive_names = (
@@ -67,13 +70,18 @@ def default_runtime_primitive_registry() -> RuntimePrimitiveRegistry:
         tuple(
             RuntimePrimitive(
                 primitive_type=name,
-                runtime_id=RUNTIME_ID,
-                runtime_version=RUNTIME_VERSION,
+                runtime_id=runtime_id,
+                runtime_version=runtime_version,
                 validate_parameters=_VALIDATORS.get(name, _requires_id),
             )
             for name in primitive_names
         )
     )
+
+
+def default_runtime_primitive_registry() -> RuntimePrimitiveRegistry:
+    """Return the preserved Phase 2 registry."""
+    return runtime_primitive_registry_for()
 
 
 # -------------------------- 通用校验工具函数 --------------------------

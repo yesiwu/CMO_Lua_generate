@@ -90,6 +90,7 @@ class CmoRunner:
         job_config: CmoJobConfig,
         process_runner: CmoProcessRunner,
         artifact_store: RunArtifactStore,
+        completion_hook: Callable[[CmoExecutionRecord], None] | None = None,
     ) -> None:
         """
         初始化 CmoRunner。
@@ -106,6 +107,10 @@ class CmoRunner:
 
             artifact_store:
                 负责保存运行产物。
+
+            completion_hook:
+                可选的执行完成回调。仅在 CMO 结果和本轮运行产物
+                都已保存后调用；回调异常不会改变 CMO 的业务结果。
         """
         self._config_path = Path(
             config_path
@@ -119,6 +124,7 @@ class CmoRunner:
         self._artifact_store = (
             artifact_store
         )
+        self._completion_hook = completion_hook
 
     def run(
         self,
@@ -332,11 +338,19 @@ class CmoRunner:
             result=result,
         )
 
-        return CmoExecutionRecord(
+        record = CmoExecutionRecord(
             result=result,
             run_paths=actual_run_paths,
             round_paths=round_paths,
         )
+
+        if self._completion_hook is not None:
+            try:
+                self._completion_hook(record)
+            except Exception:
+                logger.exception("CMO execution completion hook failed")
+
+        return record
 
     def _execute_process(
         self,

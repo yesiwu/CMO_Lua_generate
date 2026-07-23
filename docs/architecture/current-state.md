@@ -129,4 +129,29 @@ python -m pytest src\cmo_lua_agent\tests -q
 
 ## 9. 当前结论
 
-项目已具备稳定的 JSON→Lua 与单 Lua→CMO 执行能力，并已完成 Phase 1 的“场景事实 / 初始计划 / 已验证基线”分离、Phase 2 6v4 确定性 Golden 生成，以及 Phase 3.1 的版本化 CMO 原生计分契约和片段编译。计分片段仍未接入生成 Lua、CMO 执行和结果解析，因此尚未具备可验证的官方分数、Research Reward、候选比较、自动修复或优化闭环能力。
+项目已具备稳定的 JSON→Lua 与单 Lua→CMO 执行能力，已完成 Phase 1 场景事实/策略分离、Phase 2 6v4 确定性 Golden，以及完整 Phase 3 的 CMO 原生计分与最小执行反馈闭环。当前可对 scored 6v4 自动定位本轮 Results、核验原生分数并生成可审计的评分产物；尚未具备 Candidate 比较、Research Reward、自动修复或优化闭环能力。
+
+## 10. Phase 3.2 原生计分组装
+
+已实现并行的 scored Golden 链路，且不改变 Chat 默认生成路径或 Phase 2 Golden：
+
+```text
+ScenarioDefinition + StrategySpec -> ExecutionPlanCompiler
+ScenarioDefinition + UnitRoleCatalog + ScoreProfile + ScenarioObjectives
+  -> CmoNativeScoreCompiler
+ExecutionPlan + LuaRuntimeProfile + NativeScoreCompilation
+  -> ScoredLuaAssemblyService -> LuaRenderer
+  -> baseline/6v4/scored/rendered_scored_baseline.lua
+```
+
+`SystemInstrumentationBundle` 只接受系统生成的 `NativeScoreCompilation`，并校验场景、评分契约、片段、Runtime 和 Renderer 版本。评分片段固定插入在单位与舰载机配置之后、第一条攻击之前；它不是 ExecutionPlan Operation。scored Runtime 使用 `cmo_naval_air_anti_surface_scored@2.0.0`，但仍复用唯一的 Runtime Helper 与 `LuaRenderer` 实现。
+
+2026-07-23 的真实 CMO Golden run 为 `phase32_scored_6v4_cdrive_2`，结果目录 `C:\CMO\CmoBatchRunner\Results\20260723-102542`：Batch 成功 1、失败 0；十条 CMO 原生计分规则均完成注册；两架 J-15 被毁后红方原生分数为 `-40`，与 `carrier_fighter` 的每架 `-20` 规则一致。该信息只作为 Golden 审计记录；项目仍未实现 Results 目录定位、SQLite/CSV 解析、EvidenceReconciler、CombatMetrics 或 Research Reward。
+
+## 11. Phase 3 最小执行反馈闭环
+
+已实现 `Phase3EvaluationService` 与 `Phase3EvaluationHook` 的最小闭环。scored 执行可将 Hook 交给 `CmoRunner`，在 `CmoRunResult` 和运行产物落盘后自动评估，且 Hook 失败只写入 `unscorable` 产物，不改变原始 CMO 执行结论。结果定位只接受 `CmoRunResult` 显式给出的 `batch_result_dir`，不扫描或选择历史最新 Results；仅在唯一 `001_*` job 的 `events.sqlite` 中核验本轮 Lua 脚本名，SQLite 不可用时才读取同 job 的 `combat-summary.csv`。解析器只读取 `side_scores`、场景单位毁伤、计划相关 `weapon_events`、`run_info` 与本 job 的 `lua-output.log`，不会解析完整 AALog 或保留原始事件流。
+
+产物固定为 `combat_evidence.json`、`semantic_validation.json`、`combat_metrics.json` 和 `reward_breakdown.json`。`EvidenceReconciliation` 只输出 `valid`、`unscorable`、`result_integrity_failed`；未知场景单位、脚本不匹配或评分规则毁伤与 CMO 原生分数不一致时拒绝评分。CMO 武器对象的自毁记录不作为场景单位毁伤。`AttackEpisode` 仅来自 ExecutionPlan 中的攻击操作，并在数据可得时聚合发射、命中和拦截；普通轮询和重复成功日志不会进入 `key_events`。
+
+最新自动端到端验证为 `phase3_gate_6v4_cdrive_5`，Results 位于 `C:\CMO\CmoBatchRunner\Results\20260723-152951`：Batch 成功 1、失败 0，任务配置恢复成功；红方原生分数差为 `-40`，`red_j15_1` 与 `red_j15_2` 各生成一个 `-20` 毁伤计分项，四份 JSON 自动写入 `runs/phase3_gate_6v4_cdrive_5/phase3/`。这不是 Research Reward、CandidateOutcome 或 CandidateEvaluationWorkflow；后续阶段仍须保持这些边界。

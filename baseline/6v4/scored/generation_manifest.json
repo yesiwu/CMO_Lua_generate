@@ -1,0 +1,171 @@
+{
+  "assembly_version": "1.0.0",
+  "compiler_version": "1.0.0",
+  "execution_plan_checksum": "bfebc5d86c29f8c55fc1718e6e9156ee8eb12f57dd16df48dbae263a5e7a293e",
+  "instrumentation_enabled": true,
+  "lua_checksum": "4666e8186a086a1d9b71d9c291b35a50d20937d34ed97052176622dc5e2d8d8b",
+  "native_score_fragment_checksum": "03259e90eedc436aa29abaa79c34fd4374ae156e7bf7550ae1230eb6e3ee4f73",
+  "objectives_checksum": "f2290c819194fe44f6e5f5f63b88de4041ef1c162635184fa0851a16a69e8bd6",
+  "plan_checksum": "bfebc5d86c29f8c55fc1718e6e9156ee8eb12f57dd16df48dbae263a5e7a293e",
+  "plan_schema_version": "1.0.0",
+  "renderer_version": "2.0.0",
+  "role_catalog_checksum": "f79e179df969e9ba2d44e66fb0d969bd362d712e273984935286d66aba1ffb43",
+  "runtime_checksum": "6cd9124e1315734ddb138c1ea074261d10a1d75e1fd89e11a17c2824847cfcc6",
+  "runtime_id": "cmo_naval_air_anti_surface_scored",
+  "runtime_version": "2.0.0",
+  "scenario_checksum": "1dddea18f5e7c67d77839de89f434d68e1b7570f2f7759fd1642f93e47084d70",
+  "scenario_id": "red_blue_6v4_liaoning",
+  "score_profile_checksum": "918d82c08f7fed6fde9afeda93dbef0dd6f788a44a8839e39bc6b20895e7213f",
+  "score_spec_checksum": "168f7761a7414a234cc411a19224a4dc75a1aad54b7379ec84d36de3dfc45153",
+  "source_map": {
+    "air_airborne.j15-1-cvn70": {
+      "end_line": 511,
+      "start_line": 506
+    },
+    "air_airborne.j15-2-ddg113-2": {
+      "end_line": 524,
+      "start_line": 519
+    },
+    "air_attack.air-j15-1-cvn70": {
+      "end_line": 542,
+      "start_line": 537
+    },
+    "air_attack.air-j15-2-ddg113-2": {
+      "end_line": 566,
+      "start_line": 561
+    },
+    "air_launch.j15-1-cvn70": {
+      "end_line": 505,
+      "start_line": 499
+    },
+    "air_launch.j15-2-ddg113-2": {
+      "end_line": 518,
+      "start_line": 512
+    },
+    "air_range.j15-1-cvn70": {
+      "end_line": 536,
+      "start_line": 531
+    },
+    "air_range.j15-2-ddg113-2": {
+      "end_line": 560,
+      "start_line": 555
+    },
+    "air_return.j15-1-cvn70": {
+      "end_line": 548,
+      "start_line": 543
+    },
+    "air_return.j15-2-ddg113-2": {
+      "end_line": 572,
+      "start_line": 567
+    },
+    "air_route.j15-1-cvn70": {
+      "end_line": 530,
+      "start_line": 525
+    },
+    "air_route.j15-2-ddg113-2": {
+      "end_line": 554,
+      "start_line": 549
+    },
+    "aircraft.j15-1-cvn70.configure": {
+      "end_line": 425,
+      "start_line": 414
+    },
+    "aircraft.j15-2-ddg113-2.configure": {
+      "end_line": 454,
+      "start_line": 443
+    },
+    "attack.ship-052d-1-cg59": {
+      "end_line": 579,
+      "start_line": 573
+    },
+    "attack.ship-052d-2-cg59": {
+      "end_line": 586,
+      "start_line": 580
+    },
+    "attack.ship-055-ddg113-1": {
+      "end_line": 593,
+      "start_line": 587
+    },
+    "contact.blue_cg59": {
+      "end_line": 201,
+      "start_line": 194
+    },
+    "contact.blue_cvn70": {
+      "end_line": 230,
+      "start_line": 223
+    },
+    "contact.blue_ddg113_1": {
+      "end_line": 259,
+      "start_line": 252
+    },
+    "contact.blue_ddg113_2": {
+      "end_line": 288,
+      "start_line": 281
+    },
+    "inventory.red_052d_1": {
+      "end_line": 317,
+      "start_line": 310
+    },
+    "inventory.red_052d_2": {
+      "end_line": 346,
+      "start_line": 339
+    },
+    "inventory.red_055_nanchang": {
+      "end_line": 375,
+      "start_line": 368
+    },
+    "setup.side_state": {
+      "end_line": 172,
+      "start_line": 161
+    },
+    "setup.sides": {
+      "end_line": 160,
+      "start_line": 153
+    },
+    "system.native_score": {
+      "end_line": 497,
+      "start_line": 455
+    },
+    "unit.blue_cg59": {
+      "end_line": 193,
+      "start_line": 173
+    },
+    "unit.blue_cvn70": {
+      "end_line": 222,
+      "start_line": 202
+    },
+    "unit.blue_ddg113_1": {
+      "end_line": 251,
+      "start_line": 231
+    },
+    "unit.blue_ddg113_2": {
+      "end_line": 280,
+      "start_line": 260
+    },
+    "unit.red_052d_1": {
+      "end_line": 309,
+      "start_line": 289
+    },
+    "unit.red_052d_2": {
+      "end_line": 338,
+      "start_line": 318
+    },
+    "unit.red_055_nanchang": {
+      "end_line": 367,
+      "start_line": 347
+    },
+    "unit.red_j15_1": {
+      "end_line": 413,
+      "start_line": 397
+    },
+    "unit.red_j15_2": {
+      "end_line": 442,
+      "start_line": 426
+    },
+    "unit.red_liaoning": {
+      "end_line": 396,
+      "start_line": 376
+    }
+  },
+  "strategy_checksum": "c6ff6632be0ca9c96e66bea2f5233ab77bf50a1edd60ebb4a08f8d458575617e"
+}
