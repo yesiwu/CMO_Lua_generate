@@ -78,8 +78,10 @@ class ExperienceStore:
                 k: data[k]
                 for k in (
                     "experience_id",
+                    "schema_version",
                     "experience_key",
                     "experience_type",
+                    "evidence_stance",
                     "status",
                     "source_optimization_id",
                     "evidence_quality",

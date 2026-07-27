@@ -1,58 +1,160 @@
 # 当前实现状态
 
-更新日期：2026-07-27。本文件只记录已接入、可验证的正式路径；草稿、计划文件和未接入模块不代表可用功能。
+更新日期：2026-07-27。
+
+本文只记录已经接入并可通过测试验证的正式路径。草稿、计划文件、
+运行产物和 legacy 模块不代表可用能力。
 
 ## 主链路
 
 ```text
 Chat / run CLI
   -> ScenarioWorkflow
-  -> JSON 校验 -> Scenario IR -> 数据库解析
-  -> CMOLua-main -> Lua 预检 -> original.lua
+  -> JSON 校验
+  -> Scenario IR / Contract
+  -> 数据库解析
+  -> CMOLua-main
+  -> Lua 预检
 
 execute_cmo
-  -> CmoRunner -> CmoBatchRunner
+  -> CmoRunner
+  -> CmoBatchRunner
   -> Results / runner.log / 运行产物
 ```
 
-`ScenarioWorkflow` 默认只完成 JSON 到 Lua。CMO 执行是独立、需审批的工具调用。
+`ScenarioWorkflow` 的默认职责仍是 JSON 到 Lua。CMO 执行是独立、
+需要审批的工具调用。
 
-## 已实现
+## 已实现阶段
 
-- Phase 1：`ScenarioDefinition`、`InitialStrategyHint`、`StrategySpec` 与已验证 Baseline。场景事实、库存和策略参数已分离。
-- Phase 2：`ExecutionPlanCompiler`、`CapabilityValidator`、确定性 `LuaRenderer`、Runtime Primitive/Helper 分层及 6v4 Golden。
-- Phase 3：CMO 原生计分编译、评分插桩、`Phase3EvaluationService` 与结果证据产物。正式最终分数唯一来自 `execution-summary.json#/official_score/final`；SQLite、CSV 和日志只作为辅助证据。
-- Phase 4：受控 `LuaSynthesisAgent` 与单次 `LuaRepairAgent`。LLM 只能生成结构化策略或受限补丁，不能生成自由 Lua。
-- Phase 5：单候选 `CandidateEvaluationWorkflow`，支持受限 Strategy Patch 和唯一 Runtime Patch `retry_missing_contact_once`。
-- Phase 6：`OptimizationGenerationWorkflow`，固定 Bootstrap Skill、Baseline 加四候选的串行评估、正式 Candidate Comparator 与确定性排行榜。
-- Phase 7：`src/cmo_lua_agent/learning/` 提供只读 Learning View、Bundle、Proposal 型对比分析、经验键归一化、幂等 Experience Store、Retriever 和 Experience Card。
+- Phase 1：`ScenarioDefinition`、`InitialStrategyHint`、`StrategySpec`
+  与已验证 Baseline。场景事实、库存上限和策略参数已经分离。
+- Phase 2：`ExecutionPlanCompiler`、`CapabilityValidator`、确定性
+  `LuaRenderer`、Runtime Primitive/Helper 分层及 6v4 Golden。
+- Phase 3：CMO 原生计分编译、评分 instrumentation、
+  `Phase3EvaluationService` 和结果证据产物。正式最终分数只接受
+  `execution-summary.json#/official_score/final`。
+- Phase 4：受控 `LuaSynthesisAgent` 与单次 `LuaRepairAgent`。
+  Agent 只能生成结构化策略或受限补丁，不能生成自由 Lua。
+- Phase 5：单候选 `CandidateEvaluationWorkflow`，支持受限
+  Strategy Patch 和唯一 Runtime Patch `retry_missing_contact_once`。
+- Phase 6：`OptimizationGenerationWorkflow`，支持 Bootstrap Skill、
+  Baseline 加四候选串行评估、正式 Comparator 与确定性排行榜。
+- Phase 7：只读 Learning View、Bundle、受控对比分析、
+  `ExperienceCandidate`、幂等 Experience Store、Retriever 和
+  Experience Card。
+- Phase 8：经验聚合、Cohort 隔离、确定性资格验证、晋升决策、
+  Pending Skill 组装、三类静态回归、人工审批和 Active Skill 加载
+  的工程链已经实现。
 
-## Phase 6 与评分状态
+## 评分边界
 
-正式 CandidateOutcome 记录 `execution_success`、`native_score`、`scoreable`、`semantic_valid`、`rank` 和 `score_source`。语义无效不会覆盖已验证的原生分数，但不会参与排名。
+正式 `CandidateOutcome` 分别保存：
 
-历史 `candidate_03` 的摘要可验证为：`0 -> -20 -> -40 -> 35`，最终分数为 `35`。新鲜正式候选如无计分事件，摘要中的 `final=0` 是运行事实，不得由旧 SQLite、CSV 或最低中间分数伪造替换。
+```text
+execution_success
+native_score
+scoreable
+semantic_valid
+rank
+score_source
+```
+
+语义无效不会覆盖已经验证的 CMO 原生最终分数，但该候选不能排名。
+SQLite、CSV、日志、最低分和中间累计分只作为辅助证据，不能替代
+`execution-summary.json` 的官方最终分数。
 
 ## Phase 7 边界
 
-Phase 7 只消费已落盘的正式 Phase 6 产物，不重新执行 CMO、不修改评分、Outcome、排行榜或同一代候选。经验默认状态为 `candidate`，只影响后续优化轮；Retriever 强制排除当前 `optimization_id`。
+正式对比学习 Agent 位于：
 
-正式 Phase 7 LLM Agent 位于 `src/cmo_lua_agent/agents/comparative_learning_agent.py`。它只接收 `GenerationLearningBundle`，并仅返回受限的 `ComparativeAnalysis` 与 `ExperienceProposal`；事实字段仍由确定性学习链路补充。
+```text
+src/cmo_lua_agent/agents/comparative_learning_agent.py
+```
 
-`src/cmo_lua_agent/memory/experience_store.py` 与 `src/cmo_lua_agent/memory/experience_retriever.py` 是 legacy/unwired 代码。它们使用旧 SQLite 或完整 Lua 经验模型，禁止被正式 Phase 7 路径导入。
+它只接收 `GenerationLearningBundle`，输出
+`ComparativeAnalysis` 和 `ExperienceProposal`。正式 Proposal 与
+Candidate 必须显式携带：
 
-Phase 7 已对 `runs/phase6_score_summary_20260725_b` 完成一次真实 LLM 离线验收。该轮五个正式 Outcome 缺少 `execution-summary.json` 且均未通过语义/计分门控，因此保守地产生零条 ExperienceCandidate；没有生成战术正向经验。正式官方得分只接受 `execution-summary.json#/official_score/final`，不回退 Outcome、SQLite、CSV 或中间分数。验收入口为 `scripts/run_phase7_learning.py`，其第二次回放复用已保存的 LLM 响应以验证 Store 幂等，不会再次调用模型或启动 CMO。
+```text
+evidence_stance = support | contradict | qualify
+```
 
-## 未实现
+事实字段由确定性 Assembler 补充。Phase 7 不重跑 CMO，不修改
+Outcome、排行榜或同一代候选。Retriever 强制排除当前
+`optimization_id`。
 
-- Phase 8：经验跨运行聚合、Skill 晋升策略、SkillAuthorAgent。
-- 向量数据库、多代自动优化、Chat/Auto 默认接入。
-- Research Reward、因果归因、自动战术解释。
-- 对所有历史 Results 的自动重放或 CMO 并行执行。
+以下模块属于 legacy/unwired，不得导入正式 Phase 7/8 路径：
+
+```text
+src/cmo_lua_agent/memory/experience_store.py
+src/cmo_lua_agent/memory/experience_retriever.py
+```
+
+## Phase 8 安全边界
+
+Bootstrap Skill 位于源码目录并保持只读：
+
+```text
+src/cmo_lua_agent/skills/bootstrap/
+```
+
+运行时可变资产只能位于：
+
+```text
+data/skills/
+```
+
+生产 Store 固定为项目根目录的 `data/skills`。测试必须显式使用
+`SkillStoreMode.TEST` 和 pytest 临时目录，产物标记
+`provenance=test_fixture`；Fixture 永远不能进入生产 Curated Store。
+
+Phase 8 只按显式 `evidence_stance` 聚合。缺失或非法 stance 的旧记录
+会以 `missing_or_invalid_evidence_stance` 排除，不根据
+`experience_type` 推断。
+
+Pending 包绑定不可变 `PromotionDecision`。人工批准时必须重新验证：
+
+- 决策可晋升且 action 合法；
+- validated experience、Family、Cohort、版本和 provenance 一致；
+- 三类回归检查全部通过；
+- 实际磁盘包、metadata、回归报告和人工提供的 checksum 完全一致。
+
+`compute_skill_package_checksum()` 覆盖全部受保护文件。任何受保护内容
+被修改后，审批和 Active Skill 加载都会失败。`current.json` 只能由
+成功的 `approve()` 更新。
+
+回归报告明确区分：
+
+```text
+static_validation_passed
+traceability_validation_passed
+proposal_regression_passed
+cmo_effectiveness_validation = not_run
+```
+
+## Phase 8 当前真实状态
+
+- Phase 8 工程链已实现。
+- 当前真实 Experience Store 没有可用于晋升的聚合经验。
+- 尚未产生真实 Pending Skill。
+- 尚未产生真实 Curated Skill。
+- 测试 Fixture 仅用于 pytest 临时目录，标记为
+  `artifact_provenance=test_fixture`、`store_mode=test`；它只验证聚合、
+  晋升、Pending、回归和审批隔离工程链，不属于真实 CMO 经验或真实 Skill。
+- `cmo_effectiveness_validation=not_run`，没有宣称通过真实 CMO
+  验证 Skill 的战斗效果。
+
+## 尚未实现
+
+- 自动审批或自动激活 Skill；
+- 真实 CMO Skill 效果回归；
+- 通用跨领域 Skill 进化；
+- 多代自动优化和向量经验数据库；
+- Chat/Auto 默认接入 Phase 7/8；
+- Research Reward、因果归因和自动战术解释。
 
 ## 健康检查
-
-建议使用：
 
 ```powershell
 $env:PYTHONPATH="$PWD\src"
@@ -61,4 +163,5 @@ python -m pytest src\cmo_lua_agent\tests -q
 git diff --check
 ```
 
-真实 CMO 集成测试必须显式启用对应的 `CMO_*` 环境变量，普通回归测试不依赖本机 CMO。
+真实 CMO 集成测试必须通过对应 `CMO_*` 环境变量显式启用。普通回归
+测试不依赖本机 CMO。

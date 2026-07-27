@@ -11,7 +11,13 @@ from pathlib import Path
 
 from cmo_lua_agent.agents.comparative_learning_agent import ComparativeLearningAgent
 from .builders import CandidateLearningViewBuilder, GenerationLearningBundleBuilder
-from .models import ComparativeAnalysis, ExperienceCandidate, ExperienceProposal, GenerationLearningBundle
+from .models import (
+    ComparativeAnalysis,
+    EvidenceStance,
+    ExperienceCandidate,
+    ExperienceProposal,
+    GenerationLearningBundle,
+)
 from .store import ExperienceKeyNormalizer, ExperienceStore
 
 
@@ -46,14 +52,44 @@ class ExperienceCandidateAssembler:
         result = []
 
         for index, p in enumerate(proposals, 1):
+            supporting_ids = tuple(dict.fromkeys(p.supporting_candidate_ids))
+            contradicting_ids = tuple(dict.fromkeys(p.contradicting_candidate_ids))
+            referenced_ids = set(supporting_ids) | set(contradicting_ids)
+            unknown_ids = referenced_ids - set(views)
+            if unknown_ids:
+                raise ValueError(
+                    f"proposal references unknown candidate: {sorted(unknown_ids)[0]}"
+                )
+            if set(supporting_ids) & set(contradicting_ids):
+                raise ValueError("supporting and contradicting candidates overlap")
+            if (
+                supporting_ids != p.supporting_candidate_ids
+                or contradicting_ids != p.contradicting_candidate_ids
+            ):
+                raise ValueError("proposal candidate references contain duplicates")
+
             # 取出支撑该提案的候选视图
-            support = [views[x] for x in p.supporting_candidate_ids if x in views]
+            support = [views[x] for x in supporting_ids]
+            contradict = [views[x] for x in contradicting_ids]
+            trusted_support = [x for x in support if self._trusted(x)]
+            trusted_contradict = [x for x in contradict if self._trusted(x)]
+            if p.evidence_stance is EvidenceStance.SUPPORT and not trusted_support:
+                raise ValueError("support stance requires trusted supporting evidence")
+            if (
+                p.evidence_stance is EvidenceStance.CONTRADICT
+                and not trusted_contradict
+            ):
+                raise ValueError(
+                    "contradict stance requires trusted contradicting evidence"
+                )
+            if p.evidence_stance is EvidenceStance.QUALIFY:
+                if not (trusted_support or trusted_contradict):
+                    raise ValueError("qualify stance requires trusted evidence")
+                if not p.counter_conditions:
+                    raise ValueError("qualify stance requires counter conditions")
 
             # 校验支撑案例是否全部满足可信条件：执行成功、可计分、语义合法、仿真证据完整
-            tactical_ok = bool(support) and all(
-                x.execution_success and x.scoreable and x.semantic_valid and x.execution_fidelity == "verified"
-                for x in support
-            )
+            tactical_ok = bool(trusted_support) and len(trusted_support) == len(support)
 
             # 初始化经验类型，只允许系统预设合法类型
             kind = p.experience_type if p.experience_type in {
@@ -73,19 +109,28 @@ class ExperienceCandidateAssembler:
                 kind = "evidence_limitation"
 
             # 证据质量得分：有效可信支撑案例 / 全部支撑案例数量，保留两位小数
-            valid_support_count = sum(
-                1 for x in support
-                if x.execution_success and x.scoreable and x.semantic_valid and x.execution_fidelity == "verified"
+            relevant = (
+                support
+                if p.evidence_stance is EvidenceStance.SUPPORT
+                else contradict
+                if p.evidence_stance is EvidenceStance.CONTRADICT
+                else [*support, *contradict]
             )
-            quality = round(valid_support_count / max(1, len(support)), 2)
+            valid_relevant_count = sum(1 for x in relevant if self._trusted(x))
+            quality = round(
+                valid_relevant_count / max(1, len(relevant)),
+                2,
+            )
 
             # 汇总所有支撑案例的证据文件路径，去重并排序
-            refs = tuple(sorted({ref for x in support for ref in x.evidence_refs}))
+            refs = tuple(sorted({
+                ref for x in relevant for ref in x.evidence_refs
+            }))
 
             # 提取策略维度：从strategy_diff中解析 /xxx/dimension 格式的维度标识
             dims = tuple(sorted({
                 d.split("/")[1]
-                for x in support
+                for x in relevant
                 for d in x.strategy_diff
                 if d.startswith("/") and len(d.split("/")) > 1
             }))
@@ -96,6 +141,7 @@ class ExperienceCandidateAssembler:
                 experience_id=exp_id,
                 experience_key=key,
                 experience_type=kind,
+                evidence_stance=p.evidence_stance,
                 status="candidate",
                 consumer="StrategyProposalAgent",
                 source_optimization_id=bundle.optimization_id,
@@ -104,7 +150,8 @@ class ExperienceCandidateAssembler:
                 recommended_pattern=p.recommended_pattern,
                 counter_conditions=p.counter_conditions,
                 observed_effect={
-                    "supporting_candidate_ids": list(p.supporting_candidate_ids),
+                    "supporting_candidate_ids": list(supporting_ids),
+                    "contradicting_candidate_ids": list(contradicting_ids),
                     "scores": {x.candidate_id: x.official_score for x in support}
                 },
                 environment={**bundle.comparison_contract},
@@ -115,6 +162,15 @@ class ExperienceCandidateAssembler:
                 strategy_dimensions=dims
             ))
         return tuple(result)
+
+    @staticmethod
+    def _trusted(view: object) -> bool:
+        return bool(
+            view.execution_success
+            and view.scoreable
+            and view.semantic_valid
+            and view.execution_fidelity == "verified"
+        )
 
 
 class GenerationLearningWorkflow:
@@ -216,6 +272,7 @@ class GenerationLearningWorkflow:
             proposals.append(ExperienceProposal(
                 experience_key=str(item["experience_key"]),
                 experience_type=str(item["experience_type"]),
+                evidence_stance=EvidenceStance(str(item["evidence_stance"])),
                 hypothesis=str(item["hypothesis"]),
                 applicable_conditions=tuple(map(str, item["applicable_conditions"])),
                 recommended_pattern=dict(item["recommended_pattern"]),

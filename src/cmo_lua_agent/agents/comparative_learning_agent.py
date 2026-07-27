@@ -8,7 +8,12 @@ import json
 from collections.abc import Mapping
 from typing import Protocol
 
-from cmo_lua_agent.learning.models import ComparativeAnalysis, ExperienceProposal, GenerationLearningBundle
+from cmo_lua_agent.learning.models import (
+    ComparativeAnalysis,
+    EvidenceStance,
+    ExperienceProposal,
+    GenerationLearningBundle,
+)
 
 
 class ComparativeJsonClient(Protocol):
@@ -82,7 +87,8 @@ class ComparativeLearningAgent:
         """
         # 提案强制要求字段集合，禁止缺失或额外字段
         fields = {
-            "experience_key", "experience_type", "hypothesis", "applicable_conditions",
+            "experience_key", "experience_type", "evidence_stance",
+            "hypothesis", "applicable_conditions",
             "recommended_pattern", "counter_conditions", "supporting_candidate_ids",
             "contradicting_candidate_ids", "model_confidence",
         }
@@ -96,9 +102,14 @@ class ComparativeLearningAgent:
         # 推荐策略模板必须为对象（字典）
         if not isinstance(value["recommended_pattern"], Mapping):
             raise ValueError("recommended_pattern must be an object")
+        try:
+            stance = EvidenceStance(str(value["evidence_stance"]))
+        except ValueError as exc:
+            raise ValueError("evidence_stance is invalid") from exc
 
         return ExperienceProposal(
-            str(value["experience_key"]), str(value["experience_type"]), str(value["hypothesis"]),
+            str(value["experience_key"]), str(value["experience_type"]), stance,
+            str(value["hypothesis"]),
             tuple(map(str, value["applicable_conditions"])), dict(value["recommended_pattern"]),
             tuple(map(str, value["counter_conditions"])), tuple(map(str, value["supporting_candidate_ids"])),
             tuple(map(str, value["contradicting_candidate_ids"])), float(confidence),
@@ -112,6 +123,7 @@ _SYSTEM = (
     "observed_strategy_differences、observed_execution_differences、"
     "observed_outcome_differences、evidence_limitations、possible_random_factors、"
     "next_testable_hypotheses，且每个字段均为字符串数组。proposals 必须是 0 到 5 个对象的数组。"
+    "每条 proposal 必须显式包含 evidence_stance，且只能是 support、contradict 或 qualify。"
     "基于输入事实开展保守分析。禁止返回实体ID、状态信息、证据引用、环境参数、得分、Lua脚本、"
     "CMO作战指令以及排名变动相关内容。"
 )

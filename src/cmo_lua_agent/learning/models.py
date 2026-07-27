@@ -5,7 +5,16 @@ Phase 7 不可变契约模型。刻意剔除 Lua 代码与原始 CMO 日志，
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+from enum import StrEnum
 from typing import Any
+
+
+class EvidenceStance(StrEnum):
+    """经验相对于标准假说的明确证据立场。"""
+
+    SUPPORT = "support"
+    CONTRADICT = "contradict"
+    QUALIFY = "qualify"
 
 
 @dataclass(frozen=True, slots=True)
@@ -72,6 +81,7 @@ class ExperienceProposal:
     """
     experience_key: str                     # 经验唯一标识键
     experience_type: str                    # 经验类型（进攻/防御/分配/时机等）
+    evidence_stance: EvidenceStance          # 相对于标准假说的明确证据立场
     hypothesis: str                         # 核心假设陈述
     applicable_conditions: tuple[str, ...]  # 假设生效适用条件
     recommended_pattern: dict[str, Any]     # 推荐采用的策略模式
@@ -104,6 +114,7 @@ class ExperienceCandidate:
     experience_id: str                       # 经验实体唯一ID
     experience_key: str                      # 经验业务键（多条同源提案可复用key）
     experience_type: str                     # 经验分类
+    evidence_stance: EvidenceStance           # 显式证据立场，不得从经验类型推断
     status: str                              # 生命周期状态（草案/待验证/验证中/生效/废弃）
     consumer: str                            # 消费方模块标识
     source_optimization_id: str              # 来源优化轮次ID
@@ -118,10 +129,13 @@ class ExperienceCandidate:
     evidence_quality: float                  # 证据综合质量评分 [0,1]
     model_confidence: float                  # LLM原始置信度
     strategy_dimensions: tuple[str, ...]     # 该经验影响的策略维度
+    schema_version: str = "2"                # Experience Store 正式记录版本
 
     def to_dict(self) -> dict[str, Any]:
         """Return the stable persisted form consumed by ``ExperienceStore``."""
-        return asdict(self)
+        value = asdict(self)
+        value["evidence_stance"] = self.evidence_stance.value
+        return value
 
 
 @dataclass(frozen=True, slots=True)
