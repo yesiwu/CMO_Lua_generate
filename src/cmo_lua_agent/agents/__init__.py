@@ -2,5 +2,6 @@
 
 from cmo_lua_agent.agents.lua_repair_agent import LuaRepairAgent
 from cmo_lua_agent.agents.lua_synthesis_agent import LuaSynthesisAgent
+from cmo_lua_agent.agents.comparative_learning_agent import ComparativeLearningAgent
 
-__all__ = ["LuaSynthesisAgent", "LuaRepairAgent"]
+__all__ = ["LuaSynthesisAgent", "LuaRepairAgent", "ComparativeLearningAgent"]

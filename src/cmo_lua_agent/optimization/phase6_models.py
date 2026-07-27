@@ -120,6 +120,9 @@ class StrategyProposalContext:
     runtime_id: str
     runtime_version: str
     bootstrap: BootstrapSkillSnapshot
+    # Phase 7 supplies only compact, read-only cards.  An empty value preserves
+    # the original Phase 6 proposal prompt exactly in behavior.
+    retrieved_experience_cards: tuple[dict[str, Any], ...] = ()
 
     def to_prompt_dict(self) -> dict[str, Any]:
         """整理成可以直接喂给LLM的结构化字典"""
@@ -131,6 +134,7 @@ class StrategyProposalContext:
             "runtime": {"runtime_id": self.runtime_id, "runtime_version": self.runtime_version},
             "bootstrap_skill": {"skill_id": self.bootstrap.skill_id, "version": self.bootstrap.version,
                                 "checksum": self.bootstrap.checksum, "content": self.bootstrap.content},
+            "retrieved_experience_cards": [dict(card) for card in self.retrieved_experience_cards],
         }
 
 
