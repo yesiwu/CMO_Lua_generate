@@ -1,0 +1,58 @@
+{
+  "candidates": [
+    {
+      "candidate_id": "candidate_00",
+      "proposal_summary": "高价值目标集中攻击：055、052D-1与两架 J-15 集中攻击 CVN-70。",
+      "intended_difference": ["target_assignment", "target_priority", "fire_quantity"],
+      "strategy": {
+        "scenario_id": "red_blue_6v4_liaoning",
+        "attacks": [
+          {"attack_id":"ship-055-ddg113-1","shooter_id":"red_055_nanchang","target_ids":["blue_cvn70"],"weapon_dbid":2868,"fire_quantity":8,"delay_seconds":30,"reserve_quantity":8},
+          {"attack_id":"ship-052d-1-cg59","shooter_id":"red_052d_1","target_ids":["blue_cvn70"],"weapon_dbid":2868,"fire_quantity":8,"delay_seconds":30,"reserve_quantity":8},
+          {"attack_id":"ship-052d-2-cg59","shooter_id":"red_052d_2","target_ids":["blue_cg59"],"weapon_dbid":2868,"fire_quantity":5,"delay_seconds":33,"reserve_quantity":5},
+          {"attack_id":"air-j15-1-cvn70","shooter_id":"red_j15_1","target_ids":["blue_cvn70"],"weapon_dbid":2137,"fire_quantity":4,"delay_seconds":0,"reserve_quantity":0},
+          {"attack_id":"air-j15-2-ddg113-2","shooter_id":"red_j15_2","target_ids":["blue_cvn70"],"weapon_dbid":2137,"fire_quantity":4,"delay_seconds":0,"reserve_quantity":0}
+        ],
+        "sorties": [
+          {"sortie_id":"j15-1-cvn70","aircraft_id":"red_j15_1","target_id":"blue_cvn70","base_unit_id":"red_liaoning","route":[{"latitude":23.6,"longitude":129.98},{"latitude":22.3,"longitude":129.95}],"altitude_meters":8000,"throttle":"Cruise","fire_delay_seconds":30,"return_delay_seconds":600},
+          {"sortie_id":"j15-2-ddg113-2","aircraft_id":"red_j15_2","target_id":"blue_cvn70","base_unit_id":"red_liaoning","route":[{"latitude":23.65,"longitude":130.1},{"latitude":22.45,"longitude":130.18}],"altitude_meters":8000,"throttle":"Cruise","fire_delay_seconds":30,"return_delay_seconds":600}
+        ]
+      }
+    },
+    {
+      "candidate_id": "candidate_01",
+      "proposal_summary": "护航压制后双机攻击航母：三艘舰艇覆盖 CG-59、DDG-113-1 和 DDG-113-2。",
+      "intended_difference": ["target_assignment", "attack_timing"],
+      "strategy": {
+        "scenario_id":"red_blue_6v4_liaoning",
+        "attacks":[
+          {"attack_id":"ship-055-ddg113-1","shooter_id":"red_055_nanchang","target_ids":["blue_ddg113_1"],"weapon_dbid":2868,"fire_quantity":8,"delay_seconds":30,"reserve_quantity":8},
+          {"attack_id":"ship-052d-1-cg59","shooter_id":"red_052d_1","target_ids":["blue_cg59"],"weapon_dbid":2868,"fire_quantity":8,"delay_seconds":33,"reserve_quantity":8},
+          {"attack_id":"ship-052d-2-cg59","shooter_id":"red_052d_2","target_ids":["blue_ddg113_2"],"weapon_dbid":2868,"fire_quantity":5,"delay_seconds":36,"reserve_quantity":5},
+          {"attack_id":"air-j15-1-cvn70","shooter_id":"red_j15_1","target_ids":["blue_cvn70"],"weapon_dbid":2137,"fire_quantity":4,"delay_seconds":0,"reserve_quantity":0},
+          {"attack_id":"air-j15-2-ddg113-2","shooter_id":"red_j15_2","target_ids":["blue_cvn70"],"weapon_dbid":2137,"fire_quantity":4,"delay_seconds":0,"reserve_quantity":0}],
+        "sorties":[
+          {"sortie_id":"j15-1-cvn70","aircraft_id":"red_j15_1","target_id":"blue_cvn70","base_unit_id":"red_liaoning","route":[{"latitude":23.6,"longitude":129.98},{"latitude":22.3,"longitude":129.95}],"altitude_meters":8000,"throttle":"Cruise","fire_delay_seconds":90,"return_delay_seconds":600},
+          {"sortie_id":"j15-2-ddg113-2","aircraft_id":"red_j15_2","target_id":"blue_cvn70","base_unit_id":"red_liaoning","route":[{"latitude":23.65,"longitude":130.1},{"latitude":22.45,"longitude":130.18}],"altitude_meters":8000,"throttle":"Cruise","fire_delay_seconds":90,"return_delay_seconds":600}]}
+    },
+    {
+      "candidate_id":"candidate_02","proposal_summary":"舰机协调与混合覆盖：改变目标分配并调整现有任务延迟。","intended_difference":["target_assignment","attack_timing"],
+      "strategy":{"scenario_id":"red_blue_6v4_liaoning","attacks":[
+        {"attack_id":"ship-055-ddg113-1","shooter_id":"red_055_nanchang","target_ids":["blue_ddg113_1"],"weapon_dbid":2868,"fire_quantity":8,"delay_seconds":60,"reserve_quantity":8},
+        {"attack_id":"ship-052d-1-cg59","shooter_id":"red_052d_1","target_ids":["blue_cvn70"],"weapon_dbid":2868,"fire_quantity":8,"delay_seconds":63,"reserve_quantity":8},
+        {"attack_id":"ship-052d-2-cg59","shooter_id":"red_052d_2","target_ids":["blue_cg59"],"weapon_dbid":2868,"fire_quantity":5,"delay_seconds":66,"reserve_quantity":5},
+        {"attack_id":"air-j15-1-cvn70","shooter_id":"red_j15_1","target_ids":["blue_cvn70"],"weapon_dbid":2137,"fire_quantity":4,"delay_seconds":0,"reserve_quantity":0},
+        {"attack_id":"air-j15-2-ddg113-2","shooter_id":"red_j15_2","target_ids":["blue_ddg113_2"],"weapon_dbid":2137,"fire_quantity":4,"delay_seconds":0,"reserve_quantity":0}],"sorties":[
+        {"sortie_id":"j15-1-cvn70","aircraft_id":"red_j15_1","target_id":"blue_cvn70","base_unit_id":"red_liaoning","route":[{"latitude":23.6,"longitude":129.98},{"latitude":22.3,"longitude":129.95}],"altitude_meters":8000,"throttle":"Cruise","fire_delay_seconds":60,"return_delay_seconds":600},
+        {"sortie_id":"j15-2-ddg113-2","aircraft_id":"red_j15_2","target_id":"blue_ddg113_2","base_unit_id":"red_liaoning","route":[{"latitude":23.65,"longitude":130.1},{"latitude":22.45,"longitude":130.18}],"altitude_meters":8000,"throttle":"Cruise","fire_delay_seconds":60,"return_delay_seconds":600}]}}
+    ,
+    {"candidate_id":"candidate_03","proposal_summary":"弹药节约与分散覆盖：降低发射量、保留库存并覆盖多个目标。","intended_difference":["fire_quantity","ammunition_reserve","target_assignment"],"strategy":{"scenario_id":"red_blue_6v4_liaoning","attacks":[
+      {"attack_id":"ship-055-ddg113-1","shooter_id":"red_055_nanchang","target_ids":["blue_ddg113_1"],"weapon_dbid":2868,"fire_quantity":5,"delay_seconds":30,"reserve_quantity":8},
+      {"attack_id":"ship-052d-1-cg59","shooter_id":"red_052d_1","target_ids":["blue_cg59"],"weapon_dbid":2868,"fire_quantity":5,"delay_seconds":35,"reserve_quantity":8},
+      {"attack_id":"ship-052d-2-cg59","shooter_id":"red_052d_2","target_ids":["blue_ddg113_2"],"weapon_dbid":2868,"fire_quantity":3,"delay_seconds":40,"reserve_quantity":5},
+      {"attack_id":"air-j15-1-cvn70","shooter_id":"red_j15_1","target_ids":["blue_cvn70"],"weapon_dbid":2137,"fire_quantity":3,"delay_seconds":0,"reserve_quantity":0},
+      {"attack_id":"air-j15-2-ddg113-2","shooter_id":"red_j15_2","target_ids":["blue_cg59"],"weapon_dbid":2137,"fire_quantity":3,"delay_seconds":0,"reserve_quantity":0}],"sorties":[
+      {"sortie_id":"j15-1-cvn70","aircraft_id":"red_j15_1","target_id":"blue_cvn70","base_unit_id":"red_liaoning","route":[{"latitude":23.6,"longitude":129.98},{"latitude":22.3,"longitude":129.95}],"altitude_meters":8000,"throttle":"Cruise","fire_delay_seconds":45,"return_delay_seconds":600},
+      {"sortie_id":"j15-2-ddg113-2","aircraft_id":"red_j15_2","target_id":"blue_cg59","base_unit_id":"red_liaoning","route":[{"latitude":23.65,"longitude":130.1},{"latitude":22.45,"longitude":130.18}],"altitude_meters":8000,"throttle":"Cruise","fire_delay_seconds":45,"return_delay_seconds":600}]}}
+  ]
+}

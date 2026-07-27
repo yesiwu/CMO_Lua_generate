@@ -30,6 +30,7 @@ CMO 批量任务 JSON 配置管理。
 from __future__ import annotations
 
 import json
+from copy import deepcopy
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -165,6 +166,7 @@ class CmoJobConfig:
         *,
         lua_path: Path,
         job_index: int = 0,
+        audit_profile: dict[str, Any] | None = None,
     ) -> Iterator[CmoJobConfigSession]:
         """
         临时切换指定任务的 Lua 脚本。
@@ -217,12 +219,16 @@ class CmoJobConfig:
         original_script = self.get_script(
             job_index=job_index
         )
+        original_job = self._get_job(config=self._load_config(), job_index=job_index)
+        original_audit_profile = deepcopy(original_job.get("auditProfile"))
 
         # 只有前置校验全部通过后才开始修改配置。
         self._set_script(
             job_index=job_index,
             script_value=active_script,
         )
+        if audit_profile is not None:
+            self._set_audit_profile(job_index=job_index, value=audit_profile)
 
         session = CmoJobConfigSession(
             job_index=job_index,
@@ -243,6 +249,7 @@ class CmoJobConfig:
                         original_script
                     ),
                 )
+                self._set_audit_profile(job_index=job_index, value=original_audit_profile)
 
             except Exception as exc:
                 session.restore_error = (
@@ -410,6 +417,15 @@ class CmoJobConfig:
                 f"期望 {script_value!r}，"
                 f"实际 {saved_script!r}"
             )
+
+    def _set_audit_profile(self, *, job_index: int, value: dict[str, Any] | None) -> None:
+        config = self._load_config()
+        job = self._get_job(config=config, job_index=job_index)
+        if value is None:
+            job.pop("auditProfile", None)
+        else:
+            job["auditProfile"] = deepcopy(value)
+        self._atomic_write(config)
 
     def _atomic_write(
         self,

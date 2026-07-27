@@ -139,6 +139,12 @@ class CandidateOutcome:
     final_state: CandidateState                    # 流程最终状态
     candidate_dir: Path                            # 沙箱目录
     trajectory_path: Path                          # 轨迹日志文件路径
+    artifact_provenance: str = "formal_renderer"  # Phase 6: only formal output can rank
+    scenario_reset: object | None = None
+    execution_success: bool | None = None
+    native_score: int | None = None
+    score_source: str | None = None
+    rank: int | None = None
 
 
 # 受约束状态机：只允许白名单内状态跳转，杜绝非法流转

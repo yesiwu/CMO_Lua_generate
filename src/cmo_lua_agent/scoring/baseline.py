@@ -1,4 +1,4 @@
-"""已审查 Baseline 的 Phase 3.1 原生计分编译入口。"""
+"""一键加载所有计分配置、编译CMO计分Lua片段"""
 
 from __future__ import annotations
 

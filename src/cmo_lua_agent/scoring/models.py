@@ -134,6 +134,7 @@ class ScoreProfile:
 
 
 @dataclass(frozen=True, slots=True)
+#标记需要监控的目标单位
 class ScenarioObjective:
     objective_id: str
     objective_kind: str
@@ -154,7 +155,7 @@ class ScenarioObjective:
             "required": self.required,
         }
 
-
+#收纳所有需要监控击毁的单位
 @dataclass(frozen=True, slots=True)
 class ScenarioObjectives:
     scenario_id: str
@@ -184,7 +185,7 @@ class ScenarioObjectives:
             "objectives": [item.to_dict() for item in self.objectives],
         }
 
-
+#转换成 CMO 引擎能识别的底层触发规则
 @dataclass(frozen=True, slots=True)
 class NativeScoreRule:
     rule_id: str
@@ -214,7 +215,7 @@ class NativeScoreRule:
             "score_side_id": self.score_side_id,
         }
 
-
+#汇总全部计分配置是
 @dataclass(frozen=True, slots=True)
 class ScenarioScoreSpec:
     schema_version: str

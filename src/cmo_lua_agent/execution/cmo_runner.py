@@ -138,6 +138,7 @@ class CmoRunner:
         round_number: int = 0,
         run_id: str | None = None,
         progress_callback: Callable[[CmoProgressMessage], None] | None = None,
+        audit_profile: dict[str, object] | None = None,
     ) -> CmoExecutionRecord:
         """
         执行一轮单 Lua CMO 仿真。
@@ -276,6 +277,7 @@ class CmoRunner:
                     timeout_seconds
                 ),
                 progress_callback=progress_callback,
+                audit_profile=audit_profile,
             )
         )
 
@@ -359,6 +361,7 @@ class CmoRunner:
         job_index: int,
         timeout_seconds: int | None,
         progress_callback: Callable[[CmoProgressMessage], None] | None,
+        audit_profile: dict[str, object] | None = None,
     ) -> CmoProcessResult:
         """
         临时切换 JSON 脚本路径并执行 CMO。
@@ -366,10 +369,10 @@ class CmoRunner:
         CmoJobConfig 的 finally 会在正常结束、CMO 异常
         或用户中断时尝试恢复原始 script。
         """
-        with self._job_config.use_script(
-            lua_path=lua_path,
-            job_index=job_index,
-        ):
+        session_args: dict[str, object] = {"lua_path": lua_path, "job_index": job_index}
+        if audit_profile is not None:
+            session_args["audit_profile"] = audit_profile
+        with self._job_config.use_script(**session_args):
             return self._process_runner.run(
                 config_path=(
                     self._config_path

@@ -1,0 +1,102 @@
+{
+  "attacks": [
+    {
+      "attack_id": "ship-055-ddg113-1",
+      "delay_seconds": 60,
+      "fire_quantity": 8,
+      "reserve_quantity": 8,
+      "shooter_id": "red_055_nanchang",
+      "target_ids": [
+        "blue_ddg113_1"
+      ],
+      "weapon_dbid": 2868
+    },
+    {
+      "attack_id": "ship-052d-1-cg59",
+      "delay_seconds": 63,
+      "fire_quantity": 8,
+      "reserve_quantity": 8,
+      "shooter_id": "red_052d_1",
+      "target_ids": [
+        "blue_cvn70"
+      ],
+      "weapon_dbid": 2868
+    },
+    {
+      "attack_id": "ship-052d-2-cg59",
+      "delay_seconds": 66,
+      "fire_quantity": 5,
+      "reserve_quantity": 5,
+      "shooter_id": "red_052d_2",
+      "target_ids": [
+        "blue_cg59"
+      ],
+      "weapon_dbid": 2868
+    },
+    {
+      "attack_id": "air-j15-1-cvn70",
+      "delay_seconds": 0,
+      "fire_quantity": 4,
+      "reserve_quantity": 0,
+      "shooter_id": "red_j15_1",
+      "target_ids": [
+        "blue_cvn70"
+      ],
+      "weapon_dbid": 2137
+    },
+    {
+      "attack_id": "air-j15-2-ddg113-2",
+      "delay_seconds": 0,
+      "fire_quantity": 4,
+      "reserve_quantity": 0,
+      "shooter_id": "red_j15_2",
+      "target_ids": [
+        "blue_ddg113_2"
+      ],
+      "weapon_dbid": 2137
+    }
+  ],
+  "scenario_id": "red_blue_6v4_liaoning",
+  "sorties": [
+    {
+      "aircraft_id": "red_j15_1",
+      "altitude_meters": 8000,
+      "base_unit_id": "red_liaoning",
+      "fire_delay_seconds": 60,
+      "return_delay_seconds": 600,
+      "route": [
+        {
+          "latitude": 23.6,
+          "longitude": 129.98
+        },
+        {
+          "latitude": 22.3,
+          "longitude": 129.95
+        }
+      ],
+      "sortie_id": "j15-1-cvn70",
+      "target_id": "blue_cvn70",
+      "throttle": "Cruise"
+    },
+    {
+      "aircraft_id": "red_j15_2",
+      "altitude_meters": 8000,
+      "base_unit_id": "red_liaoning",
+      "fire_delay_seconds": 60,
+      "return_delay_seconds": 600,
+      "route": [
+        {
+          "latitude": 23.65,
+          "longitude": 130.1
+        },
+        {
+          "latitude": 22.45,
+          "longitude": 130.18
+        }
+      ],
+      "sortie_id": "j15-2-ddg113-2",
+      "target_id": "blue_ddg113_2",
+      "throttle": "Cruise"
+    }
+  ]
+}

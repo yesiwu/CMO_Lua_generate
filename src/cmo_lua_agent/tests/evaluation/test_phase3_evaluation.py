@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import json
 import sqlite3
 from pathlib import Path
 
@@ -41,7 +42,78 @@ def _create_result(root: Path) -> Path:
     ])
     con.execute("insert into run_info values(?,?,?,?,?)", ("x.lua", "s", "Success", "ScenarioEnded", "2026-07-02T00:00:00Z"))
     con.commit(); con.close()
+    (job / "execution-summary.json").write_text(json.dumps({
+        "schema_version": "1.0",
+        "run": {"run_id": root.name, "scenario_id": "red_blue_6v4_liaoning", "candidate_id": "candidate_test", "scoring_side_id": "red"},
+        "official_score": {"side_id": "red", "initial": 0, "final": -40, "delta": -40},
+        "score_events": [
+            {"event_id": "evt:1", "event_sequence": 1, "sim_time": "2026-07-01T00:27:10Z", "rule_id": "SCORE_LOSS_RED_J15_1_MINUS20", "unit_id": "red_j15_1", "delta": -20, "score_before": 0, "score_after": -20, "evidence_ref": "events.sqlite#1"},
+            {"event_id": "evt:2", "event_sequence": 2, "sim_time": "2026-07-01T00:27:42Z", "rule_id": "SCORE_LOSS_RED_J15_2_MINUS20", "unit_id": "red_j15_2", "delta": -20, "score_before": -20, "score_after": -40, "evidence_ref": "events.sqlite#2"},
+        ],
+        "losses": {"red": [{"unit_id": "red_j15_1"}, {"unit_id": "red_j15_2"}]},
+        "target_damage": [], "weapon_expenditures": [],
+        "evidence_integrity": {"score_chain_consistent": True, "results_complete": True},
+    }), encoding="utf-8")
     return root
+
+
+def test_execution_summary_uses_last_official_score_not_minimum(tmp_path: Path) -> None:
+    from cmo_lua_agent.evaluation.phase3_evaluation import _parse_execution_summary
+
+    scenario = load_scenario_definition(Path(__file__).resolve().parents[4] / "baseline" / "6v4" / "scenario_definition.json")
+    for final, chain in ((35, (-20, -20, 75)), (60, (-20, -20, 100)), (260, (-20, -20, 200, 100))):
+        path = tmp_path / f"summary_{final}.json"
+        before = 0
+        events = []
+        for sequence, delta in enumerate(chain, 1):
+            after = before + delta
+            events.append({"event_id": f"e{sequence}", "event_sequence": sequence, "sim_time": f"t{sequence}", "rule_id": f"r{sequence}", "unit_id": None, "delta": delta, "score_before": before, "score_after": after})
+            before = after
+        path.write_text(json.dumps({
+            "run": {"run_id": "batch", "scenario_id": scenario.scenario_id, "candidate_id": "candidate_00", "scoring_side_id": "red"},
+            "official_score": {"side_id": "red", "initial": 0, "final": final, "delta": final},
+            "score_events": events, "losses": {}, "weapon_expenditures": [],
+            "evidence_integrity": {"score_chain_consistent": True, "results_complete": True},
+        }), encoding="utf-8")
+        snapshot, parsed = _parse_execution_summary(path, scenario=scenario, expected_batch_run_id="batch", expected_candidate_id="candidate_00", expected_scoring_side="red")
+        assert snapshot.native_score_final == final
+        assert min(event.score_after for event in parsed) == -40
+
+
+def test_execution_summary_rejects_inconsistent_score_chain(tmp_path: Path) -> None:
+    from cmo_lua_agent.evaluation.phase3_evaluation import _parse_execution_summary
+
+    scenario = load_scenario_definition(Path(__file__).resolve().parents[4] / "baseline" / "6v4" / "scenario_definition.json")
+    path = tmp_path / "bad.json"
+    path.write_text(json.dumps({
+        "run": {"run_id": "batch", "scenario_id": scenario.scenario_id, "candidate_id": "candidate_00", "scoring_side_id": "red"},
+        "official_score": {"side_id": "red", "initial": 0, "final": 60, "delta": 60},
+        "score_events": [{"event_id": "e1", "event_sequence": 1, "sim_time": "t", "rule_id": "r", "delta": -40, "score_before": 0, "score_after": -40}],
+        "evidence_integrity": {"score_chain_consistent": True, "results_complete": True},
+    }), encoding="utf-8")
+    import pytest
+    with pytest.raises(ValueError, match="endpoints|deltas"):
+        _parse_execution_summary(path, scenario=scenario, expected_batch_run_id="batch", expected_candidate_id="candidate_00", expected_scoring_side="red")
+
+
+def test_execution_summary_accepts_zero_score_without_events(tmp_path: Path) -> None:
+    from cmo_lua_agent.evaluation.phase3_evaluation import _parse_execution_summary
+
+    scenario = load_scenario_definition(Path(__file__).resolve().parents[4] / "baseline" / "6v4" / "scenario_definition.json")
+    path = tmp_path / "zero-score.json"
+    path.write_text(json.dumps({
+        "run": {"run_id": "batch", "scenario_id": scenario.scenario_id, "candidate_id": "candidate_00", "scoring_side_id": "red"},
+        "official_score": {"side_id": "red", "initial": 0, "final": 0, "delta": 0},
+        "score_events": [],
+        "evidence_integrity": {"score_chain_consistent": True, "results_complete": True},
+    }), encoding="utf-8")
+
+    snapshot, events = _parse_execution_summary(
+        path, scenario=scenario, expected_batch_run_id="batch", expected_candidate_id="candidate_00", expected_scoring_side="red"
+    )
+
+    assert snapshot.native_score_final == 0
+    assert events == ()
 
 
 def test_phase3_evaluation_builds_minimal_evidence_and_reward_artifacts(tmp_path: Path) -> None:
@@ -77,7 +149,7 @@ def test_phase3_evaluation_builds_minimal_evidence_and_reward_artifacts(tmp_path
     assert outcome.metrics.semantic_valid is True
     assert len(outcome.metrics.key_events) <= 3
     assert {path.name for path in (tmp_path / "artifacts").iterdir()} == {
-        "combat_evidence.json", "semantic_validation.json", "combat_metrics.json", "reward_breakdown.json",
+        "combat_evidence.json", "semantic_validation.json", "combat_metrics.json", "reward_breakdown.json", "native_score_diagnostics.json",
     }
 
 
@@ -92,16 +164,18 @@ def test_phase3_marks_missing_or_mismatched_results_unscorable(tmp_path: Path) -
     assert paths.is_confirmed is False
 
 
-def test_phase3_rejects_native_score_that_disagrees_with_destroyed_units(tmp_path: Path) -> None:
+def test_phase3_rejects_inconsistent_execution_summary_score_chain(tmp_path: Path) -> None:
     from cmo_lua_agent.evaluation.phase3_evaluation import Phase3EvaluationService
 
     project = Path(__file__).resolve().parents[4]
     baseline = project / "baseline" / "6v4"
     golden = Phase32ScoredGoldenService().render(baseline_root=baseline)
     result_dir = _create_result(tmp_path / "Results" / "this_run")
-    con = sqlite3.connect(result_dir / "001_all" / "events.sqlite")
-    con.execute("update side_scores set score=-39 where phase='end' and side='red'")
-    con.commit(); con.close()
+    summary_path = result_dir / "001_all" / "execution-summary.json"
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    summary["official_score"]["final"] = -39
+    summary["official_score"]["delta"] = -39
+    summary_path.write_text(json.dumps(summary), encoding="utf-8")
     run = CmoRunResult(True, tmp_path / "x.lua", tmp_path / "console.txt", CmoProcessResult(0, False, 1.0, "", batch_result_dir=result_dir), True, batch_result_dir=result_dir)
 
     outcome = Phase3EvaluationService().evaluate(
@@ -110,7 +184,7 @@ def test_phase3_rejects_native_score_that_disagrees_with_destroyed_units(tmp_pat
         generation_manifest=golden.generation_manifest,
     )
 
-    assert outcome.reconciliation.status == "result_integrity_failed"
+    assert outcome.reconciliation.status == "unscorable"
     assert outcome.metrics.scoreable is False
 
 
@@ -142,7 +216,7 @@ def test_phase3_uses_csv_when_events_sqlite_is_absent(tmp_path: Path) -> None:
     )
 
     assert outcome.artifact_paths.primary_result_path.suffix == ".csv"
-    assert outcome.reconciliation.status == "valid"
+    assert outcome.reconciliation.status == "unscorable"
 
 
 def test_phase3_rejects_result_script_that_does_not_match_this_run(tmp_path: Path) -> None:
@@ -163,6 +237,10 @@ def test_phase3_preserves_unknown_destroyed_unit_as_semantic_violation(tmp_path:
     golden = Phase32ScoredGoldenService().render(baseline_root=baseline); result_dir = _create_result(tmp_path / "Results" / "this_run")
     con = sqlite3.connect(result_dir / "001_all" / "events.sqlite")
     con.execute("insert into unit_damage_events values(?,?,?,?,?,?)", ("t", "UnitDestroyed", "z", "Unknown", "red", "x")); con.commit(); con.close()
+    summary_path = result_dir / "001_all" / "execution-summary.json"
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    summary["losses"]["red"].append({"unit_id": "unknown_unit", "name": "Unknown"})
+    summary_path.write_text(json.dumps(summary), encoding="utf-8")
     run = CmoRunResult(True, tmp_path / "x.lua", tmp_path / "console.txt", CmoProcessResult(0, False, 1.0, "", batch_result_dir=result_dir), True, batch_result_dir=result_dir)
 
     outcome = Phase3EvaluationService().evaluate(run_result=run, run_id="unknown", scenario=load_scenario_definition(baseline / "scenario_definition.json"), plan=golden.plan, score_compilation=compile_score_baseline(baseline).compilation, generation_manifest=golden.generation_manifest)
@@ -241,5 +319,5 @@ def test_phase3_hook_writes_evaluation_to_actual_run_directory(tmp_path: Path) -
 
     assert outcome.reconciliation.status == "valid"
     assert {item.name for item in (run_paths.run_dir / "phase3").iterdir()} == {
-        "combat_evidence.json", "semantic_validation.json", "combat_metrics.json", "reward_breakdown.json",
+        "combat_evidence.json", "semantic_validation.json", "combat_metrics.json", "reward_breakdown.json", "native_score_diagnostics.json",
     }

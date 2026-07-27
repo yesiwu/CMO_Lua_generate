@@ -76,7 +76,7 @@ def _required_text(value: str, field_name: str) -> str:
 
 
 # -----------------------------------------------------------------------------
-# ExecutionPlan 最小执行单元：单步操作原语
+# ExecutionPlan 最小执行单元：单步操作原语（上层 StrategySpec 是用户 / LLM 描述想要达成的战术，编译器会把战术拆解成一串有序原语，构成 ExecutionPlan；LuaRenderer 再把每一条原语翻译成固定 CMO Lua 代码）
 # 对应phase2文档ExecutionPlan单条operation结构
 # -----------------------------------------------------------------------------
 @dataclass(frozen=True, slots=True)

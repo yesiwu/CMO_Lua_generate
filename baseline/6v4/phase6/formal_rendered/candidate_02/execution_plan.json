@@ -1,0 +1,622 @@
+{
+  "compiler_version": "1.0.0",
+  "operations": [
+    {
+      "depends_on": [],
+      "operation_id": "setup.sides",
+      "parameters": {
+        "side_ids": [
+          "blue",
+          "red"
+        ]
+      },
+      "primitive_type": "ensure_sides",
+      "source_strategy_path": "/scenario_definition"
+    },
+    {
+      "depends_on": [
+        "setup.sides"
+      ],
+      "operation_id": "setup.side_state",
+      "parameters": {
+        "awareness": "OMNI",
+        "posture": "H",
+        "side_ids": [
+          "blue",
+          "red"
+        ],
+        "weapon_control_status": "0"
+      },
+      "primitive_type": "configure_side_state",
+      "source_strategy_path": "/scenario_definition"
+    },
+    {
+      "depends_on": [
+        "setup.sides"
+      ],
+      "operation_id": "unit.blue_cg59",
+      "parameters": {
+        "dbid": 2862,
+        "heading": 295,
+        "latitude": 21.61,
+        "longitude": 130.1791,
+        "name": "Blue CG-59 Princeton",
+        "side_id": "blue",
+        "speed": 0,
+        "unit_id": "blue_cg59"
+      },
+      "primitive_type": "ensure_ship",
+      "source_strategy_path": "/scenario_definition/units"
+    },
+    {
+      "depends_on": [
+        "unit.blue_cg59",
+        "setup.side_state"
+      ],
+      "operation_id": "contact.blue_cg59",
+      "parameters": {
+        "target_id": "blue_cg59",
+        "target_side_id": "blue"
+      },
+      "primitive_type": "prepare_target_contact",
+      "source_strategy_path": "/strategy"
+    },
+    {
+      "depends_on": [
+        "setup.sides"
+      ],
+      "operation_id": "unit.blue_cvn70",
+      "parameters": {
+        "dbid": 3551,
+        "heading": 294,
+        "latitude": 21.5419,
+        "longitude": 129.9125,
+        "name": "Blue CVN-70 Carl Vinson",
+        "side_id": "blue",
+        "speed": 0,
+        "unit_id": "blue_cvn70"
+      },
+      "primitive_type": "ensure_ship",
+      "source_strategy_path": "/scenario_definition/units"
+    },
+    {
+      "depends_on": [
+        "unit.blue_cvn70",
+        "setup.side_state"
+      ],
+      "operation_id": "contact.blue_cvn70",
+      "parameters": {
+        "target_id": "blue_cvn70",
+        "target_side_id": "blue"
+      },
+      "primitive_type": "prepare_target_contact",
+      "source_strategy_path": "/strategy"
+    },
+    {
+      "depends_on": [
+        "setup.sides"
+      ],
+      "operation_id": "unit.blue_ddg113_1",
+      "parameters": {
+        "dbid": 4299,
+        "heading": 293,
+        "latitude": 21.42,
+        "longitude": 130.1713,
+        "name": "Blue DDG-113-1 John Finn",
+        "side_id": "blue",
+        "speed": 0,
+        "unit_id": "blue_ddg113_1"
+      },
+      "primitive_type": "ensure_ship",
+      "source_strategy_path": "/scenario_definition/units"
+    },
+    {
+      "depends_on": [
+        "unit.blue_ddg113_1",
+        "setup.side_state"
+      ],
+      "operation_id": "contact.blue_ddg113_1",
+      "parameters": {
+        "target_id": "blue_ddg113_1",
+        "target_side_id": "blue"
+      },
+      "primitive_type": "prepare_target_contact",
+      "source_strategy_path": "/strategy"
+    },
+    {
+      "depends_on": [
+        "setup.sides"
+      ],
+      "operation_id": "unit.blue_ddg113_2",
+      "parameters": {
+        "dbid": 4299,
+        "heading": 293,
+        "latitude": 21.6,
+        "longitude": 130.2,
+        "name": "Blue DDG-113-2 John Finn",
+        "side_id": "blue",
+        "speed": 0,
+        "unit_id": "blue_ddg113_2"
+      },
+      "primitive_type": "ensure_ship",
+      "source_strategy_path": "/scenario_definition/units"
+    },
+    {
+      "depends_on": [
+        "unit.blue_ddg113_2",
+        "setup.side_state"
+      ],
+      "operation_id": "contact.blue_ddg113_2",
+      "parameters": {
+        "target_id": "blue_ddg113_2",
+        "target_side_id": "blue"
+      },
+      "primitive_type": "prepare_target_contact",
+      "source_strategy_path": "/strategy"
+    },
+    {
+      "depends_on": [
+        "setup.sides"
+      ],
+      "operation_id": "unit.red_052d_1",
+      "parameters": {
+        "dbid": 2296,
+        "heading": 115,
+        "latitude": 21.1437,
+        "longitude": 123.451,
+        "name": "Red 052D Kunming",
+        "side_id": "red",
+        "speed": 20,
+        "unit_id": "red_052d_1"
+      },
+      "primitive_type": "ensure_ship",
+      "source_strategy_path": "/scenario_definition/units"
+    },
+    {
+      "depends_on": [
+        "unit.red_052d_1"
+      ],
+      "operation_id": "inventory.red_052d_1",
+      "parameters": {
+        "unit_id": "red_052d_1",
+        "weapon_inventory": [
+          {
+            "max_quantity": 16,
+            "weapon_dbid": 2868,
+            "weapon_name": "YJ-18 [3M54E Klub Copy]"
+          }
+        ]
+      },
+      "primitive_type": "configure_ship_inventory",
+      "source_strategy_path": "/scenario_definition/units"
+    },
+    {
+      "depends_on": [
+        "setup.sides"
+      ],
+      "operation_id": "unit.red_052d_2",
+      "parameters": {
+        "dbid": 3586,
+        "heading": 50,
+        "latitude": 18.2035,
+        "longitude": 123.988,
+        "name": "Red 052D Nanjing",
+        "side_id": "red",
+        "speed": 20,
+        "unit_id": "red_052d_2"
+      },
+      "primitive_type": "ensure_ship",
+      "source_strategy_path": "/scenario_definition/units"
+    },
+    {
+      "depends_on": [
+        "unit.red_052d_2"
+      ],
+      "operation_id": "inventory.red_052d_2",
+      "parameters": {
+        "unit_id": "red_052d_2",
+        "weapon_inventory": [
+          {
+            "max_quantity": 10,
+            "weapon_dbid": 2868,
+            "weapon_name": "YJ-18 [3M54E Klub Copy]"
+          }
+        ]
+      },
+      "primitive_type": "configure_ship_inventory",
+      "source_strategy_path": "/scenario_definition/units"
+    },
+    {
+      "depends_on": [
+        "setup.sides"
+      ],
+      "operation_id": "unit.red_055_nanchang",
+      "parameters": {
+        "dbid": 3883,
+        "heading": 135,
+        "latitude": 24.8324,
+        "longitude": 128.583,
+        "name": "Red 055 Nanchang",
+        "side_id": "red",
+        "speed": 20,
+        "unit_id": "red_055_nanchang"
+      },
+      "primitive_type": "ensure_ship",
+      "source_strategy_path": "/scenario_definition/units"
+    },
+    {
+      "depends_on": [
+        "unit.red_055_nanchang"
+      ],
+      "operation_id": "inventory.red_055_nanchang",
+      "parameters": {
+        "unit_id": "red_055_nanchang",
+        "weapon_inventory": [
+          {
+            "max_quantity": 16,
+            "weapon_dbid": 2868,
+            "weapon_name": "YJ-18 [3M54E Klub Copy]"
+          }
+        ]
+      },
+      "primitive_type": "configure_ship_inventory",
+      "source_strategy_path": "/scenario_definition/units"
+    },
+    {
+      "depends_on": [
+        "setup.sides"
+      ],
+      "operation_id": "unit.red_liaoning",
+      "parameters": {
+        "dbid": 2007,
+        "heading": 90,
+        "latitude": 25.0,
+        "longitude": 130.0,
+        "name": "Red Liaoning",
+        "side_id": "red",
+        "speed": 20,
+        "unit_id": "red_liaoning"
+      },
+      "primitive_type": "ensure_ship",
+      "source_strategy_path": "/scenario_definition/units"
+    },
+    {
+      "depends_on": [
+        "setup.sides",
+        "unit.red_liaoning"
+      ],
+      "operation_id": "unit.red_j15_1",
+      "parameters": {
+        "base_unit_id": "red_liaoning",
+        "dbid": 2496,
+        "loadout_id": 9682,
+        "name": "J-15-1",
+        "side_id": "red",
+        "unit_id": "red_j15_1"
+      },
+      "primitive_type": "ensure_aircraft",
+      "source_strategy_path": "/scenario_definition/units"
+    },
+    {
+      "depends_on": [
+        "unit.red_j15_1",
+        "unit.red_liaoning"
+      ],
+      "operation_id": "aircraft.j15-1-cvn70.configure",
+      "parameters": {
+        "aircraft_id": "red_j15_1",
+        "base_unit_id": "red_liaoning",
+        "loadout_id": 9682,
+        "weapon_inventory": [
+          {
+            "max_quantity": 4,
+            "weapon_dbid": 2137,
+            "weapon_name": "YJ-83K [C-802AK]"
+          }
+        ]
+      },
+      "primitive_type": "configure_aircraft",
+      "source_strategy_path": "/strategy/sorties/0"
+    },
+    {
+      "depends_on": [
+        "setup.sides",
+        "unit.red_liaoning"
+      ],
+      "operation_id": "unit.red_j15_2",
+      "parameters": {
+        "base_unit_id": "red_liaoning",
+        "dbid": 2496,
+        "loadout_id": 9682,
+        "name": "J-15-2",
+        "side_id": "red",
+        "unit_id": "red_j15_2"
+      },
+      "primitive_type": "ensure_aircraft",
+      "source_strategy_path": "/scenario_definition/units"
+    },
+    {
+      "depends_on": [
+        "unit.red_j15_2",
+        "unit.red_liaoning"
+      ],
+      "operation_id": "aircraft.j15-2-ddg113-2.configure",
+      "parameters": {
+        "aircraft_id": "red_j15_2",
+        "base_unit_id": "red_liaoning",
+        "loadout_id": 9682,
+        "weapon_inventory": [
+          {
+            "max_quantity": 4,
+            "weapon_dbid": 2137,
+            "weapon_name": "YJ-83K [C-802AK]"
+          }
+        ]
+      },
+      "primitive_type": "configure_aircraft",
+      "source_strategy_path": "/strategy/sorties/1"
+    },
+    {
+      "depends_on": [
+        "aircraft.j15-1-cvn70.configure"
+      ],
+      "operation_id": "air_launch.j15-1-cvn70",
+      "parameters": {
+        "aircraft_id": "red_j15_1",
+        "base_unit_id": "red_liaoning",
+        "sortie_id": "j15-1-cvn70"
+      },
+      "primitive_type": "request_aircraft_launch",
+      "source_strategy_path": "/strategy/sorties/0"
+    },
+    {
+      "depends_on": [
+        "air_launch.j15-1-cvn70"
+      ],
+      "operation_id": "air_airborne.j15-1-cvn70",
+      "parameters": {
+        "aircraft_id": "red_j15_1",
+        "sortie_id": "j15-1-cvn70"
+      },
+      "primitive_type": "wait_aircraft_airborne",
+      "source_strategy_path": "/strategy/sorties/0"
+    },
+    {
+      "depends_on": [
+        "aircraft.j15-2-ddg113-2.configure"
+      ],
+      "operation_id": "air_launch.j15-2-ddg113-2",
+      "parameters": {
+        "aircraft_id": "red_j15_2",
+        "base_unit_id": "red_liaoning",
+        "sortie_id": "j15-2-ddg113-2"
+      },
+      "primitive_type": "request_aircraft_launch",
+      "source_strategy_path": "/strategy/sorties/1"
+    },
+    {
+      "depends_on": [
+        "air_launch.j15-2-ddg113-2"
+      ],
+      "operation_id": "air_airborne.j15-2-ddg113-2",
+      "parameters": {
+        "aircraft_id": "red_j15_2",
+        "sortie_id": "j15-2-ddg113-2"
+      },
+      "primitive_type": "wait_aircraft_airborne",
+      "source_strategy_path": "/strategy/sorties/1"
+    },
+    {
+      "depends_on": [
+        "air_airborne.j15-1-cvn70"
+      ],
+      "operation_id": "air_route.j15-1-cvn70",
+      "parameters": {
+        "aircraft_id": "red_j15_1",
+        "altitude_meters": 8000,
+        "route": [
+          {
+            "latitude": 23.6,
+            "longitude": 129.98
+          },
+          {
+            "latitude": 22.3,
+            "longitude": 129.95
+          }
+        ],
+        "sortie_id": "j15-1-cvn70",
+        "throttle": "Cruise"
+      },
+      "primitive_type": "set_aircraft_route",
+      "source_strategy_path": "/strategy/sorties/0"
+    },
+    {
+      "depends_on": [
+        "air_route.j15-1-cvn70",
+        "contact.blue_cvn70"
+      ],
+      "operation_id": "air_range.j15-1-cvn70",
+      "parameters": {
+        "aircraft_id": "red_j15_1",
+        "sortie_id": "j15-1-cvn70",
+        "target_id": "blue_cvn70",
+        "weapon_dbid": 2137
+      },
+      "primitive_type": "wait_aircraft_attack_range",
+      "source_strategy_path": "/strategy/sorties/0"
+    },
+    {
+      "depends_on": [
+        "air_range.j15-1-cvn70"
+      ],
+      "operation_id": "air_attack.air-j15-1-cvn70",
+      "parameters": {
+        "attack_id": "air-j15-1-cvn70",
+        "delay_seconds": 0,
+        "fire_quantity": 4,
+        "reserve_quantity": 0,
+        "return_delay_seconds": 600,
+        "shooter_id": "red_j15_1",
+        "sortie_id": "j15-1-cvn70",
+        "target_ids": [
+          "blue_cvn70"
+        ],
+        "weapon_dbid": 2137
+      },
+      "primitive_type": "aircraft_attack",
+      "source_strategy_path": "/strategy/attacks/3"
+    },
+    {
+      "depends_on": [
+        "air_attack.air-j15-1-cvn70"
+      ],
+      "operation_id": "air_return.j15-1-cvn70",
+      "parameters": {
+        "aircraft_id": "red_j15_1",
+        "base_unit_id": "red_liaoning",
+        "return_delay_seconds": 600,
+        "sortie_id": "j15-1-cvn70"
+      },
+      "primitive_type": "return_aircraft_to_base",
+      "source_strategy_path": "/strategy/sorties/0"
+    },
+    {
+      "depends_on": [
+        "air_airborne.j15-2-ddg113-2"
+      ],
+      "operation_id": "air_route.j15-2-ddg113-2",
+      "parameters": {
+        "aircraft_id": "red_j15_2",
+        "altitude_meters": 8000,
+        "route": [
+          {
+            "latitude": 23.65,
+            "longitude": 130.1
+          },
+          {
+            "latitude": 22.45,
+            "longitude": 130.18
+          }
+        ],
+        "sortie_id": "j15-2-ddg113-2",
+        "throttle": "Cruise"
+      },
+      "primitive_type": "set_aircraft_route",
+      "source_strategy_path": "/strategy/sorties/1"
+    },
+    {
+      "depends_on": [
+        "air_route.j15-2-ddg113-2",
+        "contact.blue_ddg113_2"
+      ],
+      "operation_id": "air_range.j15-2-ddg113-2",
+      "parameters": {
+        "aircraft_id": "red_j15_2",
+        "sortie_id": "j15-2-ddg113-2",
+        "target_id": "blue_ddg113_2",
+        "weapon_dbid": 2137
+      },
+      "primitive_type": "wait_aircraft_attack_range",
+      "source_strategy_path": "/strategy/sorties/1"
+    },
+    {
+      "depends_on": [
+        "air_range.j15-2-ddg113-2"
+      ],
+      "operation_id": "air_attack.air-j15-2-ddg113-2",
+      "parameters": {
+        "attack_id": "air-j15-2-ddg113-2",
+        "delay_seconds": 0,
+        "fire_quantity": 4,
+        "reserve_quantity": 0,
+        "return_delay_seconds": 600,
+        "shooter_id": "red_j15_2",
+        "sortie_id": "j15-2-ddg113-2",
+        "target_ids": [
+          "blue_ddg113_2"
+        ],
+        "weapon_dbid": 2137
+      },
+      "primitive_type": "aircraft_attack",
+      "source_strategy_path": "/strategy/attacks/4"
+    },
+    {
+      "depends_on": [
+        "air_attack.air-j15-2-ddg113-2"
+      ],
+      "operation_id": "air_return.j15-2-ddg113-2",
+      "parameters": {
+        "aircraft_id": "red_j15_2",
+        "base_unit_id": "red_liaoning",
+        "return_delay_seconds": 600,
+        "sortie_id": "j15-2-ddg113-2"
+      },
+      "primitive_type": "return_aircraft_to_base",
+      "source_strategy_path": "/strategy/sorties/1"
+    },
+    {
+      "depends_on": [
+        "inventory.red_052d_1",
+        "contact.blue_cvn70"
+      ],
+      "operation_id": "attack.ship-052d-1-cg59",
+      "parameters": {
+        "attack_id": "ship-052d-1-cg59",
+        "delay_seconds": 63,
+        "fire_quantity": 8,
+        "reserve_quantity": 8,
+        "shooter_id": "red_052d_1",
+        "target_ids": [
+          "blue_cvn70"
+        ],
+        "weapon_dbid": 2868
+      },
+      "primitive_type": "schedule_ship_attack",
+      "source_strategy_path": "/strategy/attacks/1"
+    },
+    {
+      "depends_on": [
+        "inventory.red_052d_2",
+        "contact.blue_cg59"
+      ],
+      "operation_id": "attack.ship-052d-2-cg59",
+      "parameters": {
+        "attack_id": "ship-052d-2-cg59",
+        "delay_seconds": 66,
+        "fire_quantity": 5,
+        "reserve_quantity": 5,
+        "shooter_id": "red_052d_2",
+        "target_ids": [
+          "blue_cg59"
+        ],
+        "weapon_dbid": 2868
+      },
+      "primitive_type": "schedule_ship_attack",
+      "source_strategy_path": "/strategy/attacks/2"
+    },
+    {
+      "depends_on": [
+        "inventory.red_055_nanchang",
+        "contact.blue_ddg113_1"
+      ],
+      "operation_id": "attack.ship-055-ddg113-1",
+      "parameters": {
+        "attack_id": "ship-055-ddg113-1",
+        "delay_seconds": 60,
+        "fire_quantity": 8,
+        "reserve_quantity": 8,
+        "shooter_id": "red_055_nanchang",
+        "target_ids": [
+          "blue_ddg113_1"
+        ],
+        "weapon_dbid": 2868
+      },
+      "primitive_type": "schedule_ship_attack",
+      "source_strategy_path": "/strategy/attacks/0"
+    }
+  ],
+  "plan_schema_version": "1.0.0",
+  "runtime_id": "cmo_naval_air_anti_surface_scored",
+  "runtime_version": "2.0.0",
+  "scenario_id": "red_blue_6v4_liaoning"
+}

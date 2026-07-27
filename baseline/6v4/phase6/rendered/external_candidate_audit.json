@@ -1,0 +1,109 @@
+{
+  "artifact_provenance": "external_fixture",
+  "candidates": [
+    {
+      "artifact_provenance": "external_fixture",
+      "audit_violations": [
+        "ScenEdit_SetSidePosture"
+      ],
+      "candidate_id": "candidate_00",
+      "comparison_exclusion_reason": "score_contract_mismatch",
+      "computed": {
+        "lua_checksum": "2a18dde39e2fd5a33caa867a9fba7d3fd6326ede12d8244f174450d89db00159",
+        "native_score_fragment_checksum": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "runtime_invariant_checksum": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "scenario_unit_state_checksum": "1dddea18f5e7c67d77839de89f434d68e1b7570f2f7759fd1642f93e47084d70",
+        "score_rule_bindings": []
+      },
+      "declared": {
+        "lua_checksum": "2ec5b3984c061d23f32fb61d2a023541cf2c2e550e4ec8bed2b4f9449917d061",
+        "native_score_fragment_checksum": "685c2512f4fa781b6d388db97d5a3d9f3573a93115ea9d64b5093253c80960ee",
+        "runtime_invariant_checksum": "b61fa947f30ba1cd8e5cbd21b46844de8ddf8a9463e5061d8f74a33bb1aea638"
+      },
+      "forbidden_change_detected": true,
+      "formal_comparison_eligible": false,
+      "formal_scoreable": false,
+      "manifest_checksum_match": false,
+      "native_score_fragment_match": false,
+      "runtime_invariant_match": false
+    },
+    {
+      "artifact_provenance": "external_fixture",
+      "audit_violations": [
+        "ScenEdit_SetSidePosture"
+      ],
+      "candidate_id": "candidate_01",
+      "comparison_exclusion_reason": "score_contract_mismatch",
+      "computed": {
+        "lua_checksum": "dc0091dad9423c278ccc6ff79fdde359a3c90f24411a698a82a21507b1c218db",
+        "native_score_fragment_checksum": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "runtime_invariant_checksum": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "scenario_unit_state_checksum": "1dddea18f5e7c67d77839de89f434d68e1b7570f2f7759fd1642f93e47084d70",
+        "score_rule_bindings": []
+      },
+      "declared": {
+        "lua_checksum": "6d147b985a4044271845eb224515b72e6587301588944736593c53a52bbec810",
+        "native_score_fragment_checksum": "685c2512f4fa781b6d388db97d5a3d9f3573a93115ea9d64b5093253c80960ee",
+        "runtime_invariant_checksum": "b61fa947f30ba1cd8e5cbd21b46844de8ddf8a9463e5061d8f74a33bb1aea638"
+      },
+      "forbidden_change_detected": true,
+      "formal_comparison_eligible": false,
+      "formal_scoreable": false,
+      "manifest_checksum_match": false,
+      "native_score_fragment_match": false,
+      "runtime_invariant_match": false
+    },
+    {
+      "artifact_provenance": "external_fixture",
+      "audit_violations": [
+        "ScenEdit_SetSidePosture"
+      ],
+      "candidate_id": "candidate_02",
+      "comparison_exclusion_reason": "score_contract_mismatch",
+      "computed": {
+        "lua_checksum": "10794126f1b8a2f87e9db6e8ffd50efa8b5d75480aa8eb68b7eb43782cdb797a",
+        "native_score_fragment_checksum": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "runtime_invariant_checksum": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "scenario_unit_state_checksum": "1dddea18f5e7c67d77839de89f434d68e1b7570f2f7759fd1642f93e47084d70",
+        "score_rule_bindings": []
+      },
+      "declared": {
+        "lua_checksum": "10794126f1b8a2f87e9db6e8ffd50efa8b5d75480aa8eb68b7eb43782cdb797a",
+        "native_score_fragment_checksum": "685c2512f4fa781b6d388db97d5a3d9f3573a93115ea9d64b5093253c80960ee",
+        "runtime_invariant_checksum": "b61fa947f30ba1cd8e5cbd21b46844de8ddf8a9463e5061d8f74a33bb1aea638"
+      },
+      "forbidden_change_detected": true,
+      "formal_comparison_eligible": false,
+      "formal_scoreable": false,
+      "manifest_checksum_match": true,
+      "native_score_fragment_match": false,
+      "runtime_invariant_match": false
+    },
+    {
+      "artifact_provenance": "external_fixture",
+      "audit_violations": [
+        "ScenEdit_SetSidePosture"
+      ],
+      "candidate_id": "candidate_03",
+      "comparison_exclusion_reason": "score_contract_mismatch",
+      "computed": {
+        "lua_checksum": "6084bf6978e38706f47176e02d3dcc4825a1d099cc43cac40b1e7601109d4cc5",
+        "native_score_fragment_checksum": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "runtime_invariant_checksum": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "scenario_unit_state_checksum": "1dddea18f5e7c67d77839de89f434d68e1b7570f2f7759fd1642f93e47084d70",
+        "score_rule_bindings": []
+      },
+      "declared": {
+        "lua_checksum": "6084bf6978e38706f47176e02d3dcc4825a1d099cc43cac40b1e7601109d4cc5",
+        "native_score_fragment_checksum": "685c2512f4fa781b6d388db97d5a3d9f3573a93115ea9d64b5093253c80960ee",
+        "runtime_invariant_checksum": "b61fa947f30ba1cd8e5cbd21b46844de8ddf8a9463e5061d8f74a33bb1aea638"
+      },
+      "forbidden_change_detected": true,
+      "formal_comparison_eligible": false,
+      "formal_scoreable": false,
+      "manifest_checksum_match": true,
+      "native_score_fragment_match": false,
+      "runtime_invariant_match": false
+    }
+  ]
+}

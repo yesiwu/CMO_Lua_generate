@@ -1,0 +1,163 @@
+{
+  "assembly_version": "1.0.0",
+  "compiler_version": "1.0.0",
+  "execution_plan_checksum": "5bf4f752f10b03a3b5c789096d03b1f2ee49a096e21b366f0b85f42c518b2046",
+  "instrumentation_enabled": true,
+  "lua_checksum": "c5f075c39376129da3bc2fbed15979a7eed743a5bdfcdb339fe0197afa4d2c5b",
+  "native_score_fragment_checksum": "03259e90eedc436aa29abaa79c34fd4374ae156e7bf7550ae1230eb6e3ee4f73",
+  "objectives_checksum": "f2290c819194fe44f6e5f5f63b88de4041ef1c162635184fa0851a16a69e8bd6",
+  "plan_checksum": "5bf4f752f10b03a3b5c789096d03b1f2ee49a096e21b366f0b85f42c518b2046",
+  "plan_schema_version": "1.0.0",
+  "renderer_version": "2.0.0",
+  "role_catalog_checksum": "f79e179df969e9ba2d44e66fb0d969bd362d712e273984935286d66aba1ffb43",
+  "runtime_checksum": "6cd9124e1315734ddb138c1ea074261d10a1d75e1fd89e11a17c2824847cfcc6",
+  "runtime_id": "cmo_naval_air_anti_surface_scored",
+  "runtime_version": "2.0.0",
+  "scenario_checksum": "1dddea18f5e7c67d77839de89f434d68e1b7570f2f7759fd1642f93e47084d70",
+  "scenario_id": "red_blue_6v4_liaoning",
+  "score_profile_checksum": "918d82c08f7fed6fde9afeda93dbef0dd6f788a44a8839e39bc6b20895e7213f",
+  "score_spec_checksum": "168f7761a7414a234cc411a19224a4dc75a1aad54b7379ec84d36de3dfc45153",
+  "source_map": {
+    "air_airborne.j15-1-cvn70": {
+      "end_line": 495,
+      "start_line": 490
+    },
+    "air_airborne.j15-2-ddg113-2": {
+      "end_line": 508,
+      "start_line": 503
+    },
+    "air_attack.air-j15-1-cvn70": {
+      "end_line": 526,
+      "start_line": 521
+    },
+    "air_attack.air-j15-2-ddg113-2": {
+      "end_line": 550,
+      "start_line": 545
+    },
+    "air_launch.j15-1-cvn70": {
+      "end_line": 489,
+      "start_line": 483
+    },
+    "air_launch.j15-2-ddg113-2": {
+      "end_line": 502,
+      "start_line": 496
+    },
+    "air_range.j15-1-cvn70": {
+      "end_line": 520,
+      "start_line": 515
+    },
+    "air_range.j15-2-ddg113-2": {
+      "end_line": 544,
+      "start_line": 539
+    },
+    "air_return.j15-1-cvn70": {
+      "end_line": 532,
+      "start_line": 527
+    },
+    "air_return.j15-2-ddg113-2": {
+      "end_line": 556,
+      "start_line": 551
+    },
+    "air_route.j15-1-cvn70": {
+      "end_line": 514,
+      "start_line": 509
+    },
+    "air_route.j15-2-ddg113-2": {
+      "end_line": 538,
+      "start_line": 533
+    },
+    "aircraft.j15-1-cvn70.configure": {
+      "end_line": 409,
+      "start_line": 398
+    },
+    "aircraft.j15-2-ddg113-2.configure": {
+      "end_line": 438,
+      "start_line": 427
+    },
+    "attack.ship-052d-1-cg59": {
+      "end_line": 563,
+      "start_line": 557
+    },
+    "attack.ship-052d-2-cg59": {
+      "end_line": 570,
+      "start_line": 564
+    },
+    "attack.ship-055-ddg113-1": {
+      "end_line": 577,
+      "start_line": 571
+    },
+    "contact.blue_cg59": {
+      "end_line": 201,
+      "start_line": 194
+    },
+    "contact.blue_cvn70": {
+      "end_line": 230,
+      "start_line": 223
+    },
+    "inventory.red_052d_1": {
+      "end_line": 301,
+      "start_line": 294
+    },
+    "inventory.red_052d_2": {
+      "end_line": 330,
+      "start_line": 323
+    },
+    "inventory.red_055_nanchang": {
+      "end_line": 359,
+      "start_line": 352
+    },
+    "setup.side_state": {
+      "end_line": 172,
+      "start_line": 161
+    },
+    "setup.sides": {
+      "end_line": 160,
+      "start_line": 153
+    },
+    "system.native_score": {
+      "end_line": 481,
+      "start_line": 439
+    },
+    "unit.blue_cg59": {
+      "end_line": 193,
+      "start_line": 173
+    },
+    "unit.blue_cvn70": {
+      "end_line": 222,
+      "start_line": 202
+    },
+    "unit.blue_ddg113_1": {
+      "end_line": 251,
+      "start_line": 231
+    },
+    "unit.blue_ddg113_2": {
+      "end_line": 272,
+      "start_line": 252
+    },
+    "unit.red_052d_1": {
+      "end_line": 293,
+      "start_line": 273
+    },
+    "unit.red_052d_2": {
+      "end_line": 322,
+      "start_line": 302
+    },
+    "unit.red_055_nanchang": {
+      "end_line": 351,
+      "start_line": 331
+    },
+    "unit.red_j15_1": {
+      "end_line": 397,
+      "start_line": 381
+    },
+    "unit.red_j15_2": {
+      "end_line": 426,
+      "start_line": 410
+    },
+    "unit.red_liaoning": {
+      "end_line": 380,
+      "start_line": 360
+    }
+  },
+  "strategy_checksum": "11b1fc4fa06941fc20281e78431876e5ad1e39ee07ed60c08ec2ce206dbb1727"
+}

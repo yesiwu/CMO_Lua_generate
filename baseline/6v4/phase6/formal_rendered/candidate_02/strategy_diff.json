@@ -1,0 +1,10 @@
+{
+  "paths": [
+    "/attacks/0/delay_seconds",
+    "/attacks/1/delay_seconds",
+    "/attacks/1/target_ids/0",
+    "/attacks/2/delay_seconds",
+    "/sorties/0/fire_delay_seconds",
+    "/sorties/1/fire_delay_seconds"
+  ]
+}

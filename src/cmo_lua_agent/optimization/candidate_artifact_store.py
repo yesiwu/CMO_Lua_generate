@@ -22,8 +22,12 @@ class CandidateArtifactStore:
         # 规范化候选根目录绝对路径
         self.root = Path(root).resolve()
         # 校验目录名规范：必须以 candidate_候选ID 结尾
-        if self.root.name != f"candidate_{candidate_id}":
-            raise ValueError("candidate_dir 必须是以 candidate_<id> 命名的文件夹")
+        expected_names = {f"candidate_{candidate_id}"}
+        # Phase 6 候选 ID 本身为 candidate_00，避免产生 candidate_candidate_00。
+        if candidate_id.startswith("candidate_"):
+            expected_names.add(candidate_id)
+        if self.root.name not in expected_names:
+            raise ValueError("candidate_dir 必须与 candidate_id 对应")
         # 禁止覆盖已有候选（目录非空则报错，防止误删旧实验数据）
         if self.root.exists() and any(self.root.iterdir()):
             raise ValueError("候选目录已存在且不为空，禁止覆盖已有候选数据")

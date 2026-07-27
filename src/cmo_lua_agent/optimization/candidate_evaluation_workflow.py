@@ -10,6 +10,7 @@ Phase5 单条带分候选确定性完整流水线
 """
 from __future__ import annotations
 
+import json
 import traceback
 from dataclasses import asdict
 from pathlib import Path
@@ -33,6 +34,7 @@ from cmo_lua_agent.generation.runtime_models import canonical_sha256
 # 单候选隔离文件存储
 from cmo_lua_agent.optimization.candidate_artifact_store import CandidateArtifactStore
 from cmo_lua_agent.optimization.runtime_patch_applier import RuntimePatchApplier
+from cmo_lua_agent.optimization.scenario_reset_probe import ScenarioResetProbe
 # 候选请求、状态、结果、状态机模型
 from cmo_lua_agent.optimization.candidate_models import CandidateFailureReason, CandidateOutcome, CandidateRequest, CandidateState, CandidateStateMachine
 
@@ -53,7 +55,8 @@ class CandidateEvaluationWorkflow:
                  cmo_runner: CandidateRunner,          # CMO仿真执行实例
                  repair_agent: CandidateRepairAgent,  # Phase4修复代理实例
                  phase3_service: Phase3EvaluationService | None = None, # Phase3打分服务
-                 is_cancelled: Callable[[], bool] | None = None # 外部取消判断回调
+                 is_cancelled: Callable[[], bool] | None = None, # 外部取消判断回调
+                 scenario_reset_probe: ScenarioResetProbe | None = None,
                 ) -> None:
         self._runner = cmo_runner                  # CMO执行器
         self._repair_agent = repair_agent          # 修复代理
@@ -66,6 +69,7 @@ class CandidateEvaluationWorkflow:
         self._router = RepairErrorRouter()          # 仿真错误分类路由
         self._runtime_patch_applier = RuntimePatchApplier()
         self._signal_mapper = Phase3RepairSignalMapper()
+        self._scenario_reset_probe = scenario_reset_probe
 
     def evaluate(self, request: CandidateRequest) -> CandidateOutcome:
         """单候选完整主流程入口，循环执行编译-仿真-修复直到成功/达到修复上限/不可修复"""
@@ -138,14 +142,20 @@ class CandidateEvaluationWorkflow:
                     return self._finish(store, machine, request, strategy, original_lua, final_lua, attempts, invocations, applied, CandidateFailureReason.CANCELLED)
 
                 # 5 调用CMO执行器运行Lua仿真
+                reset_before = self._scenario_reset_probe.before_run() if self._scenario_reset_probe else None
                 record = self._runner.run(
                     lua_path=lua_path,
                     timeout_seconds=request.timeout_seconds,
                     round_number=attempts,
-                    run_id=f"{request.candidate_id}_{attempts:02d}"
+                    run_id=f"{request.candidate_id}_{attempts:02d}",
+                    audit_profile=self._audit_profile(request),
                 )
                 attempts += 1 # 仿真尝试次数自增
                 store.write_json(f"{attempt_dir}/cmo_run_result.json", record.result)
+                if reset_before is not None:
+                    reset_evidence = self._scenario_reset_probe.after_run(reset_before, record)
+                    store.write_json(f"{attempt_dir}/scenario_reset.json", reset_evidence)
+                    store.write_json("scenario_reset.json", reset_evidence)
                 self._transition(store, machine, CandidateState.CMO_EXECUTED, "CMO executed", attempts - 1)
 
                 # 分支A：仿真执行完全成功，进入Phase3解析打分
@@ -157,7 +167,8 @@ class CandidateEvaluationWorkflow:
                         plan=plan,
                         score_compilation=request.native_score_compilation,
                         generation_manifest=manifest,
-                        output_dir=store.path(f"{attempt_dir}/phase3")
+                        output_dir=store.path(f"{attempt_dir}/phase3"),
+                        candidate_id=request.candidate_id,
                     )
                     # 校验1：仿真数据冲突（理论得分与CMO原生分数不一致）
                     if evaluation.reconciliation.status == "result_integrity_failed":
@@ -267,6 +278,29 @@ class CandidateEvaluationWorkflow:
         """追加一条状态事件到trajectory.jsonl时序日志"""
         store.append_jsonl("trajectory.jsonl", event.to_dict())
 
+    @staticmethod
+    def _audit_profile(request: CandidateRequest) -> dict[str, object]:
+        """Build the BatchRunner audit profile from immutable formal contracts."""
+        weapons: dict[tuple[str, int], dict[str, object]] = {}
+        for unit in request.scenario.units:
+            for inventory in unit.weapon_inventory:
+                weapons[(inventory.weapon_name, inventory.weapon_dbid)] = {
+                    "StableId": f"weapon_{inventory.weapon_dbid}",
+                    "Name": inventory.weapon_name,
+                    "WeaponDbid": inventory.weapon_dbid,
+                }
+        return {
+            "ScenarioId": request.scenario.scenario_id,
+            "CandidateId": request.candidate_id,
+            "ScoringSideId": request.native_score_compilation.score_spec.rules[0].score_side_id,
+            "AttackWaveWindowSeconds": 60,
+            "Units": [
+                {"StableId": unit.unit_id, "SideId": unit.side_id, "Name": unit.name, "PlatformDbid": unit.dbid}
+                for unit in request.scenario.units
+            ],
+            "Weapons": list(weapons.values()),
+        }
+
     def _finish(self, store, machine, request, strategy, original_lua, final_lua, attempts, invocations, applied, reason, *, evaluation=None, error=None):
         """流程收尾统一入口：写入最终策略、生成标准化CandidateOutcome结果对象"""
         success = (reason is CandidateFailureReason.COMPLETED)
@@ -279,12 +313,21 @@ class CandidateEvaluationWorkflow:
         # 存档最终迭代后的策略
         store.write_json("strategy/final_strategy.json", strategy.to_dict())
         # 组装完整候选输出结果
+        scenario_reset_path = store.path("scenario_reset.json")
+        scenario_reset = (
+            json.loads(scenario_reset_path.read_text(encoding="utf-8"))
+            if scenario_reset_path.is_file()
+            else None
+        )
         outcome = CandidateOutcome(
             request.candidate_id,
             request.generation_index,
             strategy,
             success,
-            success,
+            # CMO 已成功执行、但 Phase 3 拒绝语义或评分资格时，Lua 仍是可执行的。
+            # 这让 Phase 6 能将其正确归类为 semantic_invalid / unscorable，
+            # 而不是错误地降级为 execution_failed。
+            bool(success or evaluation is not None),
             bool(evaluation and evaluation.semantic_validation.semantic_valid),
             bool(evaluation and evaluation.semantic_validation.scoreable),
             original_lua,
@@ -299,7 +342,11 @@ class CandidateEvaluationWorkflow:
             reason,
             machine.state,
             store.root,
-            store.path("trajectory.jsonl")
+            store.path("trajectory.jsonl"),
+            scenario_reset=scenario_reset,
+            execution_success=(evaluation.metrics.execution_success if evaluation else False),
+            native_score=(evaluation.native_snapshot.native_score_final if evaluation else None),
+            score_source=(evaluation.native_snapshot.score_source if evaluation else None),
         )
         # 落地最终结果文件
         store.write_json("candidate_outcome.json", asdict(outcome))
