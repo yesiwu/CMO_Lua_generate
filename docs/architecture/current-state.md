@@ -181,6 +181,77 @@ cmo_effectiveness_validation = not_run
   budget, control request, worker state, and CMO lock before each attempt.
 - Phase 9B was validated only with Fake workers. No real CMO Chat smoke ran.
 
+## Phase 9C-0 生产接线
+
+Phase 9C-0 已建立唯一生产装配路径：
+
+```text
+chat --profile campaign
+→ ProductionEvolutionServiceFactory
+→ ProductionPreviewBuilder
+→ FrozenCandidateSet
+→ GenerationApprovalGrant
+→ ProductionGenerationExecutor
+→ Phase 6 → Phase 7 → Phase 8
+```
+
+当前实现边界：
+
+- `standard` Chat 不注册 Evolution Tool；`campaign` Chat 只注册六个高层
+  Campaign Tool，且不暴露 `execute_cmo` 或底层 Phase 6/7/8 Tool。
+- Preview 是唯一 Strategy Proposal LLM 阶段。同一 revision 重复读取冻结
+  Snapshot 和 Candidate Set；执行阶段只通过
+  `FrozenCandidateSetProvider` 解析、校验冻结策略，不再次调用 Proposal
+  LLM。
+- Production Knowledge Snapshot 复用正式 `KnowledgeSnapshotService`，
+  固化 Experience Store revision、index checksum、检索条件、选中经验、
+  Bootstrap checksum 和精确 Cohort 的 Active Curated Skill。Pending Skill
+  不进入 Snapshot。
+- `PermissionHook` 的可信回执由本机 OS 用户归因：
+  `actor_source=local_os_user`，
+  `identity_strength=local_os_attribution`。Tool 不能接收或自行构造
+  approval ID。
+- `campaign-control-state.json` 是 ApprovalUsage、Campaign Budget、
+  Attempt Slot 和 Operation 状态的事务权威；`operation-ledger.jsonl`
+  是确定性审计投影。`started/unknown` 不会在 Resume 时自动重跑。
+- 每个 CMO Attempt 在授权后复制独立 `.scen` 和 `candidate.lua`，生成
+  独立 `batch-job.json` 与 Results 目录；Attempt 前后校验受控源
+  `.scen` checksum，不读取 `tot-three.json` 或 `all1v1.lua`。
+- Pause 在 Candidate 安全收口后生效并撤销现有审批；Resume 只对账并回到
+  `awaiting_approval`。Stop 产生 `cancelled_incomplete` 时不排行、不执行
+  Phase 7/8、不选择 Champion。
+- 生产 prepare 默认要求 clean working tree、人工 VerificationRecord、
+  `.scen` checksum 一致，以及 `CmoBatchRunner.exe` 和 `Command.exe`
+  preflight 通过。
+- Fake 生产装配测试资产统一标记 `test_fixture`，不能成为正式评分、
+  Experience 或 Skill 证据。
+
+Phase 9C-0 尚未完成的真实验收：
+
+- 未运行真实 Chat 单代 CMO Smoke；
+- 本机 `.scen` 尚需操作员通过 `scripts/manage_cmo_assets.py verify`
+  明确确认；
+- `process_restart_recovery=not_validated`，当前 Worker 只支持同进程后台
+  线程；
+- 未执行真实多代 Campaign；
+- Campaign 不会自动 approve/reject Pending Skill；
+- `cmo_effectiveness_validation=not_run`。
+
+Phase 9C-0 Fake 生产装配验收（2026-07-28）：
+
+```text
+compileall: passed
+evolution: 46 passed
+optimization: 10 passed, 1 cmo_integration skipped
+learning: 74 passed
+full suite: 621 passed, 3 cmo_integration skipped
+git diff --check: passed
+```
+
+上述结果只证明生产接线、冻结候选、审批事务、动态 Job、场景副本、
+Pause/Stop、恢复规则和 Phase 6/7/8 调用边界的 Fake 工程验收，不代表
+真实 Chat 单代 CMO Smoke 已完成。
+
 ## 健康检查
 
 ```powershell

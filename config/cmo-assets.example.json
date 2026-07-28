@@ -1,0 +1,22 @@
+{
+  "schema_version": "1.0",
+  "source_job_config": "json_data/tot-three.json",
+  "cmo_batch_runner": "C:\\CMO\\CmoBatchRunner\\CmoBatchRunner.exe",
+  "cmo_executable": "C:\\CMO\\Command\\bin\\Debug\\Command.exe",
+  "legacy_job": {
+    "source_scenario": "C:\\CMO\\Command\\bin\\Debug\\Scenarios\\批量脚本测试2.scen",
+    "source_script": "C:\\pythonproject\\CMO_Lua_generate\\Lua\\all1v1.lua",
+    "shared_output_directory": "C:\\CMO\\CmoBatchRunner\\Results",
+    "collection_profile": "combat-minimal",
+    "wall_timeout_seconds": 300
+  },
+  "assets": [
+    {
+      "asset_id": "red_blue_6v4_liaoning_scen_v1",
+      "scenario_id": "red_blue_6v4_liaoning",
+      "absolute_path": "C:\\CMO\\Command\\bin\\Debug\\Scenarios\\批量脚本测试2.scen",
+      "source": "json_data/tot-three.json",
+      "verification_required": true
+    }
+  ]
+}

@@ -14,18 +14,19 @@
 """
 from __future__ import annotations
 
-from typing import Any
-
-from anthropic import Anthropic
+from typing import TYPE_CHECKING, Any
 
 from cmo_lua_agent.llm_config import LlmConfig
 from collections.abc import Callable
-from typing import Any
-
-from anthropic.types import Message
+if TYPE_CHECKING:
+    from anthropic.types import Message
+else:
+    Message = Any
 
 class ClaudeClient:
     def __init__(self, config: LlmConfig):
+        from anthropic import Anthropic
+
         self._config = config
 
         client_kwargs: dict[str, Any] = {

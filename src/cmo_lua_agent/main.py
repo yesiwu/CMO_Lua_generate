@@ -64,6 +64,9 @@ from cmo_lua_agent.orchestration.ui_state import (
 from cmo_lua_agent.tools.tool_base.factory import (
     build_tool_registry,
 )
+from cmo_lua_agent.evolution.production_service import (
+    create_production_evolution_campaign_service,
+)
 
 from cmo_lua_agent.bootstrap import (
     create_application,
@@ -124,6 +127,18 @@ CHAT_SYSTEM_PROMPT = """
 """.strip()
 
 
+def _campaign_receipt_persister(service: object):
+    """Persist generation grants only for the generation execution tool."""
+
+    def persist(receipt: object, context: dict[str, Any]) -> str:
+        tool = context.get("tool")
+        if getattr(tool, "name", None) == "execute_evolution_generation":
+            return service.persist_permission_grant(receipt, context)
+        return str(getattr(receipt, "receipt_id"))
+
+    return persist
+
+
 def build_parser() -> argparse.ArgumentParser:
     """
     创建命令行参数解析器。
@@ -145,9 +160,15 @@ def build_parser() -> argparse.ArgumentParser:
         required=True,
     )
 
-    subparsers.add_parser(
+    chat_parser = subparsers.add_parser(
         "chat",
         help="启动交互式 Agent",
+    )
+    chat_parser.add_argument(
+        "--profile",
+        choices=("standard", "campaign"),
+        default="standard",
+        help="Chat tool profile.",
     )
 
     run_parser = subparsers.add_parser(
@@ -215,6 +236,7 @@ def build_chat_components(
     *,
     config: Any,
     workdir: Path,
+    profile: str = "standard",
 ) -> tuple[AgentLoop, TerminalDisplay]:
     """
     创建交互式聊天模式需要的全部组件。
@@ -259,23 +281,44 @@ def build_chat_components(
 
     hook_manager = HookManager()
 
+    evolution_service = None
+    if profile == "campaign":
+        evolution_service = create_production_evolution_campaign_service(
+            project_root=workdir,
+            app_config=config,
+            llm_client=llm_client,
+        )
+    elif profile != "standard":
+        raise ValueError("unknown_chat_profile")
+
     hook_manager.register(
         PermissionHook(
             approval_function=TerminalApprover(
                 pause=terminal_display.stop,
                 resume=terminal_display.start,
             ),
+            receipt_persister=(
+                _campaign_receipt_persister(evolution_service)
+                if evolution_service is not None
+                else None
+            ),
         )
     )
 
-    application = create_application(workdir)
+    application = create_application(workdir) if profile == "standard" else None
     #create_application() 不是“启动程序”，而是一个依赖组装工厂。它的作用是把运行 JSON→Lua 所需的对象一次性创建并连接起来。
-    cmo_lua_services = create_tool_services(application)
+    cmo_lua_services = (
+        create_tool_services(application)
+        if application is not None
+        else None
+    )
 
     tool_registry = build_tool_registry(
         workdir=workdir,
         hook_manager=hook_manager,
         cmo_lua_services=cmo_lua_services,
+        chat_profile=profile,
+        evolution_campaign_service=evolution_service,
     )
 
     agent_loop = AgentLoop(
@@ -362,10 +405,10 @@ def main() -> int:
             )
             return 2
 
-        agent_loop, terminal_display = build_chat_components(
-            config=config,
-            workdir=workdir,
-        )
+        build_kwargs = {"config": config, "workdir": workdir}
+        if args.profile != "standard":
+            build_kwargs["profile"] = args.profile
+        agent_loop, terminal_display = build_chat_components(**build_kwargs)
 
         return run_chat(
             agent_loop=agent_loop,

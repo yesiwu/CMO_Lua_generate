@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from typing import Any, Callable
 from uuid import uuid4
@@ -17,6 +17,7 @@ class ApprovalReceipt:
     issued_at: str
     expires_at: str
     issuer: str = "permission_hook"
+    approval_id: str | None = None
 
     @classmethod
     def issue(cls, tool_name: str, *, lifetime_seconds: int = 300) -> "ApprovalReceipt":
@@ -25,6 +26,7 @@ class ApprovalReceipt:
 
 
 ApprovalFunction = Callable[[str, dict[str, Any]], bool | ApprovalReceipt]
+ReceiptPersister = Callable[[ApprovalReceipt, dict[str, Any]], str]
 
 
 class ToolApprovalDeniedError(PermissionError):
@@ -34,8 +36,13 @@ class ToolApprovalDeniedError(PermissionError):
 class PermissionHook:
     """Enforce approval and attach a receipt to the ephemeral hook context."""
 
-    def __init__(self, approval_function: ApprovalFunction | None = None) -> None:
+    def __init__(
+        self,
+        approval_function: ApprovalFunction | None = None,
+        receipt_persister: ReceiptPersister | None = None,
+    ) -> None:
         self._approval_function = approval_function
+        self._receipt_persister = receipt_persister
 
     def handle(self, event: str, context: dict[str, Any]) -> None:
         if event != "before_tool_call":
@@ -56,4 +63,9 @@ class PermissionHook:
                 raise ToolApprovalDeniedError("expired_approval_receipt")
         except ValueError as exc:
             raise ToolApprovalDeniedError("invalid_approval_receipt") from exc
+        if self._receipt_persister is not None:
+            receipt = replace(
+                receipt,
+                approval_id=self._receipt_persister(receipt, context),
+            )
         context["approval_receipt"] = receipt

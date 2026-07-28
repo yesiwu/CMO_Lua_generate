@@ -28,6 +28,8 @@ dist/
 /outputs/
 /runs/*
 !/runs/.gitkeep
+/config/cmo-assets.local.json
+/data/asset-verifications/
 
 # IDE, OS, and local agent metadata
 .vscode/
