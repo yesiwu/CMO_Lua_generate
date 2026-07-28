@@ -72,6 +72,27 @@ def test_proposal_agent_rejects_extra_fields() -> None:
         StrategyProposalAgent(Bad()).propose(context)
 
 
+def test_proposal_agent_prompt_declares_intended_difference_string_array() -> None:
+    class CapturingClient:
+        def __init__(self) -> None:
+            self.system = ""
+
+        def complete_json(self, **kwargs: object) -> object:
+            self.system = str(kwargs["system"])
+            return _Client().complete_json()
+
+    client = CapturingClient()
+    context = StrategyProposalContext(
+        _scenario(), _strategy(), "objective", ("/attacks/0/fire_quantity",), ("fire_quantity",),
+        "runtime", "v", BootstrapSkillSnapshot("skill", "1", "bootstrap", "human-authored", "none", ("StrategyProposalAgent",), "x.md", "body", "checksum"),
+    )
+
+    StrategyProposalAgent(client).propose(context)
+
+    assert '"candidate_id"' in client.system
+    assert '"intended_difference": ["changed_path_or_dimension"]' in client.system
+
+
 def test_candidate_set_rejects_reordered_or_forbidden_changes() -> None:
     from cmo_lua_agent.optimization.phase6_models import StrategyCandidate
     scenario, baseline = _scenario(), _strategy()

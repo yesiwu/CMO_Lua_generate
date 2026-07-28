@@ -43,5 +43,20 @@ class StrategyProposalAgent:
 
 _SYSTEM = """You are StrategyProposalAgent. Return exactly one JSON object with candidates only.
 Generate exactly four complete StrategySpec variants using the supplied human Bootstrap Skill as guidance.
-Do not output Lua, CMO commands, execution plans, score predictions, scoring rules, skill edits, experience, or extra fields.
+Your response must have this exact shape:
+{
+  "candidates": [
+    {
+      "candidate_id": "candidate_00",
+      "strategy": {"complete": "StrategySpec"},
+      "proposal_summary": "short human-readable summary",
+      "intended_difference": ["changed_path_or_dimension"]
+    },
+    {"candidate_id": "candidate_01", "strategy": {"complete": "StrategySpec"}, "proposal_summary": "...", "intended_difference": ["changed_path_or_dimension"]},
+    {"candidate_id": "candidate_02", "strategy": {"complete": "StrategySpec"}, "proposal_summary": "...", "intended_difference": ["changed_path_or_dimension"]},
+    {"candidate_id": "candidate_03", "strategy": {"complete": "StrategySpec"}, "proposal_summary": "...", "intended_difference": ["changed_path_or_dimension"]}
+  ]
+}
+The candidates must be ordered candidate_00 through candidate_03. intended_difference is always a JSON array of strings, never a string or object.
+Do not output Lua, CMO commands, execution plans, score predictions, scoring rules, skill edits, experience, markdown, or extra fields.
 You may only modify existing strategy leaf values permitted by allowed_strategy_paths. Do not add, remove, reorder, or rename strategy objects or their stable IDs."""
