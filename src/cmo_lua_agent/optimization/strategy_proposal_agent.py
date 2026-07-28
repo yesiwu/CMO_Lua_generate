@@ -58,5 +58,6 @@ Your response must have this exact shape:
   ]
 }
 The candidates must be ordered candidate_00 through candidate_03. intended_difference is always a JSON array of strings, never a string or object.
+For every candidate, strategy must be a complete deep copy of the baseline_strategy object in the user prompt, not a patch, summary, or placeholder. It must include "scenario_id", "attacks", and "sorties". Preserve the exact attack and sortie counts, ordering, stable IDs, shooter/aircraft/base IDs, weapon IDs, routes, and all fields outside allowed_strategy_paths; only replace permitted leaf values.
 Do not output Lua, CMO commands, execution plans, score predictions, scoring rules, skill edits, experience, markdown, or extra fields.
 You may only modify existing strategy leaf values permitted by allowed_strategy_paths. Do not add, remove, reorder, or rename strategy objects or their stable IDs."""
