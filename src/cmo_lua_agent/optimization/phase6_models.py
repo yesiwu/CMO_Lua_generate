@@ -66,6 +66,10 @@ class PlanningRequest:
     candidate_count: int = 4                      # 固定一轮生成4条候选
     bootstrap_skill_required: bool = True          # 强制要求加载战术经验
     max_repairs: int = 0                          # 最大自动修复次数
+    retrieved_experience_cards: tuple[dict[str, Any], ...] = ()
+    # Phase 9 only supplies bounded role hints and prior-generation facts.
+    # It never carries CMO configuration, score fragments, or arbitrary Lua.
+    generation_context: dict[str, Any] | None = None
 
     def __post_init__(self) -> None:
         """实例创建时自动强校验所有参数合法性，拦截非法入参"""
@@ -104,6 +108,10 @@ class PlanningRequest:
             "timeout_seconds": self.timeout_seconds, "max_repairs": self.max_repairs,
             "bootstrap_skill_path": self.bootstrap_skill_path,
             "candidate_count": self.candidate_count,
+            "retrieved_experience_cards": [
+                dict(card) for card in self.retrieved_experience_cards
+            ],
+            "generation_context": dict(self.generation_context or {}),
         }
 
 
@@ -123,10 +131,12 @@ class StrategyProposalContext:
     # Phase 7 supplies only compact, read-only cards.  An empty value preserves
     # the original Phase 6 proposal prompt exactly in behavior.
     retrieved_experience_cards: tuple[dict[str, Any], ...] = ()
+    active_curated_skill: dict[str, Any] | None = None
+    generation_context: dict[str, Any] | None = None
 
     def to_prompt_dict(self) -> dict[str, Any]:
         """整理成可以直接喂给LLM的结构化字典"""
-        return {
+        value = {
             "scenario": self.scenario.to_dict(), "baseline_strategy": self.baseline.to_dict(),
             "user_objective": self.user_objective,
             "allowed_strategy_paths": list(self.allowed_strategy_paths),
@@ -136,6 +146,11 @@ class StrategyProposalContext:
                                 "checksum": self.bootstrap.checksum, "content": self.bootstrap.content},
             "retrieved_experience_cards": [dict(card) for card in self.retrieved_experience_cards],
         }
+        if self.active_curated_skill is not None:
+            value["active_curated_skill"] = dict(self.active_curated_skill)
+        if self.generation_context is not None:
+            value["generation_context"] = dict(self.generation_context)
+        return value
 
 
 @dataclass(frozen=True, slots=True)

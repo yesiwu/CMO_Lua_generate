@@ -1,68 +1,59 @@
-"""
-工具权限检查 Hook。
-
-
-
-在工具执行前检查工具是否需要人工审批。
-
-如果工具 requires_approval=False，则直接允许执行。
-如果工具需要审批，则调用外部传入的 approval_function。
-如果没有配置审批函数，则默认拒绝，以避免危险工具被静默执行。
-"""
+"""Permission enforcement and trusted approval receipts for Tool calls."""
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from typing import Any, Callable
+from uuid import uuid4
 
 
-ApprovalFunction = Callable[
-    [str, dict[str, Any]],
-    bool,
-]
+@dataclass(frozen=True, slots=True)
+class ApprovalReceipt:
+    """Process-local evidence produced by PermissionHook after user approval."""
+
+    receipt_id: str
+    tool_name: str
+    issued_at: str
+    expires_at: str
+    issuer: str = "permission_hook"
+
+    @classmethod
+    def issue(cls, tool_name: str, *, lifetime_seconds: int = 300) -> "ApprovalReceipt":
+        now = datetime.now(UTC)
+        return cls(uuid4().hex, tool_name, now.isoformat(), (now + timedelta(seconds=lifetime_seconds)).isoformat())
+
+
+ApprovalFunction = Callable[[str, dict[str, Any]], bool | ApprovalReceipt]
 
 
 class ToolApprovalDeniedError(PermissionError):
-    """仅用于表示审批策略拒绝了某次工具调用。"""
+    """Raised when a tool requiring user approval is denied."""
 
 
 class PermissionHook:
-    """
-    PermissionHook 负责：
+    """Enforce approval and attach a receipt to the ephemeral hook context."""
 
-    判断是否需要审批
-    决定拒绝还是允许
-    """
-    def __init__(
-        self,
-        approval_function: ApprovalFunction | None = None,
-    ) -> None:
+    def __init__(self, approval_function: ApprovalFunction | None = None) -> None:
         self._approval_function = approval_function
 
-    def handle(
-        self,
-        event: str,
-        context: dict[str, Any],
-    ) -> None:
+    def handle(self, event: str, context: dict[str, Any]) -> None:
         if event != "before_tool_call":
             return
-
         tool = context["tool"]
-
         if not tool.requires_approval:
             return
-
         if self._approval_function is None:
-            raise ToolApprovalDeniedError(
-                f"工具 {tool.name} 需要人工审批，"
-                "但当前运行模式没有配置审批方式"
-            )
-
-        approved = self._approval_function(
-            tool.name,
-            context["arguments"],
-        )
-
-        if not approved:
-            raise ToolApprovalDeniedError(
-                f"用户拒绝执行工具 {tool.name}"
-            )
+            raise ToolApprovalDeniedError(f"tool {tool.name} requires approval")
+        decision = self._approval_function(tool.name, context["arguments"])
+        if not decision:
+            raise ToolApprovalDeniedError(f"tool approval denied: {tool.name}")
+        receipt = decision if isinstance(decision, ApprovalReceipt) else ApprovalReceipt.issue(tool.name)
+        if receipt.issuer != "permission_hook" or receipt.tool_name != tool.name:
+            raise ToolApprovalDeniedError("invalid_approval_receipt")
+        try:
+            if datetime.fromisoformat(receipt.expires_at) <= datetime.now(UTC):
+                raise ToolApprovalDeniedError("expired_approval_receipt")
+        except ValueError as exc:
+            raise ToolApprovalDeniedError("invalid_approval_receipt") from exc
+        context["approval_receipt"] = receipt

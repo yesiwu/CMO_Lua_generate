@@ -18,6 +18,7 @@ Registry 只负责“有哪些工具”和“如何分发一次调用”，
 from __future__ import annotations
 
 import logging
+from dataclasses import replace
 from typing import Any
 
 from cmo_lua_agent.hooks.manager import HookManager
@@ -123,9 +124,13 @@ class ToolRegistry:
                     hook_context,
                 )
 
+            execution_context = context
+            if context is not None and hook_context.get("approval_receipt") is not None:
+                execution_context = replace(context, approval_receipt=hook_context["approval_receipt"])
+
             raw_result = (
-                tool.execute(arguments, context=context)
-                if context is not None
+                tool.execute(arguments, context=execution_context)
+                if execution_context is not None
                 else tool.execute(arguments)
             )
 

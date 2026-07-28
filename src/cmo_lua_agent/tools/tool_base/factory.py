@@ -54,6 +54,8 @@ from cmo_lua_agent.tools.tool_base.registry import (
 )
 from cmo_lua_agent.tools.generate_cmo_lua_tool import GenerateCmoLuaTool
 from cmo_lua_agent.tools.query_cmo_database_tool import QueryCmoDatabaseTool
+from cmo_lua_agent.evolution.control_plane import EvolutionCampaignService
+from cmo_lua_agent.tools.evolution_campaign_tools import campaign_tools
 
 
 DEFAULT_CMO_RUNNER_PATH = Path(
@@ -70,6 +72,8 @@ def build_tool_registry(
     cmo_runner_path: Path | None = None,
     cmo_config_path: Path | None = None,
     cmo_lua_services: CmoLuaToolServices | None = None,
+    chat_profile: str = "standard",
+    evolution_campaign_service: EvolutionCampaignService | None = None,
 ) -> ToolRegistry:
     """
     创建并注册项目工具。
@@ -114,6 +118,15 @@ def build_tool_registry(
     registry = ToolRegistry(
         hook_manager=hook_manager,
     )
+
+    if chat_profile == "campaign":
+        if evolution_campaign_service is None:
+            raise ValueError("campaign_chat_profile_requires_service")
+        for tool in campaign_tools(service=evolution_campaign_service):
+            registry.register(tool)
+        return registry
+    if chat_profile != "standard":
+        raise ValueError("unknown_chat_profile")
 
 
     registry.register(

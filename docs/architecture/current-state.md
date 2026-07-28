@@ -46,6 +46,12 @@ execute_cmo
 - Phase 8：经验聚合、Cohort 隔离、确定性资格验证、晋升决策、
   Pending Skill 组装、三类静态回归、人工审批和 Active Skill 加载
   的工程链已经实现。
+- Phase 9：已新增受控 Campaign 的基础编排层：不可变 Campaign 契约、
+  CMO/LLM 预算、操作账本、知识快照、四角色生成上下文、候选新颖性门控、
+  Champion/Stop 策略、Fake 三代端到端测试及全局 CMO 锁。Fake 产物固定标记
+  `phase9_fake_fixture`，不会写入正式 Experience Store 或触发真实 Skill 晋升。
+  本阶段未启动真实 CMO，也未产生真实多代经验、Pending/Curated Skill 或
+  CMO effectiveness validation。
 
 ## 评分边界
 
@@ -153,6 +159,27 @@ cmo_effectiveness_validation = not_run
 - 多代自动优化和向量经验数据库；
 - Chat/Auto 默认接入 Phase 7/8；
 - Research Reward、因果归因和自动战术解释。
+
+## Phase 9B Chat Campaign Control Plane
+
+- The campaign Chat profile exposes exactly six high-level tools:
+  `prepare_evolution_campaign`, `preview_evolution_generation`,
+  `execute_evolution_generation`, `inspect_evolution_campaign`,
+  `inspect_evolution_generation`, and `control_evolution_campaign`.
+  It does not expose `execute_cmo` or Phase 6/7/8 implementation tools.
+- Campaign state, previews, approvals, checkpoints, worker state, and the
+  operation ledger are persisted below `runs/evolution/<campaign_id>/`.
+  Chat history is not a source of campaign state.
+- Preview is idempotent by generation/revision. Regeneration invalidates prior
+  approvals. Strategy-proposal LLM budget is consumed only for a new preview.
+- `execute_evolution_generation` is asynchronous: it returns a worker
+  operation ID. The Worker checks persistent pause/stop requests at safe
+  boundaries. A cancelled incomplete generation skips ranking, Phase 7/8
+  learning, and champion selection.
+- PermissionHook creates a trusted in-process approval receipt. The Campaign
+  Permission Broker validates the matching approval, preview, contract,
+  budget, control request, worker state, and CMO lock before each attempt.
+- Phase 9B was validated only with Fake workers. No real CMO Chat smoke ran.
 
 ## 健康检查
 

@@ -29,6 +29,11 @@ from cmo_lua_agent.optimization.phase6_models import (
 )
 # 策略生成Agent，用于产出4条候选策略
 from cmo_lua_agent.optimization.strategy_proposal_agent import StrategyProposalAgent
+from cmo_lua_agent.generation.scored_lua_assembly import SCORED_RENDERER_VERSION
+from cmo_lua_agent.learning.skill_evolution.active_loader import (
+    ActiveSkillLoader,
+    make_compatibility_cohort,
+)
 
 
 # 单候选评估器协议：对接Phase5 CandidateEvaluationWorkflow
@@ -36,10 +41,17 @@ class SingleCandidateEvaluator(Protocol):
     def evaluate(self, request: CandidateRequest) -> CandidateOutcome: ...
 
 
+class CandidateAcceptanceValidator(Protocol):
+    """Optional Phase 9 gate: runs after CandidateSetValidator, before Lua/CMO."""
+    def validate(self, *, baseline, candidates, generation_context: dict[str, object]) -> None: ...
+
+
 # Phase6 单轮优化主工作流
 class OptimizationGenerationWorkflow:
     def __init__(self, *, project_root: Path, proposal_agent: StrategyProposalAgent,
-                 candidate_evaluator: SingleCandidateEvaluator) -> None:
+                 candidate_evaluator: SingleCandidateEvaluator,
+                 active_skill_loader: object | None = None,
+                 candidate_acceptance_validator: CandidateAcceptanceValidator | None = None) -> None:
         # 项目根目录
         self._root = Path(project_root).resolve()
         # 策略生成Agent：产出4条候选策略
@@ -52,6 +64,12 @@ class OptimizationGenerationWorkflow:
         self._set_validator = CandidateSetValidator()
         # 候选结果排行榜排序工具
         self._comparator = CandidateComparator()
+        self._active_skill_loader = (
+            active_skill_loader
+            if active_skill_loader is not None
+            else ActiveSkillLoader(self._root / "data" / "skills")
+        )
+        self._candidate_acceptance_validator = candidate_acceptance_validator
 
     def run(self, request: PlanningRequest) -> GenerationResult:
         """单轮优化完整入口
@@ -73,18 +91,77 @@ class OptimizationGenerationWorkflow:
             self._write_json(root / "baseline_strategy.json", request.baseline.to_dict())
 
             # 组装策略生成上下文，交给Agent生成4条候选
+            try:
+                cohort = make_compatibility_cohort(
+                    score_spec_version=getattr(
+                        request.native_score_compilation.score_spec,
+                        "schema_version",
+                        "1.0.0",
+                    ),
+                    score_spec_checksum=request.native_score_compilation.score_spec_checksum,
+                    runtime_version=request.runtime.runtime_version,
+                    renderer_version=SCORED_RENDERER_VERSION,
+                )
+            except ValueError:
+                # Legacy/test profiles without semantic versions cannot match
+                # a curated Cohort and therefore retain Phase 6 behavior.
+                active_skill = None
+            else:
+                active_skill = self._active_skill_loader.load(
+                    skill_id="cmo_naval_air_strategy_patterns",
+                    cohort=cohort,
+                )
             context = StrategyProposalContext(
                 request.scenario, request.baseline.strategy, request.user_objective,
                 request.allowed_strategy_paths, request.diversity_dimensions,
                 request.runtime.runtime_id, request.runtime.runtime_version, snapshot,
+                retrieved_experience_cards=(
+                    active_skill.filter_experience_cards(
+                        request.retrieved_experience_cards
+                    )
+                    if active_skill is not None
+                    else request.retrieved_experience_cards
+                ),
+                active_curated_skill=(
+                    active_skill.to_prompt_dict()
+                    if active_skill is not None
+                    else None
+                ),
+                generation_context=request.generation_context,
             )
             candidates = self._proposal_agent.propose(context)
-
-            # Phase6前置强校验：4条候选数量、ID、结构、多样性、无重复策略
-            candidate_set = self._set_validator.validate(
-                scenario=request.scenario, baseline=request.baseline.strategy, candidates=candidates,
-                allowed_paths=request.allowed_strategy_paths, diversity_dimensions=request.diversity_dimensions,
-            )
+            # A single pre-CMO regeneration is permitted only for the Phase 9
+            # novelty gate. The formal set validator remains first.
+            for proposal_attempt in range(2):
+                candidate_set = self._set_validator.validate(
+                    scenario=request.scenario, baseline=request.baseline.strategy, candidates=candidates,
+                    allowed_paths=request.allowed_strategy_paths, diversity_dimensions=request.diversity_dimensions,
+                )
+                if not candidate_set.diversity_report.valid:
+                    break
+                try:
+                    if self._candidate_acceptance_validator is not None:
+                        self._candidate_acceptance_validator.validate(
+                            baseline=request.baseline.strategy,
+                            candidates=candidates,
+                            generation_context=dict(request.generation_context or {}),
+                        )
+                    break
+                except ValueError as exc:
+                    if proposal_attempt:
+                        raise
+                    retry_context = dict(request.generation_context or {})
+                    retry_context["novelty_rejection"] = str(exc)
+                    candidates = self._proposal_agent.propose(
+                        StrategyProposalContext(
+                            request.scenario, request.baseline.strategy, request.user_objective,
+                            request.allowed_strategy_paths, request.diversity_dimensions,
+                            request.runtime.runtime_id, request.runtime.runtime_version, snapshot,
+                            retrieved_experience_cards=context.retrieved_experience_cards,
+                            active_curated_skill=context.active_curated_skill,
+                            generation_context=retry_context,
+                        )
+                    )
             # 存档候选列表与多样性校验报告
             self._write_json(root / "strategy_candidates.json", [candidate.to_dict() for candidate in candidates])
             self._write_json(root / "diversity_report.json", candidate_set.diversity_report.to_dict())
