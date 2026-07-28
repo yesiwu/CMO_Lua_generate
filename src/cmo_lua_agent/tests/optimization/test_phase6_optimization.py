@@ -92,6 +92,7 @@ def test_proposal_agent_prompt_declares_intended_difference_string_array() -> No
     assert '"candidate_id"' in client.system
     assert '"intended_difference": ["changed_path_or_dimension"]' in client.system
     assert '"scenario_id", "attacks", and "sorties"' in client.system
+    assert "candidate_03 is conservative" in client.system
 
 
 def test_candidate_set_rejects_reordered_or_forbidden_changes() -> None:
