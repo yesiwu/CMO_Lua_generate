@@ -407,8 +407,9 @@ class EvolutionCampaignService:
             store.invalidate_approvals(generation_index=generation_index, reason="preview_regenerated")
         state = store.load_campaign_state()
         # LLM算力预算校验
+        proposal_reservation = 9
         calls = int(state.llm_call_counts.get("strategy_proposal", 0))
-        if calls >= spec.budget.max_strategy_proposal_calls or sum(state.llm_call_counts.values()) >= spec.budget.max_llm_total_calls:
+        if calls + proposal_reservation > spec.budget.max_strategy_proposal_calls or sum(state.llm_call_counts.values()) + proposal_reservation > spec.budget.max_llm_total_calls:
             raise ValueError("strategy_proposal_llm_budget_exhausted")
         # 创建策略生成操作记录
         operation = store.prepare_operation(generation_index=generation_index, kind=OperationKind.STRATEGY_PROPOSAL, input_checksum=_checksum({"contract": spec.contract_checksum, "revision": revision}))
@@ -418,6 +419,9 @@ class EvolutionCampaignService:
         try:
             payload = self._preview_builder.build(spec=spec, generation_index=generation_index, preview_revision=revision)
         except Exception as exc:
+            actual_calls = int(getattr(self._preview_builder, "proposal_calls", 0))
+            if actual_calls:
+                store.increment_llm_calls("strategy_proposal", actual_calls)
             store.mark_operation_failed(operation.operation_id, f"{type(exc).__name__}: {exc}")
             raise
         # 组装预览快照并持久化

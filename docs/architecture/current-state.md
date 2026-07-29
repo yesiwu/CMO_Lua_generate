@@ -252,6 +252,23 @@ git diff --check: passed
 Pause/Stop、恢复规则和 Phase 6/7/8 调用边界的 Fake 工程验收，不代表
 真实 Chat 单代 CMO Smoke 已完成。
 
+## Phase 9C Two-Stage Strategy Proposal
+
+- The formal proposal implementation remains
+  `optimization/strategy_proposal_agent.py`; the untracked agent draft is not
+  imported or registered.
+- Preview uses one constrained intent-planning JSON call, then one scalar Patch
+  request for each fixed candidate in order. Each candidate may make one local
+  structured repair request, so a preview consumes 5 to 9 proposal calls.
+- Complete StrategySpec objects are assembled deterministically from the
+  baseline. The LLM cannot replace objects or arrays, stable IDs, scenario IDs,
+  or weapon DBIDs. `StrategyCandidate.intended_difference` is derived from the
+  validated Patch diff, not a model-provided summary.
+- Preview reserves the worst-case nine proposal calls before starting. Frozen
+  previews remain the only execution input and idempotent preview reads use no
+  additional proposal calls.
+- This change does not invoke CMO or a production LLM endpoint.
+
 ## 健康检查
 
 ```powershell

@@ -37,17 +37,25 @@ def _score(scenario: ScenarioDefinition) -> CmoNativeScoreCompilation:
 
 
 class _Client:
+    def __init__(self) -> None:
+        self.calls = 0
+
     def complete_json(self, **_: object) -> object:
-        strategies = (_strategy(1), _strategy(2), _strategy(3), _strategy(5))
-        rows = []
-        for i, strategy in enumerate(strategies):
-            payload = strategy.to_dict()
-            if i == 1:
-                payload["attacks"][0]["delay_seconds"] = 1
-            if i == 3:
-                payload["attacks"][0]["delay_seconds"] = 4
-            rows.append({"candidate_id": f"candidate_{i:02d}", "strategy": payload, "proposal_summary": "x", "intended_difference": ["fire_quantity"]})
-        return {"candidates": rows}
+        responses = (
+            {"intents": [
+                {"objective": "Reduce volume.", "strategy_dimensions": ["fire_quantity"]},
+                {"objective": "Delay attack.", "strategy_dimensions": ["attack_timing"]},
+                {"objective": "Change two dimensions.", "strategy_dimensions": ["fire_quantity", "attack_timing"]},
+                {"objective": "Conservative delay.", "strategy_dimensions": ["attack_timing"]},
+            ]},
+            {"proposal_summary": "x", "changes": [{"path": "/attacks/0/fire_quantity", "value": 1}]},
+            {"proposal_summary": "x", "changes": [{"path": "/attacks/0/delay_seconds", "value": 1}]},
+            {"proposal_summary": "x", "changes": [{"path": "/attacks/0/fire_quantity", "value": 3}, {"path": "/attacks/0/delay_seconds", "value": 3}]},
+            {"proposal_summary": "x", "changes": [{"path": "/attacks/0/delay_seconds", "value": 4}]},
+        )
+        response = responses[self.calls]
+        self.calls += 1
+        return response
 
 
 def test_bootstrap_loader_freezes_project_relative_skill(tmp_path: Path) -> None:
@@ -65,34 +73,35 @@ def test_proposal_agent_rejects_extra_fields() -> None:
     class Bad:
         def complete_json(self, **_: object) -> object: return {"lua": "bad"}
     context = StrategyProposalContext(
-        _scenario(), _strategy(), "objective", ("/attacks/0/fire_quantity",), ("fire_quantity",),
+        _scenario(), _strategy(), "objective", ("/attacks/0/fire_quantity", "/attacks/0/delay_seconds"), ("fire_quantity", "attack_timing"),
         "runtime", "v", BootstrapSkillSnapshot("skill", "1", "bootstrap", "human-authored", "none", ("StrategyProposalAgent",), "x.md", "body", "checksum"),
     )
     with pytest.raises(ValueError):
         StrategyProposalAgent(Bad()).propose(context)
 
 
-def test_proposal_agent_prompt_declares_intended_difference_string_array() -> None:
+def test_proposal_agent_prompts_for_intents_then_scalar_patches() -> None:
     class CapturingClient:
         def __init__(self) -> None:
-            self.system = ""
+            self.systems: list[str] = []
+            self._delegate = _Client()
 
         def complete_json(self, **kwargs: object) -> object:
-            self.system = str(kwargs["system"])
-            return _Client().complete_json()
+            self.systems.append(str(kwargs["system"]))
+            return self._delegate.complete_json()
 
     client = CapturingClient()
     context = StrategyProposalContext(
-        _scenario(), _strategy(), "objective", ("/attacks/0/fire_quantity",), ("fire_quantity",),
+        _scenario(), _strategy(), "objective", ("/attacks/0/fire_quantity", "/attacks/0/delay_seconds"), ("fire_quantity", "attack_timing"),
         "runtime", "v", BootstrapSkillSnapshot("skill", "1", "bootstrap", "human-authored", "none", ("StrategyProposalAgent",), "x.md", "body", "checksum"),
     )
 
     StrategyProposalAgent(client).propose(context)
 
-    assert '"candidate_id"' in client.system
-    assert '"intended_difference": ["changed_path_or_dimension"]' in client.system
-    assert '"scenario_id", "attacks", and "sorties"' in client.system
-    assert "candidate_03 is conservative" in client.system
+    assert len(client.systems) == 5
+    assert "CandidateIntentPlanner" in client.systems[0]
+    assert "CandidatePatchGenerator" in client.systems[1]
+    assert "full strategy" in client.systems[1]
 
 
 def test_candidate_set_rejects_reordered_or_forbidden_changes() -> None:

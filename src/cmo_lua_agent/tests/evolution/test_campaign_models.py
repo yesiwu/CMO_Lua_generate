@@ -14,7 +14,7 @@ def _budget(**changes: int) -> CampaignBudget:
         "max_repair_attempts_per_candidate": 1,
         "max_failed_runs": 8,
         "max_llm_total_calls": 20,
-        "max_strategy_proposal_calls": 6,
+        "max_strategy_proposal_calls": 9,
         "max_lua_generation_calls": 0,
         "max_lua_repair_calls": 8,
         "max_comparative_learning_calls": 3,

@@ -293,10 +293,14 @@ def test_optimization_workflow_loads_matching_active_skill(
     tmp_path: Path,
 ) -> None:
     class CaptureClient(_Client):
-        prompt: dict | None = None
+        prompts: list[dict]
+
+        def __init__(self) -> None:
+            super().__init__()
+            self.prompts = []
 
         def complete_json(self, **kwargs: object) -> object:
-            self.prompt = json.loads(str(kwargs["prompt"]))
+            self.prompts.append(json.loads(str(kwargs["prompt"])))
             return super().complete_json(**kwargs)
 
     class Loader:
@@ -340,5 +344,4 @@ def test_optimization_workflow_loads_matching_active_skill(
     result = workflow.run(request)
 
     assert result.workflow_completed
-    assert client.prompt is not None
-    assert client.prompt["active_curated_skill"]["version"] == "0.1.0"
+    assert client.prompts[0]["active_curated_skill"]["version"] == "0.1.0"

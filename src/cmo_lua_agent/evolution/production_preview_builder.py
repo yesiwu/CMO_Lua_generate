@@ -100,8 +100,11 @@ class ProductionPreviewBuilder:
             ),
             generation_context=context_value,
         )
-        candidates = self._proposal_agent.propose(context)
-        self.proposal_calls += 1
+        try:
+            candidates = self._proposal_agent.propose(context)
+        finally:
+            usage = getattr(self._proposal_agent, "last_usage", None)
+            self.proposal_calls = int(getattr(usage, "total_calls", 0))
         candidate_set = CandidateSetValidator().validate(
             scenario=self._package.scenario,
             baseline=self._package.baseline.strategy,
@@ -137,7 +140,7 @@ class ProductionPreviewBuilder:
             self._atomic_json(snapshot_path, snapshot)
         self._atomic_json(frozen_path, frozen.to_dict())
         self._atomic_json(diff_path, diffs)
-        return self._payload(frozen, snapshot, diffs, frozen_path, diff_path, 1)
+        return self._payload(frozen, snapshot, diffs, frozen_path, diff_path, self.proposal_calls)
 
     def _default_generation_context(self, generation_index: int) -> dict[str, object]:
         profile = getattr(self._package, "baseline_failure_profile", None)

@@ -39,7 +39,7 @@ def _spec() -> EvolutionCampaignSpec:
         allowed_strategy_paths=("/attacks/0/fire_quantity",),
         generation_objective="improve",
         execution_mode=CampaignExecutionMode.FAKE_FIXTURE,
-        budget=CampaignBudget(2, 10, 1, 1, 0, 4, 8, 4, 0, 0, 0, 0, 3600, 1200, 600),
+        budget=CampaignBudget(2, 10, 1, 1, 0, 4, 20, 20, 0, 0, 0, 0, 3600, 1200, 600),
     )
 
 

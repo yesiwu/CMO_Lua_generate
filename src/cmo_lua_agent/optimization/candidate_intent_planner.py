@@ -40,6 +40,9 @@ class CandidateIntentPlanner:
                 "user_objective": context.user_objective,
                 "allowed_strategy_dimensions": sorted(allowed_dimensions),
                 "bootstrap_skill": {"skill_id": context.bootstrap.skill_id, "content": context.bootstrap.content},
+                "active_curated_skill": (
+                    None if context.active_curated_skill is None else dict(context.active_curated_skill)
+                ),
                 "retrieved_experience_cards": [dict(card) for card in context.retrieved_experience_cards],
                 "generation_context": dict(context.generation_context or {}),
             }, ensure_ascii=False, sort_keys=True),
