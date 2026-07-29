@@ -106,33 +106,38 @@ class ProductionPreviewBuilder:
             trace = getattr(self._proposal_agent, "last_audit", {})
             if trace:
                 self._atomic_json(preview_root / "proposal-trace.json", trace)
-            self._atomic_json(preview_root / "proposal-failure.json", {
-                "candidate_id": getattr(error, "candidate_id", None),
-                "error_code": getattr(error, "code", type(error).__name__),
-                "failure_stage": getattr(error, "stage", "intent_or_patch"),
-                "message": str(error),
-                "proposal_llm_calls": int(getattr(getattr(self._proposal_agent, "last_usage", None), "total_calls", 0)),
-                "validator_violations": list(getattr(error, "violations", ())),
-                "changed_paths": list(getattr(error, "changed_paths", ())),
-            })
+            self._atomic_json(
+                preview_root / "proposal-failure.json",
+                self.failure_audit(error=error, proposal_agent=self._proposal_agent),
+            )
             raise
         finally:
             usage = getattr(self._proposal_agent, "last_usage", None)
             self.proposal_calls = int(getattr(usage, "total_calls", 0))
-        candidate_set = CandidateSetValidator().validate(
-            scenario=self._package.scenario,
-            baseline=self._package.baseline.strategy,
-            candidates=candidates,
-            allowed_paths=self._package.allowed_strategy_paths,
-            diversity_dimensions=self._package.diversity_dimensions,
-        )
-        if not candidate_set.diversity_report.valid:
-            raise ValueError("candidate_set_invalid")
-        self._novelty.validate(
-            baseline=self._package.baseline.strategy,
-            candidates=candidates,
-            generation_context=context_value,
-        )
+        trace = getattr(self._proposal_agent, "last_audit", {})
+        if trace:
+            self._atomic_json(preview_root / "proposal-trace.json", trace)
+        try:
+            candidate_set = CandidateSetValidator().validate(
+                scenario=self._package.scenario,
+                baseline=self._package.baseline.strategy,
+                candidates=candidates,
+                allowed_paths=self._package.allowed_strategy_paths,
+                diversity_dimensions=self._package.diversity_dimensions,
+            )
+            if not candidate_set.diversity_report.valid:
+                raise ValueError("candidate_set_invalid")
+            self._novelty.validate(
+                baseline=self._package.baseline.strategy,
+                candidates=candidates,
+                generation_context=context_value,
+            )
+        except Exception as error:
+            self._atomic_json(
+                preview_root / "proposal-failure.json",
+                self.failure_audit(error=error, proposal_agent=self._proposal_agent),
+            )
+            raise
         frozen = FrozenCandidateSet.create(
             campaign_id=spec.campaign_id,
             generation_index=generation_index,
@@ -186,6 +191,27 @@ class ProductionPreviewBuilder:
             frozen_candidate_set_ref=str(frozen_path),
             strategy_diff_ref=str(diff_path),
         )
+
+    @staticmethod
+    def failure_audit(*, error: Exception, proposal_agent) -> dict[str, object]:
+        error_code = getattr(error, "code", None) or str(error) or type(error).__name__
+        if error_code.startswith("novelty_"):
+            stage = "novelty_validation"
+        elif error_code == "candidate_set_invalid":
+            stage = "candidate_set_validation"
+        else:
+            stage = getattr(error, "stage", "intent_or_patch")
+        return {
+            "candidate_id": getattr(error, "candidate_id", None),
+            "error_code": error_code,
+            "failure_stage": stage,
+            "message": str(error),
+            "proposal_llm_calls": int(
+                getattr(getattr(proposal_agent, "last_usage", None), "total_calls", 0)
+            ),
+            "validator_violations": list(getattr(error, "violations", ())),
+            "changed_paths": list(getattr(error, "changed_paths", ())),
+        }
 
     @staticmethod
     def _atomic_json(path: Path, value: object) -> None:

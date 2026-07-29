@@ -11,6 +11,9 @@ import pytest
 from cmo_lua_agent.contract import load_baseline_strategy, load_scenario_definition
 from cmo_lua_agent.contract.strategy_models import strategy_spec_from_dict
 from cmo_lua_agent.evolution.production_models import ControlledScenarioAsset
+from cmo_lua_agent.evolution.production_preview_builder import (
+    ProductionPreviewBuilder,
+)
 from cmo_lua_agent.evolution.production_knowledge import (
     ProductionKnowledgeSnapshotProvider,
 )
@@ -37,6 +40,26 @@ from cmo_lua_agent.tools.evolution_campaign_tools import PrepareEvolutionCampaig
 from cmo_lua_agent.tools.evolution_campaign_tools import (
     PreviewEvolutionGenerationTool,
 )
+
+
+def test_preview_failure_audit_classifies_post_proposal_novelty_failure() -> None:
+    proposal = SimpleNamespace(
+        last_usage=SimpleNamespace(total_calls=5),
+        last_audit={
+            "intents": [{"candidate_id": "candidate_02"}],
+            "accepted_candidates": [{"candidate_id": "candidate_02"}],
+        },
+    )
+
+    audit = ProductionPreviewBuilder.failure_audit(
+        error=ValueError("novelty_explore_dimension_missing"),
+        proposal_agent=proposal,
+    )
+
+    assert audit["failure_stage"] == "novelty_validation"
+    assert audit["error_code"] == "novelty_explore_dimension_missing"
+    assert audit["proposal_llm_calls"] == 5
+    assert "intents" not in audit
 
 
 def test_chat_parser_exposes_explicit_standard_and_campaign_profiles() -> None:
