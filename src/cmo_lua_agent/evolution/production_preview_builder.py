@@ -69,6 +69,16 @@ class ProductionPreviewBuilder:
             diffs = json.loads(diff_path.read_text(encoding="utf-8"))
             return self._payload(frozen, snapshot, diffs, frozen_path, diff_path, 0)
         preview_root.mkdir(parents=True, exist_ok=False)
+        self._atomic_json(
+            preview_root / "derived-baseline-strategy.json",
+            self._package.baseline.strategy.to_dict(),
+        )
+        derivation_manifest = getattr(self._package, "baseline_derivation_manifest", None)
+        if derivation_manifest is not None:
+            self._atomic_json(
+                preview_root / "baseline-derivation-manifest.json",
+                dict(derivation_manifest),
+            )
         context_value = (
             dict(self._context_builder(generation_index))
             if self._context_builder is not None

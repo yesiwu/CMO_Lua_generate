@@ -8,7 +8,8 @@ from pathlib import Path
 import subprocess
 from typing import Any
 
-from cmo_lua_agent.contract import load_baseline_strategy, load_scenario_definition
+from cmo_lua_agent.contract.baseline_strategy_builder import BaselineStrategyBuilder
+from cmo_lua_agent.contract.strategy_models import BaselineStrategy
 from cmo_lua_agent.evolution.baseline_failure_profile import (
     BaselineFailureProfileBuilder,
 )
@@ -41,6 +42,8 @@ class ControlledCampaignInputPackage:
     working_tree_dirty: bool
     diff_checksum: str | None
     package_checksum: str
+    scenario_ir_checksum: str = ""
+    baseline_derivation_manifest: Any | None = None
 
 
 class ControlledCampaignInputPackageLoader:
@@ -96,8 +99,7 @@ class ControlledCampaignInputPackageLoader:
             raise ValueError("unknown_campaign_input_package")
         baseline_root = self.root / "baseline" / "6v4"
         paths = {
-            "scenario": baseline_root / "scenario_definition.json",
-            "baseline": baseline_root / "baseline_strategy.json",
+            "scenario_ir": self.root / "json_data" / "6v4ScenarioIR.json",
             "objectives": baseline_root / "scenario_objectives.json",
             "role_catalog": baseline_root / "unit_role_catalog.json",
             "score_profile": baseline_root / "score_profile.json",
@@ -109,8 +111,14 @@ class ControlledCampaignInputPackageLoader:
         commit, dirty, diff_checksum = self._git_state()
         if self.require_clean_worktree and dirty:
             raise ValueError("working_tree_dirty")
-        scenario = load_scenario_definition(paths["scenario"])
-        baseline = load_baseline_strategy(paths["baseline"])
+        scenario_ir = self._load_json(paths["scenario_ir"])
+        derived = BaselineStrategyBuilder().build(scenario_ir)
+        scenario = derived.scenario
+        baseline = BaselineStrategy(
+            strategy=derived.strategy,
+            source_lua="json_data/6v4ScenarioIR.json",
+            verified=True,
+        )
         score = compile_score_baseline(baseline_root).compilation
         runtime = LuaRuntimeProfile("cmo_naval_air_anti_surface_scored", "2.0.0")
         bootstrap = BootstrapSkillLoader(self.root).load(
@@ -131,6 +139,10 @@ class ControlledCampaignInputPackageLoader:
             name: self._sha(path) for name, path in paths.items()
         }
         checksums.update({
+            "scenario_ir": derived.manifest.scenario_ir_checksum,
+            "scenario_definition_derived": derived.manifest.scenario_definition_checksum,
+            "baseline_strategy_derived": derived.manifest.baseline_strategy_checksum,
+            "baseline_derivation_mapping": derived.manifest.mapping_checksum,
             "score_spec_compiled": score.score_spec_checksum,
             "score_fragment_compiled": score.fragment_checksum,
             "runtime": canonical_checksum(runtime.to_dict()),
@@ -163,6 +175,8 @@ class ControlledCampaignInputPackageLoader:
             working_tree_dirty=dirty,
             diff_checksum=diff_checksum,
             package_checksum=canonical_checksum(identity),
+            scenario_ir_checksum=derived.manifest.scenario_ir_checksum,
+            baseline_derivation_manifest=derived.manifest.to_dict(),
         )
 
     def _git_state(self) -> tuple[str, bool, str | None]:
@@ -195,3 +209,12 @@ class ControlledCampaignInputPackageLoader:
     @staticmethod
     def _sha(path: Path) -> str:
         return sha256(path.read_bytes()).hexdigest()
+
+    @staticmethod
+    def _load_json(path: Path) -> dict[str, Any]:
+        import json
+
+        value = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(value, dict):
+            raise ValueError("scenario_ir_invalid")
+        return value
