@@ -401,6 +401,13 @@ class EvolutionCampaignService:
         current = store.get_preview(generation_index)
         if current is not None and not regenerate_preview:
             return current
+        if not regenerate_preview and any(
+            operation.generation_index == generation_index
+            and operation.kind is OperationKind.STRATEGY_PROPOSAL
+            and operation.status is OperationStatus.FAILED
+            for operation in store.list_operations()
+        ):
+            raise ValueError("preview_regeneration_required")
         revision = store.next_preview_revision(generation_index)
         # 强制重生成预览 → 旧审批失效
         if regenerate_preview:

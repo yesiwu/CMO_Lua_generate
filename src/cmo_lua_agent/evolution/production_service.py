@@ -257,7 +257,10 @@ def create_production_evolution_campaign_service(
         project_root=project_root,
         package_loader=ControlledCampaignInputPackageLoader(
             project_root=project_root,
-            require_clean_worktree=True,
+            # Phase 9C-1 freezes the current revision and dirty fingerprint
+            # into the input package instead of rejecting an otherwise
+            # traceable operator worktree before a preview.
+            require_clean_worktree=False,
         ),
         proposal_agent=StrategyProposalAgent(json_client),
         candidate_evaluator=FormalCandidateEvaluator(
