@@ -1,0 +1,35 @@
+{
+  "changed_operation_ids": [
+    "air_launch.red_j15_1_attack_cvn70",
+    "air_launch.red_j15_2_attack_ddg113_2",
+    "attack.red_052d_1_attack_cg59",
+    "attack.red_052d_2_attack_cg59",
+    "attack.red_055_attack_ddg113_1"
+  ],
+  "changed_platform_ids": [
+    "red_052d_1",
+    "red_052d_2",
+    "red_055_nanchang",
+    "red_j15_1",
+    "red_j15_2"
+  ],
+  "derived_baseline_checksum": "2355c5f898affafe39c6d7fe7a7f973e64d9b32264456ff5217f1aa3aec1459c",
+  "execution_plan_checksum": "5db46d86e4be1ff5b9c0198559236c8908c805b796207ec508f7655b971ea3ca",
+  "fixture_purpose": "formal_chain_expression_regression",
+  "formal_comparison_eligible": false,
+  "lua_checksum": "106156433b72fcbcdc0d48639c0a551538c6d50e78cfae10582c019d8167f037",
+  "native_score_fragment_checksum": "96f2f2e8694520581922d57bc6650e434688e3bcfa90e6f2c99ec27ae3400b4b",
+  "patch_checksum": "33bb33f66a9b0a7e27c7bd095e33c562af3ec60bc201fc6fc24e7fc2e3ceacec",
+  "runtime_version": "2.0.0",
+  "score_spec_checksum": "9a7f68a20cea722df7ae77c28a93199b1042258bd153973e25021b5e498762df",
+  "semantic_dimensions": [
+    "air_route",
+    "attack_timing",
+    "fire_quantity",
+    "target_assignment"
+  ],
+  "sortie_operation_count": 2,
+  "source_scenario_ir_checksum": "b04a65ed8d06d49e20671e446624c2de886f35247e09b28e25d31b995b6a558d",
+  "strategy_checksum": "19dfac2b100c49e3298df68a2d9c78ae3041117834ffe11df18d052e35cd8cc8",
+  "surface_operation_count": 3
+}

@@ -1,0 +1,34 @@
+{
+  "candidate_id": "candidate_02",
+  "proposal_summary": "Deconflict three surface targets and stagger the surface strike schedule.",
+  "changes": [
+    {
+      "path": "/attacks/0/delay_seconds",
+      "value": 15
+    },
+    {
+      "path": "/attacks/0/fire_quantity",
+      "value": 7
+    },
+    {
+      "path": "/attacks/1/delay_seconds",
+      "value": 45
+    },
+    {
+      "path": "/attacks/1/target_ids/0",
+      "value": "blue_cvn70"
+    },
+    {
+      "path": "/attacks/2/delay_seconds",
+      "value": 75
+    },
+    {
+      "path": "/sorties/0/route/0/latitude",
+      "value": 23.55
+    },
+    {
+      "path": "/sorties/1/route/0/longitude",
+      "value": 130.05
+    }
+  ]
+}

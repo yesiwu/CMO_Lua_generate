@@ -122,7 +122,20 @@ def _quantity_maximum(tokens: list[str], payload: dict[str, Any], units: dict[st
         index = int(tokens[1])
         attack = payload["attacks"][index]
         unit = units[attack["shooter_id"]]
-        inventory = next(item for item in unit.weapon_inventory if item.weapon_dbid == attack["weapon_dbid"])
+        if attack.get("weapon_selection", "explicit") == "auto":
+            # Auto selection has no weapon DBID. A unique inventory yields a
+            # safe upper bound; otherwise the verified Baseline quantity is
+            # the conservative ceiling.
+            if len(unit.weapon_inventory) == 1:
+                inventory = unit.weapon_inventory[0]
+            else:
+                return int(attack["fire_quantity"])
+        else:
+            inventory = next(
+                item
+                for item in unit.weapon_inventory
+                if item.weapon_dbid == attack["weapon_dbid"]
+            )
         if tokens[-1] == "fire_quantity":
             return inventory.max_quantity - attack["reserve_quantity"]
         return inventory.max_quantity - attack["fire_quantity"]
