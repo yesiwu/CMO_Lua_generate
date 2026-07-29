@@ -74,6 +74,23 @@ class _RepairPreviewBuilder(_PreviewBuilder):
         )
 
 
+@dataclass
+class _ResumePreviewBuilder(_PreviewBuilder):
+    resumed: list[str] = None  # type: ignore[assignment]
+
+    def __post_init__(self) -> None:
+        self.resumed = []
+
+    def resume_from_candidate(self, *, candidate_id: str, preview_revision: int, **_kwargs):
+        self.resumed.append(candidate_id)
+        return GenerationPreviewPayload(
+            knowledge_snapshot_checksum="snapshot-resume",
+            candidate_set_checksum="candidates-resume",
+            strategy_diffs=({"candidate_id": candidate_id},),
+            proposal_llm_calls=4,
+        )
+
+
 class _Executor:
     def __init__(self) -> None:
         self.calls = 0
@@ -251,3 +268,28 @@ def test_targeted_preview_repair_only_consumes_one_patch_call(tmp_path: Path) ->
     assert preview.repair_calls == ["candidate_02"]
     assert result.preview_revision == 1
     assert service.inspect_campaign("control_fixture")["budget"]["llm_call_counts"] == {"strategy_proposal": 1}
+
+
+def test_resume_preview_from_json_failed_candidate_reuses_remaining_budget(tmp_path: Path) -> None:
+    preview = _ResumePreviewBuilder()
+    service = EvolutionCampaignService(
+        campaigns_root=tmp_path / "runs" / "evolution",
+        preview_builder=preview,
+        generation_executor=_Executor(),
+        synchronous_fake_workers=True,
+    )
+    service.prepare_campaign(_spec())
+    store = CampaignStore(tmp_path / "runs" / "evolution" / "control_fixture")
+    store.increment_llm_calls("strategy_proposal", 5)
+
+    result = service.resume_preview_from_candidate(
+        campaign_id="control_fixture",
+        generation_index=0,
+        source_revision=0,
+        candidate_id="candidate_02",
+    )
+
+    assert preview.calls == 0
+    assert preview.resumed == ["candidate_02"]
+    assert result.preview_revision == 1
+    assert service.inspect_campaign("control_fixture")["budget"]["llm_call_counts"] == {"strategy_proposal": 9}

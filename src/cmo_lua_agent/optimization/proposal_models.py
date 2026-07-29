@@ -22,8 +22,15 @@ STRATEGY_DIMENSIONS = (
 class ProposalContractError(ValueError):
     """Stable, user-safe proposal contract failure."""
 
-    def __init__(self, code: str, detail: str | None = None) -> None:
+    def __init__(
+        self,
+        code: str,
+        detail: str | None = None,
+        *,
+        diagnostics: dict[str, object] | None = None,
+    ) -> None:
         self.code = code
+        self.diagnostics = dict(diagnostics or {})
         super().__init__(detail or code)
 
 
@@ -36,7 +43,11 @@ class CandidateProposalError(ProposalContractError):
         self.cause_code = cause.code
         self.violations = tuple(getattr(cause, "violations", ()))
         self.changed_paths = tuple(getattr(cause, "changed_paths", ()))
-        super().__init__(cause.code, f"{candidate_id}:{stage}:{cause.code}")
+        super().__init__(
+            cause.code,
+            f"{candidate_id}:{stage}:{cause.code}",
+            diagnostics=getattr(cause, "diagnostics", {}),
+        )
 
 
 class StrategyValidationProposalError(ProposalContractError):

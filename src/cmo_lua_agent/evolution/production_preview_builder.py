@@ -12,7 +12,7 @@ from cmo_lua_agent.evolution.production_models import (
     canonical_checksum,
 )
 from cmo_lua_agent.evolution.novelty import CandidateNoveltyError
-from cmo_lua_agent.optimization.candidate_set_validator import CandidateSetValidator
+from cmo_lua_agent.optimization.candidate_set_validator import CandidateSetValidator, _dimension
 from cmo_lua_agent.optimization.phase6_models import StrategyProposalContext
 from cmo_lua_agent.optimization.proposal_models import (
     AcceptedCandidateSummary,
@@ -213,11 +213,15 @@ class ProductionPreviewBuilder:
             stage = "candidate_set_validation"
         else:
             stage = getattr(error, "stage", "intent_or_patch")
+        is_json_failure = error_code == "proposal_json_invalid"
         return {
             "candidate_id": getattr(error, "candidate_id", None),
+            "failed_candidate_id": getattr(error, "candidate_id", None),
             "failed_candidate_ids": list(getattr(error, "failed_candidate_ids", ())),
             "error_code": error_code,
+            "failure_code": "proposal_json_invalid" if is_json_failure else error_code,
             "failure_stage": stage,
+            "failed_stage": stage if is_json_failure else None,
             "message": str(error),
             "proposal_llm_calls": int(
                 getattr(getattr(proposal_agent, "last_usage", None), "total_calls", 0)
@@ -227,11 +231,16 @@ class ProductionPreviewBuilder:
             "required_dimensions": list(getattr(error, "required_dimensions", ())),
             "actual_dimensions": list(getattr(error, "actual_dimensions", ())),
             "related_changed_paths": list(getattr(error, "related_changed_paths", ())),
+            "json_diagnostics": dict(getattr(error, "diagnostics", {})),
             "preview_status": (
                 "novelty_repair_required"
                 if error_code == "novelty_explore_dimension_missing"
+                else "awaiting_operator_action"
+                if is_json_failure
                 else "terminal_failed"
             ),
+            "campaign_status": "awaiting_operator_action" if is_json_failure else None,
+            "recovery_action": "resume_preview_from_candidate" if is_json_failure else None,
         }
 
     def repair_candidate(
@@ -265,6 +274,16 @@ class ProductionPreviewBuilder:
             for item in existing if item.candidate_id != candidate_id
         )
         prior = ProposalContractError(str(failure["error_code"]))
+        prior.violations = ({
+            "code": failure["error_code"],
+            "path": list(failure.get("related_changed_paths", ())),
+            "actual_value": list(failure.get("actual_dimensions", ())),
+            "constraint_summary": {
+                "required_dimensions": list(failure.get("required_dimensions", ())),
+                "related_changed_paths": list(failure.get("related_changed_paths", ())),
+            },
+        },)
+        prior.changed_paths = tuple(failure.get("related_changed_paths", ()))
         replacement = self._proposal_agent.repair_candidate(
             context, intent=target_intent, accepted=accepted, prior_error=prior
         )
@@ -296,6 +315,102 @@ class ProductionPreviewBuilder:
         self._atomic_json(preview_root / "strategy-diff.json", diffs)
         return self._payload(frozen, snapshot, diffs, preview_root / "frozen-candidate-set.json", preview_root / "strategy-diff.json", self.proposal_calls)
 
+    def resume_from_candidate(
+        self,
+        *,
+        spec,
+        generation_index: int,
+        source_revision: int,
+        preview_revision: int,
+        candidate_id: str,
+    ) -> GenerationPreviewPayload:
+        """Resume a JSON-failed trace from one candidate without replanning intents."""
+        root = Path(self._root_for(spec.campaign_id)).resolve()
+        source_root = root / "previews" / f"generation_{generation_index:03d}" / f"revision_{source_revision:03d}"
+        trace_path = source_root / "proposal-trace.json"
+        failure_path = source_root / "proposal-failure.json"
+        if not trace_path.is_file() or not failure_path.is_file():
+            raise ValueError("awaiting_operator_action")
+        trace = json.loads(trace_path.read_text(encoding="utf-8"))
+        failure = json.loads(failure_path.read_text(encoding="utf-8"))
+        failure_candidate, failure_stage = _json_failure_location(trace, failure)
+        if (
+            failure_candidate != candidate_id
+            or failure_stage not in {"patch_generation", "patch_repair"}
+        ):
+            raise ValueError("awaiting_operator_action")
+        snapshot_path = source_root / "knowledge-snapshot.json"
+        if not snapshot_path.is_file():
+            raise ValueError("awaiting_operator_action")
+        snapshot = json.loads(snapshot_path.read_text(encoding="utf-8"))
+        context_value = self._default_generation_context(generation_index)
+        context = self._proposal_context(spec=spec, snapshot=snapshot, generation_context=context_value)
+        intents = tuple(_intent_from_trace(trace, item) for item in _candidate_ids_from_trace(trace))
+        target_index = _candidate_ids_from_trace(trace).index(candidate_id)
+        existing = _accepted_prefix_from_trace(trace, context, stop_before=candidate_id)
+        accepted = [
+            AcceptedCandidateSummary(item.candidate_id, item.strategy_checksum, item.intended_difference, tuple(sorted({_dimension(path) for path in item.intended_difference})))
+            for item in existing
+        ]
+        preview_root = root / "previews" / f"generation_{generation_index:03d}" / f"revision_{preview_revision:03d}"
+        preview_root.mkdir(parents=True, exist_ok=False)
+        calls = 0
+        merged_trace = dict(trace)
+        merged_trace["parent_revision"] = source_revision
+        resumed_attempts: list[object] = []
+        candidates = list(existing)
+        try:
+            for intent in intents[target_index:]:
+                candidate = self._proposal_agent.generate_candidate(
+                    context, intent=intent, accepted=tuple(accepted)
+                )
+                calls += int(getattr(self._proposal_agent.last_usage, "total_calls", 0))
+                candidates.append(candidate)
+                dimensions = tuple(sorted({_dimension(path) for path in candidate.intended_difference}))
+                accepted.append(AcceptedCandidateSummary(candidate.candidate_id, candidate.strategy_checksum, candidate.intended_difference, dimensions))
+                resumed_attempts.append(getattr(self._proposal_agent, "last_audit", {}))
+        except Exception as error:
+            calls += int(getattr(self._proposal_agent.last_usage, "total_calls", 0))
+            self.proposal_calls = calls
+            merged_trace["parent_revision"] = source_revision
+            merged_trace["resumed_candidate_attempts"] = resumed_attempts
+            self._atomic_json(preview_root / "proposal-trace.json", merged_trace)
+            self._atomic_json(preview_root / "knowledge-snapshot.json", snapshot)
+            self._atomic_json(preview_root / "proposal-failure.json", self.failure_audit(error=error, proposal_agent=self._proposal_agent))
+            raise
+        self.proposal_calls = calls
+        merged_trace["parent_revision"] = source_revision
+        merged_trace["resumed_candidate_attempts"] = resumed_attempts
+        self._atomic_json(preview_root / "proposal-trace.json", merged_trace)
+        self._atomic_json(preview_root / "knowledge-snapshot.json", snapshot)
+        candidate_tuple = tuple(candidates)
+        candidate_set = CandidateSetValidator().validate(
+            scenario=self._package.scenario, baseline=self._package.baseline.strategy,
+            candidates=candidate_tuple, allowed_paths=self._package.allowed_strategy_paths,
+            diversity_dimensions=self._package.diversity_dimensions,
+        )
+        if not candidate_set.diversity_report.valid:
+            raise ValueError("candidate_set_invalid")
+        try:
+            self._novelty.validate(
+                baseline=self._package.baseline.strategy,
+                candidates=candidate_tuple,
+                generation_context=context_value,
+            )
+        except Exception as error:
+            self._atomic_json(preview_root / "proposal-failure.json", self.failure_audit(error=error, proposal_agent=self._proposal_agent))
+            raise
+        frozen = FrozenCandidateSet.create(
+            campaign_id=spec.campaign_id, generation_index=generation_index,
+            preview_revision=preview_revision, baseline=self._package.baseline.strategy.to_dict(),
+            candidates=tuple(item.to_dict() for item in candidate_tuple),
+            source_proposal_operation_id=f"g{generation_index:03d}:strategy_proposal_resume:r{preview_revision:03d}",
+        )
+        diffs = [{"candidate_id": item.candidate_id, "changed_paths": list(item.intended_difference)} for item in candidate_tuple]
+        self._atomic_json(preview_root / "frozen-candidate-set.json", frozen.to_dict())
+        self._atomic_json(preview_root / "strategy-diff.json", diffs)
+        return self._payload(frozen, snapshot, diffs, preview_root / "frozen-candidate-set.json", preview_root / "strategy-diff.json", calls)
+
     def _proposal_context(self, *, spec, snapshot, generation_context):
         return StrategyProposalContext(
             scenario=self._package.scenario, baseline=self._package.baseline.strategy,
@@ -325,7 +440,53 @@ def _intent_from_trace(trace: dict[str, object], candidate_id: str) -> Candidate
     raise ValueError("awaiting_operator_action")
 
 
-def _candidates_from_trace(trace: dict[str, object], context: StrategyProposalContext):
+def _candidate_ids_from_trace(trace: dict[str, object]) -> tuple[str, ...]:
+    values = []
+    for row in trace.get("intents", []):
+        if not isinstance(row, dict) or not isinstance(row.get("candidate_id"), str):
+            raise ValueError("awaiting_operator_action")
+        values.append(row["candidate_id"])
+    if values != ["candidate_00", "candidate_01", "candidate_02", "candidate_03"]:
+        raise ValueError("awaiting_operator_action")
+    return tuple(values)
+
+
+def _json_failure_location(trace: dict[str, object], failure: dict[str, object]) -> tuple[str | None, str | None]:
+    """Read newer audit fields or conservatively derive a legacy location from trace only."""
+    if failure.get("failure_code") == "proposal_json_invalid":
+        return (
+            failure.get("failed_candidate_id") if isinstance(failure.get("failed_candidate_id"), str) else None,
+            failure.get("failed_stage") if isinstance(failure.get("failed_stage"), str) else None,
+        )
+    if failure.get("error_code") != "JSON completion is invalid":
+        return None, None
+    accepted = {
+        row.get("candidate_id")
+        for row in trace.get("accepted_candidates", [])
+        if isinstance(row, dict) and isinstance(row.get("candidate_id"), str)
+    }
+    pending = next((item for item in _candidate_ids_from_trace(trace) if item not in accepted), None)
+    if pending is None:
+        return None, None
+    attempts = [
+        row for row in trace.get("patch_attempts", [])
+        if isinstance(row, dict) and row.get("candidate_id") == pending
+    ]
+    return pending, "patch_repair" if attempts else "patch_generation"
+
+
+def _accepted_prefix_from_trace(trace: dict[str, object], context: StrategyProposalContext, *, stop_before: str):
+    candidate_ids = _candidate_ids_from_trace(trace)
+    prefix = candidate_ids[:candidate_ids.index(stop_before)]
+    candidates = _candidates_from_trace(trace, context, candidate_ids=prefix)
+    if tuple(item.candidate_id for item in candidates) != prefix:
+        raise ValueError("awaiting_operator_action")
+    return candidates
+
+
+def _candidates_from_trace(
+    trace: dict[str, object], context: StrategyProposalContext, *, candidate_ids: tuple[str, ...] | None = None
+):
     catalog = build_patchable_leaf_catalog(baseline=context.baseline, scenario=context.scenario, allowed_paths=context.allowed_strategy_paths)
     assembler = StrategyPatchAssembler(baseline=context.baseline, catalog=catalog)
     final_patch: dict[str, dict[str, object]] = {}
@@ -333,10 +494,14 @@ def _candidates_from_trace(trace: dict[str, object], context: StrategyProposalCo
         if isinstance(row, dict) and isinstance(row.get("candidate_id"), str):
             final_patch[row["candidate_id"]] = row
     candidates = []
-    for intent_row in trace.get("intents", []):
+    wanted = candidate_ids or _candidate_ids_from_trace(trace)
+    for candidate_id in wanted:
+        intent_row = next(
+            (row for row in trace.get("intents", []) if isinstance(row, dict) and row.get("candidate_id") == candidate_id),
+            None,
+        )
         if not isinstance(intent_row, dict):
             raise ValueError("awaiting_operator_action")
-        candidate_id = str(intent_row["candidate_id"])
         patch_row = final_patch.get(candidate_id)
         if patch_row is None:
             raise ValueError("awaiting_operator_action")

@@ -59,37 +59,32 @@ class StrategyProposalAgent:
             candidates: list[StrategyCandidate] = []
             for intent in intents:
                 try:
+                    candidate, used_patch, used_repair, candidate_audit = self._generate_candidate(
+                        context=context,
+                        intent=intent,
+                        accepted=tuple(accepted),
+                        catalog=catalog,
+                        assembler=assembler,
+                        validator=validator,
+                    )
+                except CandidateProposalError as error:
                     patch_calls += 1
-                    patch = self._generator.generate(intent=intent, catalog=catalog, accepted=tuple(accepted))
-                    cast_attempts = audit["patch_attempts"]
-                    assert isinstance(cast_attempts, list)
-                    cast_attempts.append(_patch_audit(intent.candidate_id, "initial", patch))
-                    assembled = assembler.assemble(patch)
-                    self._validate_candidate(intent=intent, strategy=assembled.strategy, changed_paths=assembled.changed_paths, context=context, validator=validator)
-                except ProposalContractError as initial_error:
-                    try:
+                    if error.stage == "patch_repair":
                         repair_calls += 1
-                        patch = self._generator.generate(intent=intent, catalog=catalog, accepted=tuple(accepted), error=initial_error)
-                        cast_attempts = audit["patch_attempts"]
-                        assert isinstance(cast_attempts, list)
-                        cast_attempts.append(_patch_audit(intent.candidate_id, "repair", patch, initial_error))
-                        assembled = assembler.assemble(patch)
-                        self._validate_candidate(intent=intent, strategy=assembled.strategy, changed_paths=assembled.changed_paths, context=context, validator=validator)
-                    except ProposalContractError as repair_error:
-                        raise CandidateProposalError(
-                            candidate_id=intent.candidate_id,
-                            stage="patch_repair",
-                            cause=repair_error,
-                        ) from repair_error
-                candidate = StrategyCandidate(intent.candidate_id, assembled.strategy, patch.proposal_summary, assembled.changed_paths)
+                    raise
+                patch_calls += used_patch
+                repair_calls += used_repair
+                cast_attempts = audit["patch_attempts"]
+                assert isinstance(cast_attempts, list)
+                cast_attempts.extend(candidate_audit)
                 if any(item.strategy_checksum == candidate.strategy_checksum for item in accepted):
                     raise ProposalContractError("duplicate_accepted_strategy")
-                dimensions = tuple(sorted({_dimension(path) for path in assembled.changed_paths}))
-                accepted.append(AcceptedCandidateSummary(candidate.candidate_id, candidate.strategy_checksum, assembled.changed_paths, dimensions))
+                dimensions = tuple(sorted({_dimension(path) for path in candidate.intended_difference}))
+                accepted.append(AcceptedCandidateSummary(candidate.candidate_id, candidate.strategy_checksum, candidate.intended_difference, dimensions))
                 cast_accepted = audit["accepted_candidates"]
                 assert isinstance(cast_accepted, list)
                 cast_accepted.append({"candidate_id": candidate.candidate_id, "strategy_checksum": candidate.strategy_checksum,
-                                      "changed_paths": list(assembled.changed_paths), "strategy_dimensions": list(dimensions)})
+                                      "changed_paths": list(candidate.intended_difference), "strategy_dimensions": list(dimensions)})
                 candidates.append(candidate)
             return tuple(candidates)
         finally:
@@ -156,6 +151,68 @@ class StrategyProposalAgent:
             audit["usage"] = {"intent_calls": 0, "patch_calls": patch_calls, "repair_calls": repair_calls}
             self._last_audit = audit
         return StrategyCandidate(intent.candidate_id, assembled.strategy, patch.proposal_summary, assembled.changed_paths)
+
+    def generate_candidate(
+        self,
+        context: StrategyProposalContext,
+        *,
+        intent: CandidateIntent,
+        accepted: tuple[AcceptedCandidateSummary, ...],
+    ) -> StrategyCandidate:
+        """Generate one new candidate without invoking the intent planner."""
+        catalog = build_patchable_leaf_catalog(
+            baseline=context.baseline,
+            scenario=context.scenario,
+            allowed_paths=context.allowed_strategy_paths,
+        )
+        assembler = StrategyPatchAssembler(baseline=context.baseline, catalog=catalog)
+        try:
+            candidate, patch_calls, repair_calls, audit = self._generate_candidate(
+                context=context,
+                intent=intent,
+                accepted=accepted,
+                catalog=catalog,
+                assembler=assembler,
+                validator=StrategyValidator(),
+            )
+        except CandidateProposalError as error:
+            patch_calls = 1
+            repair_calls = 1 if error.stage == "patch_repair" else 0
+            self._last_usage = StrategyProposalUsage(0, patch_calls, repair_calls)
+            self._last_audit = {"candidate_generation": {"candidate_id": intent.candidate_id, "patch_attempts": []}, "usage": {"intent_calls": 0, "patch_calls": patch_calls, "repair_calls": repair_calls}}
+            raise
+        self._last_usage = StrategyProposalUsage(0, patch_calls, repair_calls)
+        self._last_audit = {"candidate_generation": {"candidate_id": intent.candidate_id, "patch_attempts": audit}, "usage": {"intent_calls": 0, "patch_calls": patch_calls, "repair_calls": repair_calls}}
+        return candidate
+
+    def _generate_candidate(
+        self,
+        *,
+        context: StrategyProposalContext,
+        intent: CandidateIntent,
+        accepted: tuple[AcceptedCandidateSummary, ...],
+        catalog,
+        assembler,
+        validator: StrategyValidator,
+    ) -> tuple[StrategyCandidate, int, int, list[dict[str, object]]]:
+        attempts: list[dict[str, object]] = []
+        try:
+            patch = self._generator.generate(intent=intent, catalog=catalog, accepted=accepted)
+            attempts.append(_patch_audit(intent.candidate_id, "initial", patch))
+            assembled = assembler.assemble(patch)
+            self._validate_candidate(intent=intent, strategy=assembled.strategy, changed_paths=assembled.changed_paths, context=context, validator=validator)
+        except ProposalContractError as initial_error:
+            if initial_error.code == "proposal_json_invalid":
+                raise CandidateProposalError(candidate_id=intent.candidate_id, stage="patch_generation", cause=initial_error) from initial_error
+            try:
+                patch = self._generator.generate(intent=intent, catalog=catalog, accepted=accepted, error=initial_error)
+                attempts.append(_patch_audit(intent.candidate_id, "repair", patch, initial_error))
+                assembled = assembler.assemble(patch)
+                self._validate_candidate(intent=intent, strategy=assembled.strategy, changed_paths=assembled.changed_paths, context=context, validator=validator)
+            except ProposalContractError as repair_error:
+                raise CandidateProposalError(candidate_id=intent.candidate_id, stage="patch_repair", cause=repair_error) from repair_error
+            return StrategyCandidate(intent.candidate_id, assembled.strategy, patch.proposal_summary, assembled.changed_paths), 1, 1, attempts
+        return StrategyCandidate(intent.candidate_id, assembled.strategy, patch.proposal_summary, assembled.changed_paths), 1, 0, attempts
 
 
 def _patch_audit(candidate_id, phase, patch, prior_error=None) -> dict[str, object]:

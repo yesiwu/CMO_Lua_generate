@@ -11,7 +11,7 @@ from cmo_lua_agent.agents.comparative_learning_agent import ComparativeLearningA
 from cmo_lua_agent.learning.builders import CandidateLearningViewBuilder
 from cmo_lua_agent.learning.store import ExperienceStore
 from cmo_lua_agent.learning.workflow import GenerationLearningWorkflow
-from cmo_lua_agent.llm.json_client import ClaudeJsonClient
+from cmo_lua_agent.llm.json_client import ClaudeJsonClient, JsonCompletionError
 
 
 class _MessageClient:
@@ -29,6 +29,33 @@ def test_claude_json_client_accepts_a_single_json_object() -> None:
 
     assert ClaudeJsonClient(client).complete_json(system="system", prompt="prompt") == {"answer": 1}
     assert client.calls == 1
+
+
+def test_claude_json_client_accepts_one_isolated_json_fence() -> None:
+    client = _MessageClient("```json\n{\"answer\": 1}\n```")
+
+    assert ClaudeJsonClient(client).complete_json(system="system", prompt="prompt") == {"answer": 1}
+
+
+def test_claude_json_client_rejects_trailing_text_with_restricted_diagnostics() -> None:
+    with pytest.raises(JsonCompletionError) as raised:
+        ClaudeJsonClient(_MessageClient("```json\n{\"answer\": 1}\n```\nextra")).complete_json(
+            system="system", prompt="prompt"
+        )
+
+    assert raised.value.code == "proposal_json_invalid"
+    assert raised.value.diagnostics["has_markdown_fence"] is True
+    assert raised.value.diagnostics["has_trailing_text"] is True
+    assert "response" not in raised.value.diagnostics
+
+
+def test_claude_json_client_marks_raw_json_trailing_text() -> None:
+    with pytest.raises(JsonCompletionError) as raised:
+        ClaudeJsonClient(_MessageClient('{"answer": 1} extra')).complete_json(
+            system="system", prompt="prompt"
+        )
+
+    assert raised.value.diagnostics["has_trailing_text"] is True
 
 
 @pytest.mark.parametrize("text", ["", "prefix {\"answer\": 1}", "[]"])

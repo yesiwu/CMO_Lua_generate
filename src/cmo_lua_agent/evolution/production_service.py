@@ -215,6 +215,9 @@ class ProductionEvolutionCampaignService:
     def repair_preview_candidate(self, **kwargs: Any):
         return self._service(str(kwargs["campaign_id"])).repair_preview_candidate(**kwargs)
 
+    def resume_preview_from_candidate(self, **kwargs: Any):
+        return self._service(str(kwargs["campaign_id"])).resume_preview_from_candidate(**kwargs)
+
     def execute_generation(self, **kwargs: Any):
         return self._service(str(kwargs["campaign_id"])).execute_generation(**kwargs)
 

@@ -8,7 +8,10 @@ from cmo_lua_agent.contract.strategy_models import (
     WeaponInventory,
 )
 from cmo_lua_agent.optimization.phase6_models import BootstrapSkillSnapshot, StrategyProposalContext
-from cmo_lua_agent.optimization.proposal_models import CandidateIntent, ProposalContractError
+import pytest
+
+from cmo_lua_agent.llm.json_client import JsonCompletionError
+from cmo_lua_agent.optimization.proposal_models import CandidateIntent, CandidateProposalError, ProposalContractError
 from cmo_lua_agent.optimization.strategy_proposal_agent import StrategyProposalAgent
 
 
@@ -110,3 +113,57 @@ def test_targeted_candidate_repair_does_not_call_the_intent_planner() -> None:
     assert agent.last_usage.intent_calls == 0
     assert agent.last_usage.patch_calls == 1
     assert candidate.candidate_id == "candidate_02"
+
+
+def test_invalid_patch_repair_json_is_bound_to_candidate_and_stage() -> None:
+    class InvalidRepairClient(_TwoStageClient):
+        def __init__(self) -> None:
+            super().__init__()
+            self._responses[3] = ProposalContractError("patch_path_not_offered")
+            self._responses[4] = JsonCompletionError(
+                {"response_type": "str", "response_length": 9, "response_checksum": "fixture"}
+            )
+
+        def complete_json(self, **_: object) -> object:
+            response = self._responses[self.calls]
+            self.calls += 1
+            if isinstance(response, Exception):
+                raise response
+            return response
+
+    agent = StrategyProposalAgent(InvalidRepairClient())
+
+    with pytest.raises(CandidateProposalError) as raised:
+        agent.propose(_context())
+
+    assert raised.value.candidate_id == "candidate_02"
+    assert raised.value.stage == "patch_repair"
+    assert raised.value.code == "proposal_json_invalid"
+    assert raised.value.diagnostics["response_checksum"] == "fixture"
+
+
+def test_resumed_candidate_generation_skips_intent_and_is_bounded_to_one_repair() -> None:
+    class ResumeClient:
+        calls = 0
+
+        def complete_json(self, **_kwargs: object) -> object:
+            self.calls += 1
+            if self.calls == 1:
+                return {"invalid": "shape"}
+            return {
+                "proposal_summary": "Use a constrained timing change.",
+                "changes": [{"path": "/attacks/0/delay_seconds", "value": 4}],
+            }
+
+    agent = StrategyProposalAgent(ResumeClient())
+    intent = CandidateIntent(
+        "candidate_03", "conservative", "Use a smaller delay.",
+        ("attack_timing",), 1, 1,
+    )
+
+    candidate = agent.generate_candidate(_context(), intent=intent, accepted=())
+
+    assert candidate.candidate_id == "candidate_03"
+    assert agent.last_usage.intent_calls == 0
+    assert agent.last_usage.patch_calls == 1
+    assert agent.last_usage.repair_calls == 1

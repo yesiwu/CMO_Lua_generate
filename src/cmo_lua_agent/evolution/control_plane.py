@@ -521,6 +521,76 @@ class EvolutionCampaignService:
         store.update_campaign_state(status=CampaignStatus.AWAITING_APPROVAL, current_generation=generation_index)
         return preview
 
+    def resume_preview_from_candidate(
+        self,
+        *,
+        campaign_id: str,
+        generation_index: int,
+        source_revision: int,
+        candidate_id: str,
+    ) -> GenerationPreview:
+        """Resume only the failed candidate and later unstarted candidates from a JSON-failed trace."""
+        store, spec = self._load(campaign_id)
+        state = store.load_campaign_state()
+        required_calls = 4
+        used_calls = int(state.llm_call_counts.get("strategy_proposal", 0))
+        if (
+            used_calls + required_calls > spec.budget.max_strategy_proposal_calls
+            or sum(state.llm_call_counts.values()) + required_calls > spec.budget.max_llm_total_calls
+        ):
+            raise ValueError("proposal_budget_insufficient_for_candidate_resume")
+        revision = source_revision + 1
+        operation = store.prepare_operation(
+            generation_index=generation_index,
+            kind=OperationKind.STRATEGY_PROPOSAL,
+            input_checksum=_checksum({
+                "contract": spec.contract_checksum,
+                "parent_revision": source_revision,
+                "candidate_id": candidate_id,
+                "revision": revision,
+                "mode": "resume_preview_from_candidate",
+            }),
+        )
+        if operation.status in (OperationStatus.STARTED, OperationStatus.UNKNOWN):
+            raise ValueError("preview_operation_reconciliation_required")
+        store.mark_operation_started(operation.operation_id)
+        resume = getattr(self._preview_builder, "resume_from_candidate", None)
+        if resume is None:
+            store.mark_operation_failed(operation.operation_id, "awaiting_operator_action")
+            raise ValueError("awaiting_operator_action")
+        try:
+            payload = resume(
+                spec=spec,
+                generation_index=generation_index,
+                source_revision=source_revision,
+                preview_revision=revision,
+                candidate_id=candidate_id,
+            )
+        except Exception as exc:
+            actual_calls = int(getattr(self._preview_builder, "proposal_calls", 0))
+            if actual_calls:
+                store.increment_llm_calls("strategy_proposal", actual_calls)
+            store.mark_operation_failed(operation.operation_id, f"{type(exc).__name__}: {exc}")
+            raise
+        body = {
+            "campaign_id": campaign_id,
+            "generation_index": generation_index,
+            "preview_revision": revision,
+            "snapshot_checksum": payload.knowledge_snapshot_checksum,
+            "candidate_set_checksum": payload.candidate_set_checksum,
+            "strategy_diffs": payload.strategy_diffs,
+            "proposal_operation_id": operation.operation_id,
+            "baseline_checksum": payload.baseline_checksum,
+            "frozen_candidate_set_ref": payload.frozen_candidate_set_ref,
+            "strategy_diff_ref": payload.strategy_diff_ref,
+        }
+        preview = GenerationPreview(**body, checksum=_checksum(body))
+        store.save_preview(preview)
+        store.mark_operation_completed(operation.operation_id, output_ref=str(store.root / "previews" / f"generation_{generation_index:03d}"))
+        store.increment_llm_calls("strategy_proposal", payload.proposal_llm_calls)
+        store.update_campaign_state(status=CampaignStatus.AWAITING_APPROVAL, current_generation=generation_index)
+        return preview
+
     def authorize_generation(self, *, campaign_id: str, generation_index: int, receipt: CampaignPermissionReceipt | None, authorization_mode: str = ApprovalMode.PER_ATTEMPT, max_cmo_attempts: int | None = None, expires_in_seconds: int = 300) -> GenerationApproval:
         """
         创建世代仿真审批单

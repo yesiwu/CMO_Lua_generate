@@ -6,6 +6,7 @@ import json
 from collections.abc import Mapping
 from typing import Any, Protocol
 
+from cmo_lua_agent.llm.json_client import JsonCompletionError
 from cmo_lua_agent.optimization.proposal_models import AcceptedCandidateSummary, CandidateIntent, CandidatePatch, ProposalContractError, StrategyPatchOperation
 from cmo_lua_agent.optimization.strategy_patch import PatchableLeaf
 
@@ -19,9 +20,10 @@ class CandidatePatchGenerator:
         self._client = client
 
     def generate(self, *, intent: CandidateIntent, catalog: tuple[PatchableLeaf, ...], accepted: tuple[AcceptedCandidateSummary, ...], error: ProposalContractError | None = None) -> CandidatePatch:
-        response = self._client.complete_json(
-            system=_SYSTEM,
-            prompt=json.dumps({
+        try:
+            response = self._client.complete_json(
+                system=_SYSTEM,
+                prompt=json.dumps({
                 "candidate_id": intent.candidate_id,
                 "role": intent.role,
                 "objective": intent.objective,
@@ -34,8 +36,12 @@ class CandidatePatchGenerator:
                     for item in accepted
                 ],
                 "previous_error": _repair_error(error),
-            }, ensure_ascii=False, sort_keys=True),
-        )
+                }, ensure_ascii=False, sort_keys=True),
+            )
+        except JsonCompletionError as error:
+            raise ProposalContractError(
+                "proposal_json_invalid", diagnostics=error.diagnostics
+            ) from error
         if not isinstance(response, Mapping) or set(response) != {"proposal_summary", "changes"}:
             raise ProposalContractError("invalid_patch_response_shape")
         summary, changes = response["proposal_summary"], response["changes"]
