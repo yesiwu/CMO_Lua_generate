@@ -285,9 +285,24 @@ class ProductionPreviewBuilder:
             actual_dimensions=actual_dimensions,
             changed_paths=current.intended_difference,
         )
-        replacement = self._proposal_agent.repair_candidate(
-            context, intent=target_intent, accepted=accepted, prior_error=prior
-        )
+        preview_root = root / "previews" / f"generation_{generation_index:03d}" / f"revision_{preview_revision:03d}"
+        preview_root.mkdir(parents=True, exist_ok=False)
+        try:
+            replacement = self._proposal_agent.repair_candidate(
+                context, intent=target_intent, accepted=accepted, prior_error=prior
+            )
+        except Exception as error:
+            self.proposal_calls = int(getattr(self._proposal_agent.last_usage, "total_calls", 0))
+            failed_trace = dict(trace)
+            failed_trace["parent_revision"] = source_revision
+            failed_trace["targeted_repair"] = getattr(self._proposal_agent, "last_audit", {})
+            self._atomic_json(preview_root / "proposal-trace.json", failed_trace)
+            self._atomic_json(preview_root / "knowledge-snapshot.json", snapshot)
+            self._atomic_json(
+                preview_root / "proposal-failure.json",
+                self.failure_audit(error=error, proposal_agent=self._proposal_agent),
+            )
+            raise
         self.proposal_calls = int(getattr(self._proposal_agent.last_usage, "total_calls", 0))
         candidates = tuple(replacement if item.candidate_id == candidate_id else item for item in existing)
         candidate_set = CandidateSetValidator().validate(
@@ -298,8 +313,6 @@ class ProductionPreviewBuilder:
         if not candidate_set.diversity_report.valid:
             raise ValueError("candidate_set_invalid")
         self._novelty.validate(baseline=self._package.baseline.strategy, candidates=candidates, generation_context=context_value)
-        preview_root = root / "previews" / f"generation_{generation_index:03d}" / f"revision_{preview_revision:03d}"
-        preview_root.mkdir(parents=True, exist_ok=False)
         merged_trace = dict(trace)
         merged_trace["parent_revision"] = source_revision
         merged_trace["targeted_repair"] = self._proposal_agent.last_audit
