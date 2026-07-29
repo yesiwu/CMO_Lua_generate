@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from cmo_lua_agent.contract import load_scenario_definition
+from cmo_lua_agent.contract.strategy_models import ScenarioDefinition
 from cmo_lua_agent.scoring.models import (
     ScenarioObjective,
     ScenarioObjectives,
@@ -36,9 +37,13 @@ class ScoreBaselineResult:
         return self.compilation.fragment
 
 
-def compile_score_baseline(baseline_root: Path) -> ScoreBaselineResult:
+def compile_score_baseline(
+    baseline_root: Path,
+    *,
+    scenario: ScenarioDefinition | None = None,
+) -> ScoreBaselineResult:
     root = Path(baseline_root)
-    scenario = load_scenario_definition(root / "scenario_definition.json")
+    scenario = scenario or load_scenario_definition(root / "scenario_definition.json")
     role_catalog = _load_role_catalog(root / "unit_role_catalog.json")
     score_profile = _load_score_profile(root / "score_profile.json")
     objectives = _load_objectives(root / "scenario_objectives.json")

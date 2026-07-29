@@ -1,0 +1,15 @@
+{
+  "baseline_strategy_checksum": "2355c5f898affafe39c6d7fe7a7f973e64d9b32264456ff5217f1aa3aec1459c",
+  "builder_version": "1.0.0",
+  "defaulted_fields": [
+    "missions/red_052d_1_attack_cg59/reserveQuantity",
+    "missions/red_052d_2_attack_cg59/reserveQuantity",
+    "missions/red_055_attack_ddg113_1/reserveQuantity",
+    "missions/red_j15_1_attack_cvn70/reserveQuantity",
+    "missions/red_j15_2_attack_ddg113_2/reserveQuantity"
+  ],
+  "mapping_checksum": "75599e338ca1a5267a214049bd26607e8a28b5d503dd42830f91a1846b63d386",
+  "scenario_definition_checksum": "50001ce228334b04563daca771780f499fec79291a131f15fcbee4a0e6628082",
+  "scenario_ir_checksum": "b04a65ed8d06d49e20671e446624c2de886f35247e09b28e25d31b995b6a558d",
+  "schema_version": "1.0"
+}
