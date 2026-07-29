@@ -11,6 +11,10 @@ from cmo_lua_agent.optimization.phase6_models import BootstrapSkillSnapshot, Str
 import pytest
 
 from cmo_lua_agent.llm.json_client import JsonCompletionError
+from cmo_lua_agent.optimization.candidate_intent_conformance import (
+    CandidateIntentConformanceError,
+    CandidateIntentConformanceValidator,
+)
 from cmo_lua_agent.optimization.proposal_models import CandidateIntent, CandidateProposalError, ProposalContractError
 from cmo_lua_agent.optimization.strategy_proposal_agent import StrategyProposalAgent
 
@@ -167,3 +171,32 @@ def test_resumed_candidate_generation_skips_intent_and_is_bounded_to_one_repair(
     assert agent.last_usage.intent_calls == 0
     assert agent.last_usage.patch_calls == 1
     assert agent.last_usage.repair_calls == 1
+
+
+def test_explore_intent_requires_two_semantic_dimensions_not_two_target_leaves() -> None:
+    intent = CandidateIntent(
+        "candidate_02", "explore", "Cover separate targets.",
+        ("target_assignment", "fire_quantity"), 2, 3,
+    )
+
+    with pytest.raises(CandidateIntentConformanceError) as raised:
+        CandidateIntentConformanceValidator().validate(
+            intent=intent,
+            changed_paths=("/attacks/0/target_ids/0", "/attacks/1/target_ids/0"),
+        )
+
+    assert raised.value.code == "candidate_intent_dimension_missing"
+    assert raised.value.required_dimensions == ("target_assignment", "fire_quantity")
+    assert raised.value.actual_dimensions == ("target_assignment",)
+
+
+def test_conservative_intent_must_change_exactly_one_leaf() -> None:
+    intent = CandidateIntent(
+        "candidate_03", "conservative", "Limit exposure.",
+        ("attack_timing",), 1, 1,
+    )
+
+    CandidateIntentConformanceValidator().validate(
+        intent=intent,
+        changed_paths=("/attacks/0/delay_seconds",),
+    )

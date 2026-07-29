@@ -12,7 +12,10 @@ from cmo_lua_agent.evolution.production_models import (
     canonical_checksum,
 )
 from cmo_lua_agent.evolution.novelty import CandidateNoveltyError
-from cmo_lua_agent.optimization.candidate_set_validator import CandidateSetValidator, _dimension
+from cmo_lua_agent.optimization.candidate_set_validator import CandidateSetValidator
+from cmo_lua_agent.optimization.candidate_intent_conformance import (
+    CandidateIntentConformanceError,
+)
 from cmo_lua_agent.optimization.phase6_models import StrategyProposalContext
 from cmo_lua_agent.optimization.proposal_models import (
     AcceptedCandidateSummary,
@@ -25,6 +28,7 @@ from cmo_lua_agent.optimization.strategy_patch import (
     StrategyPatchAssembler,
     build_patchable_leaf_catalog,
 )
+from cmo_lua_agent.optimization.strategy_dimensions import semantic_dimensions
 
 
 class ProductionPreviewBuilder:
@@ -273,17 +277,14 @@ class ProductionPreviewBuilder:
             AcceptedCandidateSummary(item.candidate_id, item.strategy_checksum, item.intended_difference, ())
             for item in existing if item.candidate_id != candidate_id
         )
-        prior = ProposalContractError(str(failure["error_code"]))
-        prior.violations = ({
-            "code": failure["error_code"],
-            "path": list(failure.get("related_changed_paths", ())),
-            "actual_value": list(failure.get("actual_dimensions", ())),
-            "constraint_summary": {
-                "required_dimensions": list(failure.get("required_dimensions", ())),
-                "related_changed_paths": list(failure.get("related_changed_paths", ())),
-            },
-        },)
-        prior.changed_paths = tuple(failure.get("related_changed_paths", ()))
+        current = next(item for item in existing if item.candidate_id == candidate_id)
+        actual_dimensions = semantic_dimensions(current.intended_difference)
+        prior = CandidateIntentConformanceError(
+            code="candidate_intent_dimension_missing",
+            required_dimensions=tuple(target_intent.strategy_dimensions),
+            actual_dimensions=actual_dimensions,
+            changed_paths=current.intended_difference,
+        )
         replacement = self._proposal_agent.repair_candidate(
             context, intent=target_intent, accepted=accepted, prior_error=prior
         )
@@ -349,7 +350,7 @@ class ProductionPreviewBuilder:
         target_index = _candidate_ids_from_trace(trace).index(candidate_id)
         existing = _accepted_prefix_from_trace(trace, context, stop_before=candidate_id)
         accepted = [
-            AcceptedCandidateSummary(item.candidate_id, item.strategy_checksum, item.intended_difference, tuple(sorted({_dimension(path) for path in item.intended_difference})))
+            AcceptedCandidateSummary(item.candidate_id, item.strategy_checksum, item.intended_difference, semantic_dimensions(item.intended_difference))
             for item in existing
         ]
         preview_root = root / "previews" / f"generation_{generation_index:03d}" / f"revision_{preview_revision:03d}"
@@ -366,7 +367,7 @@ class ProductionPreviewBuilder:
                 )
                 calls += int(getattr(self._proposal_agent.last_usage, "total_calls", 0))
                 candidates.append(candidate)
-                dimensions = tuple(sorted({_dimension(path) for path in candidate.intended_difference}))
+                dimensions = semantic_dimensions(candidate.intended_difference)
                 accepted.append(AcceptedCandidateSummary(candidate.candidate_id, candidate.strategy_checksum, candidate.intended_difference, dimensions))
                 resumed_attempts.append(getattr(self._proposal_agent, "last_audit", {}))
         except Exception as error:
@@ -493,6 +494,15 @@ def _candidates_from_trace(
     for row in trace.get("patch_attempts", []):
         if isinstance(row, dict) and isinstance(row.get("candidate_id"), str):
             final_patch[row["candidate_id"]] = row
+    for audit in trace.get("resumed_candidate_attempts", []):
+        if not isinstance(audit, dict):
+            continue
+        generated = audit.get("candidate_generation")
+        if not isinstance(generated, dict):
+            continue
+        for row in generated.get("patch_attempts", []):
+            if isinstance(row, dict) and isinstance(row.get("candidate_id"), str):
+                final_patch[row["candidate_id"]] = row
     candidates = []
     wanted = candidate_ids or _candidate_ids_from_trace(trace)
     for candidate_id in wanted:

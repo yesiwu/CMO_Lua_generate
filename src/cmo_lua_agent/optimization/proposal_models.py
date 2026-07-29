@@ -43,6 +43,8 @@ class CandidateProposalError(ProposalContractError):
         self.cause_code = cause.code
         self.violations = tuple(getattr(cause, "violations", ()))
         self.changed_paths = tuple(getattr(cause, "changed_paths", ()))
+        self.required_dimensions = tuple(getattr(cause, "required_dimensions", ()))
+        self.actual_dimensions = tuple(getattr(cause, "actual_dimensions", ()))
         super().__init__(
             cause.code,
             f"{candidate_id}:{stage}:{cause.code}",

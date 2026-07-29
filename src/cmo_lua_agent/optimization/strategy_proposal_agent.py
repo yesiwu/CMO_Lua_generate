@@ -5,10 +5,11 @@ from __future__ import annotations
 from cmo_lua_agent.contract.strategy_validator import StrategyValidator
 from cmo_lua_agent.optimization.candidate_intent_planner import CandidateIntentPlanner, IntentJsonClient
 from cmo_lua_agent.optimization.candidate_patch_generator import CandidatePatchGenerator
-from cmo_lua_agent.optimization.candidate_set_validator import _dimension
+from cmo_lua_agent.optimization.candidate_intent_conformance import CandidateIntentConformanceValidator
 from cmo_lua_agent.optimization.phase6_models import StrategyCandidate, StrategyProposalContext
 from cmo_lua_agent.optimization.proposal_models import AcceptedCandidateSummary, CandidateIntent, CandidateProposalError, ProposalContractError, StrategyProposalUsage, StrategyValidationProposalError
 from cmo_lua_agent.optimization.strategy_patch import StrategyPatchAssembler, build_patchable_leaf_catalog
+from cmo_lua_agent.optimization.strategy_dimensions import semantic_dimensions
 
 
 class StrategyProposalAgent:
@@ -79,7 +80,7 @@ class StrategyProposalAgent:
                 cast_attempts.extend(candidate_audit)
                 if any(item.strategy_checksum == candidate.strategy_checksum for item in accepted):
                     raise ProposalContractError("duplicate_accepted_strategy")
-                dimensions = tuple(sorted({_dimension(path) for path in candidate.intended_difference}))
+                dimensions = semantic_dimensions(candidate.intended_difference)
                 accepted.append(AcceptedCandidateSummary(candidate.candidate_id, candidate.strategy_checksum, candidate.intended_difference, dimensions))
                 cast_accepted = audit["accepted_candidates"]
                 assert isinstance(cast_accepted, list)
@@ -95,13 +96,9 @@ class StrategyProposalAgent:
 
     @staticmethod
     def _validate_candidate(*, intent, strategy, changed_paths, context, validator: StrategyValidator) -> None:
-        if not intent.min_changes <= len(changed_paths) <= intent.max_changes:
-            raise ProposalContractError("actual_change_count_out_of_bounds")
-        dimensions = {_dimension(path) for path in changed_paths}
-        if not dimensions.issubset(set(intent.strategy_dimensions)):
-            raise ProposalContractError("actual_dimension_not_intended")
-        if not set(intent.required_dimensions).issubset(dimensions):
-            raise ProposalContractError("repair_failure_profile_not_applied")
+        CandidateIntentConformanceValidator().validate(
+            intent=intent, changed_paths=tuple(changed_paths)
+        )
         report = validator.validate(strategy, context.scenario)
         if not report.valid:
             violations = tuple(_validation_violation(issue, strategy) for issue in report.errors)

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from cmo_lua_agent.optimization.candidate_set_validator import strategy_leaf_diff
 from cmo_lua_agent.optimization.phase6_models import StrategyCandidate
+from cmo_lua_agent.optimization.strategy_dimensions import semantic_dimensions
 
 
 class CandidateNoveltyError(ValueError):
@@ -40,8 +41,6 @@ class CandidateNoveltyValidator:
         history = set(generation_context.get("history_fingerprints", ()))
         roles = dict(generation_context.get("candidate_roles", {}))
         fingerprints: set[str] = set()
-        dimensions: set[str] = set()
-        changed_by_candidate: dict[str, tuple[str, ...]] = {}
 
         for candidate in candidates:
             if candidate.strategy_checksum in fingerprints:
@@ -51,12 +50,9 @@ class CandidateNoveltyValidator:
                 raise ValueError("novelty_repeated_history")
 
             changed = strategy_leaf_diff(baseline, candidate.strategy_spec, allowed)
-            changed_by_candidate[candidate.candidate_id] = changed
             if not changed:
                 raise ValueError("novelty_matches_rolling_baseline")
-            dimensions.update(
-                path.split("/")[1] for path in changed if path.count("/") >= 2
-            )
+            semantic_dimensions(changed)
 
             role = roles.get(candidate.candidate_id)
             if role == "conservative_control" and len(changed) > int(
@@ -67,16 +63,3 @@ class CandidateNoveltyValidator:
                 "previous_generation_failures"
             ):
                 raise ValueError("novelty_repair_has_no_prior_failure")
-
-        explore_id = next(
-            (candidate_id for candidate_id, role in roles.items() if role == "explore"),
-            None,
-        )
-        if explore_id and len(dimensions) < 2:
-            raise CandidateNoveltyError(
-                code="novelty_explore_dimension_missing",
-                failed_candidate_ids=(explore_id,),
-                required_dimensions=("attacks", "sorties"),
-                actual_dimensions=tuple(sorted(dimensions)),
-                related_changed_paths=changed_by_candidate.get(explore_id, ()),
-            )

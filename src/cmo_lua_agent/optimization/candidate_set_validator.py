@@ -14,6 +14,7 @@ from cmo_lua_agent.contract.strategy_models import ScenarioDefinition, StrategyS
 from cmo_lua_agent.contract.strategy_validator import StrategyValidator
 # Phase6 多样性报告、单条候选、候选批次集合模型
 from cmo_lua_agent.optimization.phase6_models import DiversityReport, StrategyCandidate, StrategyCandidateSet
+from cmo_lua_agent.optimization.strategy_dimensions import semantic_dimension
 
 
 class CandidateSetValidator:
@@ -72,7 +73,7 @@ class CandidateSetValidator:
 
             # 根据改动路径归类多样性维度
             for path in changed_paths:
-                dimensions.add(_dimension(path))
+                dimensions.add(semantic_dimension(path))
 
         # 规则5：整批候选至少覆盖2个不同改动维度，保证策略多样性
         if len(dimensions) < 2:
