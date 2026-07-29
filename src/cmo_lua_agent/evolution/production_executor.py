@@ -13,6 +13,7 @@ from cmo_lua_agent.evolution.control_plane import (
 )
 from cmo_lua_agent.evolution.production_models import FrozenCandidateSet
 from cmo_lua_agent.evolution.production_preview import FrozenCandidateSetProvider
+from cmo_lua_agent.evolution.generation_completion_gate import GenerationCompletionGate
 from cmo_lua_agent.evolution.formal_adapters import FormalPhase6Adapter
 from cmo_lua_agent.optimization.candidate_comparator import CandidateComparator
 from cmo_lua_agent.optimization.candidate_models import (
@@ -48,6 +49,7 @@ class ProductionGenerationExecutor:
         self._frozen = frozen_provider or FrozenCandidateSetProvider()
         self._artifact_provenance = artifact_provenance
         self._comparator = candidate_comparator or CandidateComparator()
+        self._completion_gate = GenerationCompletionGate()
 
     def run(self, context: GenerationWorkerContext) -> GenerationExecutionResult:
         preview = context.preview
@@ -127,6 +129,21 @@ class ProductionGenerationExecutor:
                 return GenerationExecutionResult.paused(
                     "manual_pause_requested"
                 )
+        completion = self._completion_gate.evaluate(
+            expected_candidate_ids=tuple(candidate_id for candidate_id, _ in ordered),
+            outcomes=outcomes,
+        )
+        if not completion.complete:
+            incomplete = {
+                "status": "awaiting_approval",
+                "code": completion.code,
+                "pending_candidate_ids": list(completion.pending_candidate_ids),
+                "completed_candidate_ids": [item["candidate_id"] for item in outcomes],
+            }
+            self._atomic_json(generation_root / "generation-incomplete.json", incomplete)
+            self._atomic_json(generation_root / "awaiting-approval.json", incomplete)
+            return GenerationExecutionResult.paused(completion.code)
+
         strategy_by_id = {candidate_id: strategy for candidate_id, strategy in ordered}
         leaderboard = self._build_leaderboard(
             outcomes,
