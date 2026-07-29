@@ -417,6 +417,15 @@ class CampaignStore:
             state["approval_usage"][approval_id]["started_attempts"] += 1
             self._append_control_transition(state, operation_id, "started")
             self._commit_control_state(state)
+            campaign = self.load_campaign_state()
+            self.save_campaign_state(
+                CampaignState(
+                    **{
+                        **asdict(campaign),
+                        "cmo_run_count": campaign.cmo_run_count + 1,
+                    }
+                )
+            )
 
     def mark_attempt_completed(self, operation_id: str, *, output_ref: str) -> None:
         self._finish_attempt(operation_id, status="completed", reason=None, output_ref=output_ref)

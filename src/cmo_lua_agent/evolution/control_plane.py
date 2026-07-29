@@ -229,6 +229,18 @@ class CampaignPermissionBroker:
             expected_candidate_set_checksum=candidate_set_checksum,
         )
 
+    def approved_repair_attempts(self, candidate_id: str) -> int:
+        """Only explicitly approved non-initial slots may enable a repair rerun."""
+        prefix = f"g{self._generation_index:03d}:cmo:{candidate_id}:a"
+        control = self._store.load_control_state()
+        return sum(
+            1
+            for operation_id, slot in control.get("attempt_slots", {}).items()
+            if operation_id.startswith(prefix)
+            and not operation_id.endswith(":a00")
+            and slot.get("approval_id")
+        )
+
     def mark_attempt_started(self, operation_id: str) -> None:
         self._store.mark_attempt_started(operation_id)
 
@@ -691,7 +703,10 @@ class EvolutionCampaignService:
                 max_cmo_runs=spec.budget.max_cmo_runs,
                 budget_revision=store.load_campaign_state().budget_revision,
             )
-        operation_ids = self._attempt_slot_ids(spec, generation_index)
+        # A standard GenerationApproval authorizes one explicit initial attempt
+        # per frozen strategy. Repair attempts require a separately scoped a01+
+        # grant; CampaignBudget never expands this approval implicitly.
+        operation_ids = self._attempt_slot_ids(generation_index)
         issued_at = str(getattr(receipt, "issued_at"))
         expires_at = str(getattr(receipt, "expires_at"))
         grant = GenerationApprovalGrant.issue(
@@ -721,20 +736,11 @@ class EvolutionCampaignService:
         return grant.approval_id
 
     @staticmethod
-    def _attempt_slot_ids(
-        spec: EvolutionCampaignSpec,
-        generation_index: int,
-    ) -> tuple[str, ...]:
-        values = [
-            f"g{generation_index:03d}:cmo:baseline:a{attempt:02d}"
-            for attempt in range(spec.budget.max_cmo_attempts_for_baseline)
-        ]
-        values.extend(
-            f"g{generation_index:03d}:cmo:candidate_{candidate:02d}:a{attempt:02d}"
-            for candidate in range(4)
-            for attempt in range(spec.budget.max_cmo_attempts_per_candidate)
+    def _attempt_slot_ids(generation_index: int) -> tuple[str, ...]:
+        return (
+            f"g{generation_index:03d}:cmo:baseline:a00",
+            *(f"g{generation_index:03d}:cmo:candidate_{candidate:02d}:a00" for candidate in range(4)),
         )
-        return tuple(values)
 
     def inspect_campaign(self, campaign_id: str) -> dict[str, Any]:
         """查询推演任务全局信息，对应工具 inspect_evolution_campaign"""
