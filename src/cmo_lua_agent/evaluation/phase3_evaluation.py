@@ -58,6 +58,7 @@ class CmoNativeSnapshot:
     weapon_usage: int | None         # 武器总发射次数
     simulation_end_time: str | None # 仿真结束时间
     score_source: str | None = None
+    execution_fidelity: str = "unknown"
 
 
 @dataclass(frozen=True, slots=True)
@@ -441,7 +442,25 @@ def _parse_execution_summary(
             unit = units.get(unit_id)
             destroyed.append(DestroyedUnit(unit_id if unit else None, unit.name if unit else str(entry.get("name", unit_id or "unknown")), unit.side_id if unit else str(side_id)))
     usage = sum(int(item.get("quantity", 0)) for item in payload.get("weapon_expenditures", []) if isinstance(item, dict) and isinstance(item.get("quantity", 0), int))
-    return CmoNativeSnapshot(initial, final, final - initial, tuple(destroyed), usage, None, "execution-summary.json#/official_score/final"), tuple(events)
+    runtime_execution = payload.get("runtime_execution")
+    execution_fidelity = "unknown"
+    if runtime_execution is not None:
+        if not isinstance(runtime_execution, dict):
+            raise ValueError("execution summary runtime_execution must be an object")
+        fidelity = runtime_execution.get("execution_fidelity")
+        if fidelity not in {"complete", "partial"}:
+            raise ValueError("execution summary execution_fidelity is invalid")
+        execution_fidelity = "verified" if fidelity == "complete" else "partial"
+    return CmoNativeSnapshot(
+        initial,
+        final,
+        final - initial,
+        tuple(destroyed),
+        usage,
+        None,
+        "execution-summary.json#/official_score/final",
+        execution_fidelity,
+    ), tuple(events)
 
 
 # ------------------------------ 分发解析器：自动区分sqlite/csv文件 ------------------------------

@@ -77,6 +77,15 @@ class ProductionGenerationExecutor:
         phase6_root = generation_root / "phase6"
         outcomes: list[dict[str, Any]] = []
         for candidate_id, strategy in ordered:
+            existing_path = phase6_root / self.candidate_root_name(candidate_id) / "candidate_outcome.json"
+            if existing_path.is_file():
+                existing = json.loads(existing_path.read_text(encoding="utf-8"))
+                if self._completion_gate.evaluate(
+                    expected_candidate_ids=(candidate_id,),
+                    outcomes=(existing,),
+                ).complete:
+                    outcomes.append(existing)
+                    continue
             action = context.control_action()
             if action == "stop":
                 self._atomic_json(
@@ -94,14 +103,30 @@ class ProductionGenerationExecutor:
             if action == "pause":
                 return GenerationExecutionResult.paused("manual_pause_requested")
             candidate_dir = phase6_root / self.candidate_root_name(candidate_id)
-            outcome = self._evaluate(
-                candidate_id=candidate_id,
-                strategy=strategy,
-                candidate_dir=candidate_dir,
-                generation_index=preview.generation_index,
-                context=context,
-                package=self._package,
-            )
+            try:
+                outcome = self._evaluate(
+                    candidate_id=candidate_id,
+                    strategy=strategy,
+                    candidate_dir=candidate_dir,
+                    generation_index=preview.generation_index,
+                    context=context,
+                    package=self._package,
+                )
+            except ValueError as exc:
+                if str(exc) in {
+                    "generation_approval_expired",
+                    "generation_approval_required",
+                    "generation_approval_cap_exhausted",
+                    "attempt_slot_not_available",
+                }:
+                    self._write_awaiting_approval(
+                        generation_root=generation_root,
+                        outcomes=outcomes,
+                        pending_candidate_id=candidate_id,
+                        reason=str(exc),
+                    )
+                    return GenerationExecutionResult.awaiting_approval(str(exc))
+                raise
             normalized_outcome = {
                 **dict(outcome),
                 "artifact_provenance": self._artifact_provenance,
@@ -246,6 +271,29 @@ class ProductionGenerationExecutor:
         }
         self._atomic_json(generation_root / "generation-result.json", result)
         return GenerationExecutionResult.completed(result)
+
+    @staticmethod
+    def _write_awaiting_approval(
+        *,
+        generation_root: Path,
+        outcomes: list[dict[str, Any]],
+        pending_candidate_id: str,
+        reason: str,
+    ) -> None:
+        payload = {
+            "status": "awaiting_approval",
+            "code": reason,
+            "pending_candidate_ids": [pending_candidate_id],
+            "completed_candidate_ids": [item["candidate_id"] for item in outcomes],
+        }
+        ProductionGenerationExecutor._atomic_json(
+            generation_root / "generation-incomplete.json",
+            payload,
+        )
+        ProductionGenerationExecutor._atomic_json(
+            generation_root / "awaiting-approval.json",
+            payload,
+        )
 
     @staticmethod
     def candidate_root_name(candidate_id: str) -> str:

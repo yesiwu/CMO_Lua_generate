@@ -34,6 +34,7 @@ class _RenderContext:
     unit_sides: Mapping[str, str]
     routes: Mapping[str, Mapping[str, Any]]
     air_targets: Mapping[str, Mapping[str, Any]]
+    execution_telemetry_enabled: bool
 
 
 class LuaRenderer:
@@ -47,7 +48,7 @@ class LuaRenderer:
         runtime: LuaRuntimeProfile,
         instrumentation: SystemInstrumentationBundle | None = None,
     ) -> RenderedLua:
-        context = _build_context(plan)
+        context = _build_context(plan, execution_telemetry_enabled=runtime.execution_telemetry_enabled)
         lines: list[str] = []
         source_map: dict[str, LuaSourceSpan] = {}
 
@@ -94,6 +95,54 @@ class LuaRenderer:
                 ),
             ]
         )
+        if runtime.execution_telemetry_enabled:
+            lines.extend(
+                [
+                    "local function runtime_schedule_lua(operation_id, event_name, lua_script, delay_seconds)",
+                    "    runtime_log('CMO-RUNTIME operation_scheduled ' .. tostring(operation_id) .. ' delay_seconds=' .. tostring(delay_seconds))",
+                    "    schedule_lua(event_name, lua_script, delay_seconds)",
+                    "end",
+                    "",
+                    "function telemetry_air_attack_poll(operation_id, name, target_side, target, weapon_dbid, quantity, return_delay, base_name, attempt)",
+                    "    local unit = lookup_unit('red', name)",
+                    "    local target_unit = lookup_unit(target_side, target)",
+                    "    if not unit or not unit.isOperating then runtime_log('CMO-RUNTIME operation_completed ' .. tostring(operation_id) .. ' terminal=air_not_operating'); return end",
+                    "    if not target_unit then pcall(ScenEdit_SetUnit, {guid=unit.guid, rtb=true}); runtime_log('CMO-RUNTIME operation_completed ' .. tostring(operation_id) .. ' terminal=target_missing'); return end",
+                    "    local ok, range_nm = pcall(Tool_Range, unit.guid, target_unit.guid)",
+                    "    runtime_log('range poll ' .. name .. ' -> ' .. target .. ' range=' .. tostring(range_nm))",
+                    "    if ok and range_nm and tonumber(range_nm) <= 80 and fire_at('red', target_side, name, target, weapon_dbid, quantity) then",
+                    "        local body = string.format('local u=ScenEdit_GetUnit({side=%q,name=%q}); if u and u.guid then ScenEdit_SetUnit({guid=u.guid,base=%q}); ScenEdit_SetUnit({guid=u.guid,rtb=true}) end', 'red', name, base_name)",
+                    "        schedule_lua(RUNTIME.events['air_rtb_' .. name] or ('evt_air_rtb_' .. name), body, return_delay)",
+                    "        runtime_log('CMO-RUNTIME operation_completed ' .. tostring(operation_id) .. ' terminal=attack_submitted')",
+                    "        return",
+                    "    end",
+                    f"    if attempt >= {runtime.max_attack_attempts} then pcall(ScenEdit_SetUnit, {{guid=unit.guid, rtb=true}}); runtime_log('CMO-RUNTIME operation_completed ' .. tostring(operation_id) .. ' terminal=attack_timeout'); return end",
+                    "    local next_attempt = attempt + 1",
+                    "    local body = string.format('telemetry_air_attack_poll(%q,%q,%q,%q,%d,%d,%d,%q,%d)', operation_id, name, target_side, target, weapon_dbid, quantity, return_delay, base_name, next_attempt)",
+                    f"    schedule_lua('evt_air_attack_' .. name .. '_' .. tostring(next_attempt), body, {runtime.attack_poll_seconds})",
+                    "end",
+                    "",
+                    "function telemetry_air_launch_poll(operation_id, name, target_side, target, mid_lat, mid_lon, app_lat, app_lon, altitude, throttle, weapon_dbid, quantity, return_delay, base_name, attempt)",
+                    "    runtime_log('CMO-RUNTIME operation_started ' .. tostring(operation_id))",
+                    "    local unit = lookup_unit('red', name)",
+                    "    if not unit then runtime_log('CMO-RUNTIME operation_completed ' .. tostring(operation_id) .. ' terminal=aircraft_missing'); return end",
+                    "    print_air_state('launch poll ' .. tostring(attempt), unit)",
+                    "    if unit.isOperating then",
+                    "        checked_cmo_call('Route/' .. name, ScenEdit_SetUnit, {guid=unit.guid, course={{latitude=mid_lat, longitude=mid_lon}, {latitude=app_lat, longitude=app_lon}}, altitude=altitude, throttle=throttle})",
+                    "        local body = string.format('telemetry_air_attack_poll(%q,%q,%q,%q,%d,%d,%d,%q,%d)', operation_id, name, target_side, target, weapon_dbid, quantity, return_delay, base_name, 1)",
+                    f"        schedule_lua('evt_air_attack_' .. name .. '_1', body, {runtime.attack_poll_seconds})",
+                    "        return",
+                    "    end",
+                    f"    if attempt > {runtime.max_launch_attempts} then runtime_log('CMO-RUNTIME operation_completed ' .. tostring(operation_id) .. ' terminal=launch_timeout'); return end",
+                    "    checked_cmo_call('ReadyRetry/' .. name, ScenEdit_SetUnit, {guid=unit.guid, timetoready_minutes=0})",
+                    "    checked_cmo_call('Launch/' .. name, ScenEdit_SetUnit, {guid=unit.guid, launch=true})",
+                    "    local next_attempt = attempt + 1",
+                    "    local body = string.format('telemetry_air_launch_poll(%q,%q,%q,%q,%.8f,%.8f,%.8f,%.8f,%d,%q,%d,%d,%d,%q,%d)', operation_id, name, target_side, target, mid_lat, mid_lon, app_lat, app_lon, altitude, throttle, weapon_dbid, quantity, return_delay, base_name, next_attempt)",
+                    f"    schedule_lua('evt_air_launch_' .. name .. '_' .. tostring(next_attempt), body, {runtime.launch_poll_seconds})",
+                    "end",
+                    "",
+                ]
+            )
 
         content = "\n".join(lines) + "\n"
         metadata = {
@@ -505,7 +554,7 @@ def _render_ship_attack(
     parameters = operation.parameters
     shooter_id = str(parameters["shooter_id"])
     target_id = str(parameters["target_ids"][0])
-    body = (
+    attack_call = (
         "fire_at("
         + ",".join(
             (
@@ -519,9 +568,23 @@ def _render_ship_attack(
         )
         + ")"
     )
+    if context.execution_telemetry_enabled:
+        body = (
+            f"runtime_log('CMO-RUNTIME operation_started {operation.operation_id}'); "
+            + f"local success = {attack_call}; "
+            + f"runtime_log('CMO-RUNTIME operation_completed {operation.operation_id} terminal=' .. tostring(success))"
+        )
+        schedule = (
+            f"runtime_schedule_lua({_lua_value(operation.operation_id)}, "
+            f"{_lua_value(event_name)}, {_lua_value(body)}, "
+            f"{_lua_value(parameters['delay_seconds'])})"
+        )
+    else:
+        body = attack_call
+        schedule = f"schedule_lua({_lua_value(event_name)}, {_lua_value(body)}, {_lua_value(parameters['delay_seconds'])})"
     return [
         f"runtime_log('operation {operation.operation_id} event {event_name}')",
-        f"schedule_lua({_lua_value(event_name)}, {_lua_value(body)}, {_lua_value(parameters['delay_seconds'])})",
+        schedule,
     ]
 
 
@@ -538,31 +601,34 @@ def _render_air_launch(
     target_id = str(attack["target_id"])
     target_name = context.unit_names[target_id]
     base_name = context.unit_names[str(operation.parameters["base_unit_id"])]
-    body = (
-        "air_launch_poll("
-        + ",".join(
-            (
-                _lua_value(aircraft_name),
-                _lua_value(context.unit_sides[target_id]),
-                _lua_value(target_name),
-                str(route["mid_lat"]),
-                str(route["mid_lon"]),
-                str(route["app_lat"]),
-                str(route["app_lon"]),
-                str(route["altitude_meters"]),
-                _lua_value(route["throttle"]),
-                str(attack["weapon_dbid"]),
-                str(attack["fire_quantity"]),
-                str(route["return_delay_seconds"]),
-                _lua_value(base_name),
-                "1",
-            )
-        )
-        + ")"
+    function_name = "telemetry_air_launch_poll" if context.execution_telemetry_enabled else "air_launch_poll"
+    arguments = [
+        _lua_value(aircraft_name),
+        _lua_value(context.unit_sides[target_id]),
+        _lua_value(target_name),
+        str(route["mid_lat"]),
+        str(route["mid_lon"]),
+        str(route["app_lat"]),
+        str(route["app_lon"]),
+        str(route["altitude_meters"]),
+        _lua_value(route["throttle"]),
+        str(attack["weapon_dbid"]),
+        str(attack["fire_quantity"]),
+        str(route["return_delay_seconds"]),
+        _lua_value(base_name),
+        "1",
+    ]
+    if context.execution_telemetry_enabled:
+        arguments.insert(0, _lua_value(operation.operation_id))
+    body = function_name + "(" + ",".join(arguments) + ")"
+    schedule = (
+        f"runtime_schedule_lua({_lua_value(operation.operation_id)}, {_lua_value(event_name)}, {_lua_value(body)}, 5)"
+        if context.execution_telemetry_enabled
+        else f"schedule_lua({_lua_value(event_name)}, {_lua_value(body)}, 5)"
     )
     return [
         f"runtime_log('operation {operation.operation_id} event {event_name}')",
-        f"schedule_lua({_lua_value(event_name)}, {_lua_value(body)}, 5)",
+        schedule,
     ]
 
 
@@ -594,7 +660,11 @@ _OPERATION_RENDERERS = {
 }
 
 
-def _build_context(plan: ExecutionPlan) -> _RenderContext:
+def _build_context(
+    plan: ExecutionPlan,
+    *,
+    execution_telemetry_enabled: bool,
+) -> _RenderContext:
     unit_names: dict[str, str] = {}
     unit_sides: dict[str, str] = {}
     routes: dict[str, dict[str, Any]] = {}
@@ -633,6 +703,7 @@ def _build_context(plan: ExecutionPlan) -> _RenderContext:
         unit_sides=unit_sides,
         routes=routes,
         air_targets=air_targets,
+        execution_telemetry_enabled=execution_telemetry_enabled,
     )
 
 

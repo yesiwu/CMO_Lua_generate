@@ -120,6 +120,50 @@ def test_execution_summary_accepts_zero_score_without_events(tmp_path: Path) -> 
     assert events == ()
 
 
+def test_execution_summary_preserves_runtime_execution_fidelity_without_rescoring(tmp_path: Path) -> None:
+    from cmo_lua_agent.evaluation.phase3_evaluation import _parse_execution_summary
+
+    scenario = load_scenario_definition(Path(__file__).resolve().parents[4] / "baseline" / "6v4" / "scenario_definition.json")
+    path = tmp_path / "runtime-summary.json"
+    path.write_text(json.dumps({
+        "run": {"run_id": "batch", "scenario_id": scenario.scenario_id, "candidate_id": "candidate_00", "scoring_side_id": "red"},
+        "official_score": {"stable_side_id": "red", "cmo_side_id": "red", "display_name": "红方", "initial": 0, "final": 35, "delta": 35, "status": "VALID", "score_event_chain_status": "VALID"},
+        "score_events": [
+            {"event_id": "e1", "event_sequence": 1, "sim_time": "t1", "rule_id": "native_score/red_j15_1", "raw_rule_name": "LOSS", "delta": -20, "score_before": 0, "score_after": -20},
+            {"event_id": "e2", "event_sequence": 2, "sim_time": "t2", "rule_id": "native_score/red_j15_2", "raw_rule_name": "LOSS", "delta": -20, "score_before": -20, "score_after": -40},
+            {"event_id": "e3", "event_sequence": 3, "sim_time": "t3", "rule_id": "native_score/blue_ddg113_1", "raw_rule_name": "KILL", "delta": 75, "score_before": -40, "score_after": 35},
+        ],
+        "losses": {}, "weapon_expenditures": [],
+        "runtime_execution": {
+            "simulation_start_time": "2026-07-29T00:00:00Z",
+            "simulation_end_time": "2026-07-29T00:03:01Z",
+            "simulation_elapsed_seconds": 181,
+            "stop_reason": "ScenarioEnded",
+            "last_runtime_event_time": "2026-07-29T00:03:00Z",
+            "last_scheduled_operation_time": "2026-07-29T00:03:00Z",
+            "scheduled_operation_count": 1,
+            "started_operation_count": 1,
+            "completed_operation_count": 1,
+            "pending_operation_count": 0,
+            "lua_bootstrap_seen": True,
+            "score_fragment_registered": True,
+            "execution_fidelity": "complete",
+        },
+        "evidence_integrity": {"status": "VALID", "score_chain_consistent": True, "results_complete": True},
+    }), encoding="utf-8")
+
+    snapshot, _ = _parse_execution_summary(
+        path,
+        scenario=scenario,
+        expected_batch_run_id="batch",
+        expected_candidate_id="candidate_00",
+        expected_scoring_side="red",
+    )
+
+    assert snapshot.native_score_final == 35
+    assert snapshot.execution_fidelity == "verified"
+
+
 def test_phase3_rejects_unscorable_or_display_side_summary_without_repair(tmp_path: Path) -> None:
     """Phase 3 consumes the source contract and never falls back to display names."""
     import pytest

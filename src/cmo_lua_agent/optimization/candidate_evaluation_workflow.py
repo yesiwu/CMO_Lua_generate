@@ -347,6 +347,7 @@ class CandidateEvaluationWorkflow:
             execution_success=(evaluation.metrics.execution_success if evaluation else False),
             native_score=(evaluation.native_snapshot.native_score_final if evaluation else None),
             score_source=(evaluation.native_snapshot.score_source if evaluation else None),
+            execution_fidelity=(evaluation.native_snapshot.execution_fidelity if evaluation else "unknown"),
         )
         # 落地最终结果文件
         store.write_json("candidate_outcome.json", asdict(outcome))

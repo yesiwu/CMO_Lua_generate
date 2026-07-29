@@ -121,6 +121,71 @@ def test_production_executor_consumes_pause_after_candidate_boundary(
     assert not (tmp_path / "generations" / "generation_000" / "phase6" / "leaderboard.json").exists()
 
 
+def test_production_executor_preserves_completed_outcomes_when_approval_expires(
+    tmp_path: Path,
+) -> None:
+    frozen = _frozen()
+    frozen_path = tmp_path / "frozen.json"
+    frozen_path.write_text(json.dumps(frozen.to_dict()), encoding="utf-8")
+    evaluated: list[str] = []
+
+    class Provider:
+        def load(self, _frozen_set):
+            return {"value": 0}, tuple(
+                (f"candidate_{index:02d}", {"value": index + 1})
+                for index in range(4)
+            )
+
+    def evaluate(**kwargs):
+        candidate_id = kwargs["candidate_id"]
+        evaluated.append(candidate_id)
+        if candidate_id == "candidate_00":
+            raise ValueError("generation_approval_expired")
+        return {
+            "candidate_id": candidate_id,
+            "success": True,
+            "final_state": "completed",
+            "execution_success": True,
+            "semantic_valid": True,
+            "scoreable": True,
+            "native_score": 0,
+        }
+
+    executor = ProductionGenerationExecutor(
+        package=object(),
+        candidate_evaluator=evaluate,
+        phase7_adapter=object(),
+        phase8_adapter=object(),
+        champion_policy=object(),
+        stop_policy=object(),
+        frozen_provider=Provider(),
+        artifact_provenance="test_fixture",
+    )
+    context = SimpleNamespace(
+        preview=SimpleNamespace(
+            generation_index=0,
+            preview_revision=0,
+            candidate_set_checksum=frozen.candidate_set_checksum,
+            baseline_checksum=frozen.baseline_checksum,
+            frozen_candidate_set_ref=str(frozen_path),
+            strategy_diffs=(),
+        ),
+        spec=SimpleNamespace(campaign_id="campaign_fixture"),
+        campaign_root=tmp_path,
+        control_action=lambda: None,
+    )
+
+    result = executor.run(context)
+
+    assert result.status == "awaiting_approval"
+    assert evaluated == ["baseline", "candidate_00"]
+    saved = json.loads(
+        (tmp_path / "generations" / "generation_000" / "phase6" / "candidate_baseline" / "candidate_outcome.json").read_text(encoding="utf-8")
+    )
+    assert saved["candidate_id"] == "baseline"
+    assert not (tmp_path / "generations" / "generation_000" / "phase6" / "leaderboard.json").exists()
+
+
 def test_formal_executor_delegates_ranking_to_phase6_comparator(
     tmp_path: Path,
 ) -> None:

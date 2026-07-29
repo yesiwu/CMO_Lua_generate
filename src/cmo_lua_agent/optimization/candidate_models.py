@@ -145,6 +145,7 @@ class CandidateOutcome:
     native_score: int | None = None
     score_source: str | None = None
     rank: int | None = None
+    execution_fidelity: str = "unknown"
 
 
 # 受约束状态机：只允许白名单内状态跳转，杜绝非法流转

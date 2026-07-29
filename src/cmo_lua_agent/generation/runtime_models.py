@@ -134,6 +134,7 @@ class LuaRuntimeProfile:
     attack_poll_seconds: int = 60   # 打击距离轮询间隔
     max_launch_attempts: int = 24   # 最大起飞重试次数
     max_attack_attempts: int = 35   # 最大攻击重试次数
+    execution_telemetry_enabled: bool = False
 
     def __post_init__(self) -> None:
         # ID/版本非空校验
@@ -150,6 +151,8 @@ class LuaRuntimeProfile:
             value = getattr(self, field_name)
             if not isinstance(value, int) or isinstance(value, bool) or value <= 0:
                 raise ValueError(f"{field_name} must be a positive integer")
+        if not isinstance(self.execution_telemetry_enabled, bool):
+            raise TypeError("execution_telemetry_enabled must be a bool")
 
     def event_name(
         self,
@@ -182,6 +185,7 @@ class LuaRuntimeProfile:
             "attack_poll_seconds": self.attack_poll_seconds,
             "max_launch_attempts": self.max_launch_attempts,
             "max_attack_attempts": self.max_attack_attempts,
+            "execution_telemetry_enabled": self.execution_telemetry_enabled,
         }
 
 

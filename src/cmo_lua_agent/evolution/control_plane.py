@@ -133,6 +133,11 @@ class GenerationExecutionResult:
         return cls("paused", {}, reason)
 
     @classmethod
+    def awaiting_approval(cls, reason: str) -> "GenerationExecutionResult":
+        """A safe boundary was reached before an unstarted attempt could run."""
+        return cls("awaiting_approval", {}, reason)
+
+    @classmethod
     def cancelled_incomplete(cls, reason: str) -> "GenerationExecutionResult":
         """任务提前终止、未跑完构造器"""
         return cls("cancelled_incomplete", {}, reason)
@@ -295,7 +300,14 @@ class GenerationWorkerManager:
         if previous is not None and previous.status in {"completed", "paused", "cancelled_incomplete", "reconciliation_required"}:
             return previous
         # 创建世代顶层操作记录（PHASE6 = 世代整体执行操作）
-        op_checksum = _checksum({"preview": preview.checksum, "contract": spec.contract_checksum})
+        resume_epoch = sum(
+            1
+            for item in store.list_workers()
+            if item.campaign_id == spec.campaign_id
+            and item.generation_index == preview.generation_index
+            and item.status == "awaiting_approval"
+        )
+        op_checksum = _checksum({"preview": preview.checksum, "contract": spec.contract_checksum, "resume_epoch": resume_epoch})
         operation = store.prepare_operation(generation_index=preview.generation_index, kind=OperationKind.PHASE6, input_checksum=op_checksum)
         # 操作处于启动/未知状态，代表进程崩溃遗留任务，需要外部对账
         if operation.status in (OperationStatus.STARTED, OperationStatus.UNKNOWN):
@@ -365,6 +377,12 @@ class GenerationWorkerManager:
             store.invalidate_approvals(generation_index=preview.generation_index, reason="campaign_paused")
             store.save_worker(WorkerState(worker.operation_id, spec.campaign_id, preview.generation_index, "paused", worker.worker_id, result.result, result.reason))
             store.update_campaign_state(status=CampaignStatus.PAUSED)
+        elif result.status == "awaiting_approval":
+            store.save_checkpoint({"generation_index": preview.generation_index, "worker_operation_id": worker.operation_id, "reason": result.reason})
+            store.invalidate_approvals(generation_index=preview.generation_index, reason="approval_expired_before_start")
+            store.mark_operation_completed(worker.operation_id)
+            store.save_worker(WorkerState(worker.operation_id, spec.campaign_id, preview.generation_index, "awaiting_approval", worker.worker_id, {}, result.reason))
+            store.update_campaign_state(status=CampaignStatus.AWAITING_APPROVAL)
         elif result.status == "cancelled_incomplete":
             # 提前终止：保存断点，作废审批，任务置CANCELLED
             store.save_checkpoint({"generation_index": preview.generation_index, "worker_operation_id": worker.operation_id, "status": "cancelled_incomplete", "reason": result.reason})
