@@ -52,11 +52,6 @@ class StrategyValidator:
                 next((item for item in shooter.weapon_inventory if item.weapon_dbid == attack.weapon_dbid), None)
                 if attack.weapon_selection == "explicit" else None
             )
-            if attack.weapon_selection == "auto" and not shooter.weapon_inventory:
-                issues.append(self._error(
-                    "strategy.weapon_not_available", f"{path}.weapon_selection", "射手没有可供自动选择的武器"
-                ))
-                continue
             if inventory is None:
                 if attack.weapon_selection == "explicit":
                     issues.append(self._error(
