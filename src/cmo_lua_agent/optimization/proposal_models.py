@@ -27,6 +27,27 @@ class ProposalContractError(ValueError):
         super().__init__(detail or code)
 
 
+class CandidateProposalError(ProposalContractError):
+    """A proposal failure bound to one fixed candidate and bounded stage."""
+
+    def __init__(self, *, candidate_id: str, stage: str, cause: ProposalContractError) -> None:
+        self.candidate_id = candidate_id
+        self.stage = stage
+        self.cause_code = cause.code
+        self.violations = tuple(getattr(cause, "violations", ()))
+        self.changed_paths = tuple(getattr(cause, "changed_paths", ()))
+        super().__init__(cause.code, f"{candidate_id}:{stage}:{cause.code}")
+
+
+class StrategyValidationProposalError(ProposalContractError):
+    """Structured StrategyValidator result suitable for a bounded repair."""
+
+    def __init__(self, *, violations: tuple[dict[str, object], ...], changed_paths: tuple[str, ...]) -> None:
+        self.violations = violations
+        self.changed_paths = changed_paths
+        super().__init__("assembled_strategy_invalid")
+
+
 def _scalar(value: object, *, code: str) -> JsonScalar:
     if type(value) not in (str, int, float, bool):
         raise ProposalContractError(code)

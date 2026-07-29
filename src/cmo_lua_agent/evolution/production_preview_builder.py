@@ -102,6 +102,20 @@ class ProductionPreviewBuilder:
         )
         try:
             candidates = self._proposal_agent.propose(context)
+        except Exception as error:
+            trace = getattr(self._proposal_agent, "last_audit", {})
+            if trace:
+                self._atomic_json(preview_root / "proposal-trace.json", trace)
+            self._atomic_json(preview_root / "proposal-failure.json", {
+                "candidate_id": getattr(error, "candidate_id", None),
+                "error_code": getattr(error, "code", type(error).__name__),
+                "failure_stage": getattr(error, "stage", "intent_or_patch"),
+                "message": str(error),
+                "proposal_llm_calls": int(getattr(getattr(self._proposal_agent, "last_usage", None), "total_calls", 0)),
+                "validator_violations": list(getattr(error, "violations", ())),
+                "changed_paths": list(getattr(error, "changed_paths", ())),
+            })
+            raise
         finally:
             usage = getattr(self._proposal_agent, "last_usage", None)
             self.proposal_calls = int(getattr(usage, "total_calls", 0))

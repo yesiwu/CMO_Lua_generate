@@ -107,7 +107,7 @@ def _leaf_constraint(path: str, value: JsonScalar, payload: dict[str, Any], unit
     if tokens[-1] in {"delay_seconds", "fire_delay_seconds", "return_delay_seconds"}:
         return PatchableLeaf(path, value, type(value).__name__, 0, 86400)
     if tokens[-1] in {"fire_quantity", "reserve_quantity"}:
-        maximum = _inventory_maximum(tokens, payload, units)
+        maximum = _quantity_maximum(tokens, payload, units)
         return PatchableLeaf(path, value, type(value).__name__, 0, maximum)
     if tokens[-1] in {"target_id"} or "target_ids" in tokens:
         allowed = _enemy_targets(tokens, payload, units)
@@ -117,13 +117,15 @@ def _leaf_constraint(path: str, value: JsonScalar, payload: dict[str, Any], unit
     return PatchableLeaf(path, value, type(value).__name__)
 
 
-def _inventory_maximum(tokens: list[str], payload: dict[str, Any], units: dict[str, Any]) -> int:
+def _quantity_maximum(tokens: list[str], payload: dict[str, Any], units: dict[str, Any]) -> int:
     try:
         index = int(tokens[1])
         attack = payload["attacks"][index]
         unit = units[attack["shooter_id"]]
         inventory = next(item for item in unit.weapon_inventory if item.weapon_dbid == attack["weapon_dbid"])
-        return inventory.max_quantity
+        if tokens[-1] == "fire_quantity":
+            return inventory.max_quantity - attack["reserve_quantity"]
+        return inventory.max_quantity - attack["fire_quantity"]
     except (IndexError, KeyError, StopIteration, ValueError):
         raise ProposalContractError("inventory_constraint_unavailable") from None
 

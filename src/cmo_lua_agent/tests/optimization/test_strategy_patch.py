@@ -62,3 +62,35 @@ def test_assembler_rejects_duplicate_patch_paths() -> None:
             StrategyPatchOperation("/attacks/0/fire_quantity", 2),
         ))
     assert raised.value.code == "duplicate_patch_path"
+
+
+def test_fire_quantity_catalog_reserves_existing_ammunition_before_strategy_validation() -> None:
+    baseline = StrategySpec("s", (
+        AttackDirective("attack.red", "red", ("blue_a",), 7, 3, 1, 5),
+    ))
+    catalog = build_patchable_leaf_catalog(
+        baseline=baseline,
+        scenario=_scenario(),
+        allowed_paths=("/attacks/0/fire_quantity",),
+    )
+
+    assert catalog[0].maximum == 3
+
+
+def test_repair_patch_cannot_exceed_available_inventory_after_reserve() -> None:
+    baseline = StrategySpec("s", (
+        AttackDirective("attack.red", "red", ("blue_a",), 7, 3, 1, 5),
+    ))
+    catalog = build_patchable_leaf_catalog(
+        baseline=baseline,
+        scenario=_scenario(),
+        allowed_paths=("/attacks/0/fire_quantity",),
+    )
+    assembler = StrategyPatchAssembler(baseline=baseline, catalog=catalog)
+
+    with pytest.raises(ProposalContractError) as raised:
+        assembler.assemble(CandidatePatch("candidate_02", "Increase fire volume.", (
+            StrategyPatchOperation("/attacks/0/fire_quantity", 4),
+        )))
+
+    assert raised.value.code == "value_above_maximum"

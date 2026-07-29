@@ -33,7 +33,7 @@ class CandidatePatchGenerator:
                     {"candidate_id": item.candidate_id, "changed_paths": list(item.changed_paths), "strategy_dimensions": list(item.strategy_dimensions)}
                     for item in accepted
                 ],
-                "previous_error": None if error is None else {"code": error.code},
+                "previous_error": _repair_error(error),
             }, ensure_ascii=False, sort_keys=True),
         )
         if not isinstance(response, Mapping) or set(response) != {"proposal_summary", "changes"}:
@@ -53,6 +53,26 @@ class CandidatePatchGenerator:
         if any(change.path not in known for change in patch.changes):
             raise ProposalContractError("patch_path_not_offered")
         return patch
+
+
+def _repair_error(error: ProposalContractError | None) -> dict[str, object] | None:
+    if error is None:
+        return None
+    violations = getattr(error, "violations", ())
+    return {
+        "code": error.code,
+        "changed_paths": list(getattr(error, "changed_paths", ())),
+        "violations": [
+            {
+                "code": item.get("code"),
+                "path": item.get("path"),
+                "actual_value": item.get("actual_value"),
+                "constraint_summary": item.get("constraint_summary"),
+            }
+            for item in violations
+            if isinstance(item, Mapping)
+        ],
+    }
 
 
 _SYSTEM = """You are CandidatePatchGenerator. Return exactly one JSON object with proposal_summary and changes.
