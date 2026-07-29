@@ -14,7 +14,7 @@ from cmo_lua_agent.contract import (
 
 
 PROJECT_ROOT = Path(__file__).parents[4]
-BASELINE_PATH = PROJECT_ROOT / "baseline" / "6v4" / "baseline_strategy.json"
+BASELINE_PATH = PROJECT_ROOT / "baseline" / "6v4" / "legacy" / "baseline_strategy.pre-scenario-ir.json"
 
 
 def test_verified_baseline_wraps_one_strategy_spec() -> None:

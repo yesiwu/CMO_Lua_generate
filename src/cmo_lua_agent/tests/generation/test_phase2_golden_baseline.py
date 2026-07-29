@@ -18,11 +18,11 @@ def test_phase2_golden_baseline_compiles_validates_and_renders_deterministically
 
     first = service.render(
         scenario_definition_path=BASELINE_ROOT / "scenario_definition.json",
-        baseline_strategy_path=BASELINE_ROOT / "baseline_strategy.json",
+        baseline_strategy_path=BASELINE_ROOT / "legacy" / "baseline_strategy.pre-scenario-ir.json",
     )
     second = service.render(
         scenario_definition_path=BASELINE_ROOT / "scenario_definition.json",
-        baseline_strategy_path=BASELINE_ROOT / "baseline_strategy.json",
+        baseline_strategy_path=BASELINE_ROOT / "legacy" / "baseline_strategy.pre-scenario-ir.json",
     )
 
     assert first.validation.is_valid
@@ -53,7 +53,7 @@ def test_phase2_golden_baseline_compiles_validates_and_renders_deterministically
 def test_phase2_golden_generation_manifest_records_audit_checksums() -> None:
     result = Phase2GoldenBaselineService().render(
         scenario_definition_path=BASELINE_ROOT / "scenario_definition.json",
-        baseline_strategy_path=BASELINE_ROOT / "baseline_strategy.json",
+        baseline_strategy_path=BASELINE_ROOT / "legacy" / "baseline_strategy.pre-scenario-ir.json",
     )
 
     manifest = result.generation_manifest
@@ -69,7 +69,7 @@ def test_phase2_golden_generation_manifest_records_audit_checksums() -> None:
 def test_phase2_golden_outputs_match_checked_in_snapshots() -> None:
     result = Phase2GoldenBaselineService().render(
         scenario_definition_path=BASELINE_ROOT / "scenario_definition.json",
-        baseline_strategy_path=BASELINE_ROOT / "baseline_strategy.json",
+        baseline_strategy_path=BASELINE_ROOT / "legacy" / "baseline_strategy.pre-scenario-ir.json",
     )
 
     assert result.rendered.content == (BASELINE_ROOT / "rendered_baseline.lua").read_text(

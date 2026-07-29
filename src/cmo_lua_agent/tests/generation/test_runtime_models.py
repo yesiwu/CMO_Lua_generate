@@ -108,7 +108,7 @@ def test_golden_manifest_requires_pinned_input_checksums() -> None:
         GoldenManifest(
             scenario_id="red_blue_6v4_liaoning",
             scenario_definition_source="baseline/6v4/scenario_definition.json",
-            baseline_strategy_source="baseline/6v4/baseline_strategy.json",
+            baseline_strategy_source="baseline/6v4/legacy/baseline_strategy.pre-scenario-ir.json",
             source_lua="json_data/6v4.lua",
             cmo_version="CMO-unknown",
             database_version="DB3K_504",

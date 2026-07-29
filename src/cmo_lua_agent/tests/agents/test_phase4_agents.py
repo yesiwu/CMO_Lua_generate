@@ -31,13 +31,13 @@ class FakeJsonClient:
 def _baseline() -> tuple[Path, object, BaselineStrategy]:
     root = Path(__file__).resolve().parents[4]
     baseline_root = root / "baseline" / "6v4"
-    return baseline_root, load_scenario_definition(baseline_root / "scenario_definition.json"), load_baseline_strategy(baseline_root / "baseline_strategy.json")
+    return baseline_root, load_scenario_definition(baseline_root / "scenario_definition.json"), load_baseline_strategy(baseline_root / "legacy" / "baseline_strategy.pre-scenario-ir.json")
 
 
 def _plan(baseline_root: Path):
     return Phase2GoldenBaselineService().render(
         scenario_definition_path=baseline_root / "scenario_definition.json",
-        baseline_strategy_path=baseline_root / "baseline_strategy.json",
+        baseline_strategy_path=baseline_root / "legacy" / "baseline_strategy.pre-scenario-ir.json",
     ).plan
 
 

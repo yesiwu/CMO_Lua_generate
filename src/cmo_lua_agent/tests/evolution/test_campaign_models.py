@@ -33,7 +33,7 @@ def _spec(**changes: object) -> EvolutionCampaignSpec:
         "scenario_id": "scenario_6v4",
         "scenario_ref": "baseline/6v4/scenario_definition.json",
         "scenario_checksum": "scenario-sha",
-        "initial_strategy_ref": "baseline/6v4/baseline_strategy.json",
+        "initial_strategy_ref": "json_data/6v4ScenarioIR.json#derived-baseline",
         "runtime_contract_checksum": "runtime-sha",
         "renderer_contract_checksum": "renderer-sha",
         "score_contract_checksum": "score-sha",

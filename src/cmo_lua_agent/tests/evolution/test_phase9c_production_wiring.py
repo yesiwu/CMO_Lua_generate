@@ -303,7 +303,7 @@ def test_production_knowledge_snapshot_freezes_empty_store_and_exact_contract(
 ) -> None:
     project = Path(__file__).resolve().parents[4]
     baseline = load_baseline_strategy(
-        project / "baseline" / "6v4" / "baseline_strategy.json"
+        project / "baseline" / "6v4" / "legacy" / "baseline_strategy.pre-scenario-ir.json"
     )
     package = SimpleNamespace(
         runtime=LuaRuntimeProfile("fixture-runtime", "2.0.0"),
@@ -338,7 +338,9 @@ def test_test_factory_runs_frozen_preview_and_generation_without_second_proposal
     project = Path(__file__).resolve().parents[4]
     baseline_root = project / "baseline" / "6v4"
     scenario = load_scenario_definition(baseline_root / "scenario_definition.json")
-    baseline = load_baseline_strategy(baseline_root / "baseline_strategy.json")
+    baseline = load_baseline_strategy(
+        baseline_root / "legacy" / "baseline_strategy.pre-scenario-ir.json"
+    )
     source = baseline.strategy.to_dict()
 
     class Proposal:
@@ -409,8 +411,8 @@ def test_test_factory_runs_frozen_preview_and_generation_without_second_proposal
                     "attack_timing",
                     "target_assignment",
                 ),
-                checksums={
-                    "scenario": "scenario",
+                    checksums={
+                        "scenario_definition_derived": "scenario",
                     "runtime": "runtime",
                     "renderer": "renderer",
                     "score_spec_compiled": "score",

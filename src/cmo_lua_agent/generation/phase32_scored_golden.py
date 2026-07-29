@@ -31,7 +31,9 @@ class Phase32ScoredGoldenService:
     def render(self, *, baseline_root: Path) -> Phase32ScoredGoldenResult:
         root = Path(baseline_root)
         scenario = load_scenario_definition(root / "scenario_definition.json")
-        baseline = load_baseline_strategy(root / "baseline_strategy.json")
+        baseline = load_baseline_strategy(
+            root / "legacy" / "baseline_strategy.pre-scenario-ir.json"
+        )
         validation = StrategyValidator().validate(strategy=baseline.strategy, scenario_definition=scenario)
         if not validation.valid:
             raise ValueError("baseline strategy is invalid")

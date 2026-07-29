@@ -24,7 +24,7 @@ BASELINE_ROOT = ROOT / "baseline" / "6v4"
 
 def _inputs():
     scenario = load_scenario_definition(BASELINE_ROOT / "scenario_definition.json")
-    strategy = load_baseline_strategy(BASELINE_ROOT / "baseline_strategy.json").strategy
+    strategy = load_baseline_strategy(BASELINE_ROOT / "legacy" / "baseline_strategy.pre-scenario-ir.json").strategy
     runtime = LuaRuntimeProfile(SCORED_RUNTIME_ID, SCORED_RUNTIME_VERSION)
     plan = ExecutionPlanCompiler().compile(
         scenario=scenario, strategy=strategy, runtime=runtime
@@ -37,7 +37,7 @@ def _inputs():
 def test_phase2_render_without_instrumentation_is_byte_identical() -> None:
     result = Phase2GoldenBaselineService().render(
         scenario_definition_path=BASELINE_ROOT / "scenario_definition.json",
-        baseline_strategy_path=BASELINE_ROOT / "baseline_strategy.json",
+        baseline_strategy_path=BASELINE_ROOT / "legacy" / "baseline_strategy.pre-scenario-ir.json",
     )
     expected = (BASELINE_ROOT / "rendered_baseline.lua").read_text(encoding="utf-8")
 
@@ -48,7 +48,7 @@ def test_scored_assembly_places_one_fragment_after_initialization_and_before_att
     scenario, _, runtime, plan, compilation = _inputs()
     result = ScoredLuaAssemblyService().render(
         scenario=scenario,
-        strategy=load_baseline_strategy(BASELINE_ROOT / "baseline_strategy.json").strategy,
+        strategy=load_baseline_strategy(BASELINE_ROOT / "legacy" / "baseline_strategy.pre-scenario-ir.json").strategy,
         plan=plan,
         runtime=runtime,
         native_score_compilation=compilation,
@@ -71,7 +71,7 @@ def test_scored_assembly_rejects_scenario_or_checksum_mismatch() -> None:
     scenario, _, runtime, plan, compilation = _inputs()
     wrong_plan = ExecutionPlanCompiler().compile(
         scenario=scenario,
-        strategy=load_baseline_strategy(BASELINE_ROOT / "baseline_strategy.json").strategy,
+        strategy=load_baseline_strategy(BASELINE_ROOT / "legacy" / "baseline_strategy.pre-scenario-ir.json").strategy,
         runtime=runtime,
     ).plan
     assert wrong_plan is not None
@@ -80,7 +80,7 @@ def test_scored_assembly_rejects_scenario_or_checksum_mismatch() -> None:
     with pytest.raises(ScoredLuaAssemblyError, match="scenario_id_mismatch"):
         ScoredLuaAssemblyService().render(
             scenario=scenario,
-            strategy=load_baseline_strategy(BASELINE_ROOT / "baseline_strategy.json").strategy,
+            strategy=load_baseline_strategy(BASELINE_ROOT / "legacy" / "baseline_strategy.pre-scenario-ir.json").strategy,
             plan=wrong_plan,
             runtime=runtime,
             native_score_compilation=compilation,
@@ -90,7 +90,7 @@ def test_scored_assembly_rejects_scenario_or_checksum_mismatch() -> None:
     with pytest.raises(ScoredLuaAssemblyError, match="fragment_checksum_mismatch"):
         ScoredLuaAssemblyService().render(
             scenario=scenario,
-            strategy=load_baseline_strategy(BASELINE_ROOT / "baseline_strategy.json").strategy,
+            strategy=load_baseline_strategy(BASELINE_ROOT / "legacy" / "baseline_strategy.pre-scenario-ir.json").strategy,
             plan=plan,
             runtime=runtime,
             native_score_compilation=compilation,
@@ -101,10 +101,10 @@ def test_scored_assembly_is_deterministic_and_records_score_checksums() -> None:
     scenario, _, runtime, plan, compilation = _inputs()
     service = ScoredLuaAssemblyService()
     first = service.render(
-        scenario=scenario, strategy=load_baseline_strategy(BASELINE_ROOT / "baseline_strategy.json").strategy, plan=plan, runtime=runtime, native_score_compilation=compilation
+        scenario=scenario, strategy=load_baseline_strategy(BASELINE_ROOT / "legacy" / "baseline_strategy.pre-scenario-ir.json").strategy, plan=plan, runtime=runtime, native_score_compilation=compilation
     )
     second = service.render(
-        scenario=scenario, strategy=load_baseline_strategy(BASELINE_ROOT / "baseline_strategy.json").strategy, plan=plan, runtime=runtime, native_score_compilation=compilation
+        scenario=scenario, strategy=load_baseline_strategy(BASELINE_ROOT / "legacy" / "baseline_strategy.pre-scenario-ir.json").strategy, plan=plan, runtime=runtime, native_score_compilation=compilation
     )
 
     assert first.rendered.content == second.rendered.content

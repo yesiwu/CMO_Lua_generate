@@ -197,7 +197,7 @@ def test_formal_executor_delegates_ranking_to_phase6_comparator(
             return ()
 
     package = SimpleNamespace(
-        checksums={"scenario": "scenario-checksum"},
+        checksums={"scenario_definition_derived": "scenario-checksum"},
         native_score_compilation=SimpleNamespace(
             score_spec_checksum="score-spec-checksum",
             fragment_checksum="fragment-checksum",

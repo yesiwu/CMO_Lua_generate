@@ -53,7 +53,9 @@ def test_phase6_formal_generation_cmo_smoke() -> None:
     if optimization_dir.exists():
         pytest.skip(f"existing smoke artifacts: {optimization_dir}")
     scenario = load_scenario_definition(baseline_root / "scenario_definition.json")
-    baseline = load_baseline_strategy(baseline_root / "baseline_strategy.json")
+    baseline = load_baseline_strategy(
+        baseline_root / "legacy" / "baseline_strategy.pre-scenario-ir.json"
+    )
     runtime = LuaRuntimeProfile(SCORED_RUNTIME_ID, SCORED_RUNTIME_VERSION)
     process = CmoProcessRunner(runner_path=runner_path, cleanup_process_names=())
     runner = CmoRunner(

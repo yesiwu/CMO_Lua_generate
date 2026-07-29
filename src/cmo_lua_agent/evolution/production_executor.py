@@ -338,7 +338,7 @@ class ProductionGenerationExecutor:
         if self._artifact_provenance == "test_fixture":
             return self._rank(outcomes)
         identity = EvaluationIdentity(
-            scenario_checksum=self._package.checksums["scenario"],
+            scenario_checksum=self._package.checksums["scenario_definition_derived"],
             score_spec_checksum=(
                 self._package.native_score_compilation.score_spec_checksum
             ),

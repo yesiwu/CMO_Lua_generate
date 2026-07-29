@@ -1,0 +1,9 @@
+{
+  "legacy_read_only": true,
+  "production_eligible": false,
+  "deprecated_reason": "replaced_by_scenario_ir_derivation",
+  "source_path": "baseline/6v4/baseline_strategy.json",
+  "current_path": "baseline/6v4/legacy/baseline_strategy.pre-scenario-ir.json",
+  "content_checksum": "9eff354f32c70043c5cc10db6fd564a4c3d65b180d404fd8e18f8cdb8d5cc1cb",
+  "last_compatible_code_revision": "3025a4a"
+}

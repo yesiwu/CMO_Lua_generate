@@ -10,7 +10,7 @@
     "source_lua": "5f1d59f1cf4725d2f0908abb621634822b1d1ee81096c79df9b643f7904dbd0b"
   },
   "input_sources": {
-    "baseline_strategy": "baseline/6v4/baseline_strategy.json",
+    "baseline_strategy": "baseline/6v4/legacy/baseline_strategy.pre-scenario-ir.json",
     "scenario_definition": "baseline/6v4/scenario_definition.json",
     "source_lua": "json_data/6v4.lua"
   },

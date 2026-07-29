@@ -269,6 +269,18 @@ Pause/Stop、恢复规则和 Phase 6/7/8 调用边界的 Fake 工程验收，不
   additional proposal calls.
 - This change does not invoke CMO or a production LLM endpoint.
 
+## Phase 9C Baseline Derivation
+
+- `json_data/6v4ScenarioIR.json` is the only production 6v4 Baseline input.
+  `BaselineStrategyBuilder` derives the Baseline deterministically for every
+  new Campaign.
+- `baseline/6v4/generated/` is Golden and audit output only, never a
+  production input.
+- `baseline/6v4/legacy/` is read-only historical material. New Campaigns
+  reject it rather than using a fallback.
+- A real Baseline CMO Golden still waits for deployment of the updated
+  BatchRunner.
+
 ## 健康检查
 
 ```powershell

@@ -33,7 +33,9 @@ class FixedCandidateRenderer:
         root = Path(baseline_root)
         proposal = json.loads((root / "phase6" / "fixed_strategy_proposal.json").read_text(encoding="utf-8"))
         scenario = load_scenario_definition(root / "scenario_definition.json")
-        baseline = load_baseline_strategy(root / "baseline_strategy.json")
+        baseline = load_baseline_strategy(
+            root / "legacy" / "baseline_strategy.pre-scenario-ir.json"
+        )
         candidates = tuple(StrategyCandidate(row["candidate_id"], strategy_spec_from_dict(row["strategy"]), row["proposal_summary"], tuple(row["intended_difference"])) for row in proposal["candidates"])
         set_report = CandidateSetValidator().validate(scenario=scenario, baseline=baseline.strategy, candidates=candidates, allowed_paths=_ALLOWED, diversity_dimensions=("target_assignment", "attack_timing", "fire_quantity", "ammunition_reserve"))
         if not set_report.diversity_report.valid:
