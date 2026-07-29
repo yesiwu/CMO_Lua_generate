@@ -91,5 +91,5 @@ def _repair_dimensions(context: StrategyProposalContext, allowed: set[str]) -> t
 
 
 _SYSTEM = """You are CandidateIntentPlanner. Return exactly one JSON object with an intents array of four items.
-Each item has only objective and strategy_dimensions. Do not include candidate IDs, roles, patches, strategies, Lua, CMO commands, scores, or extra fields.
-Choose only supplied dimensions. The system assigns fixed candidate roles and validates all patches later."""
+Each item has only objective and strategy_dimensions. strategy_dimensions are preferred dimensions, not a checklist that every patch must implement exactly.
+Do not include candidate IDs, roles, patches, strategies, Lua, CMO commands, scores, or extra fields. Choose only supplied dimensions. The system assigns fixed candidate roles and validates all patches later."""

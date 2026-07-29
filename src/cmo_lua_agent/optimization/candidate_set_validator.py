@@ -150,7 +150,7 @@ def _diff_values(old: Any, new: Any, current_path: str, output: list[str]) -> No
         output.append(current_path)
 
 
-def _dimension(path: str) -> str:
+def _legacy_dimension(path: str) -> str:
     """根据改动路径，归类属于哪一类战术维度（用于多样性评估）"""
     if path.endswith("/target_ids") or "/target_ids/" in path:
         return "target_assignment"        # 目标分配

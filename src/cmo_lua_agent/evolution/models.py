@@ -33,6 +33,7 @@ class CampaignStatus(str, Enum):
     FAILED = "failed"                  # 发生致命错误，任务失败终止
     CANCELLED = "cancelled"            # 人工提前终止，未完成迭代
     AWAITING_APPROVAL = "awaiting_approval" # 等待人工审批，无法启动世代执行
+    AWAITING_OPERATOR_ACTION = "awaiting_operator_action" # 可恢复的预览/提案故障，等待明确操作员决策
 
 
 class OperationKind(str, Enum):

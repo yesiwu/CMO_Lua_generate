@@ -77,6 +77,20 @@ class CandidateIntent:
     max_changes: int
     required_dimensions: tuple[str, ...] = ()
 
+    @property
+    def preferred_dimensions(self) -> tuple[str, ...]:
+        """Planner recommendations, not an exact implementation checklist."""
+        return self.strategy_dimensions
+
+    @property
+    def minimum_changed_leaves(self) -> int:
+        return self.min_changes
+
+    @property
+    def minimum_distinct_dimensions(self) -> int:
+        """The system-owned role floor; the planner cannot weaken it."""
+        return 2 if self.candidate_id == "candidate_02" else 1
+
     def __post_init__(self) -> None:
         if self.candidate_id not in CANDIDATE_IDS:
             raise ProposalContractError("invalid_candidate_id")

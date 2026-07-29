@@ -95,9 +95,11 @@ class StrategyProposalAgent:
                 self._last_audit = audit
 
     @staticmethod
-    def _validate_candidate(*, intent, strategy, changed_paths, context, validator: StrategyValidator) -> None:
+    def _validate_candidate(*, intent, strategy, changed_paths, context, catalog, validator: StrategyValidator) -> None:
         CandidateIntentConformanceValidator().validate(
-            intent=intent, changed_paths=tuple(changed_paths)
+            intent=intent,
+            changed_paths=tuple(changed_paths),
+            catalog_paths=tuple(leaf.path for leaf in catalog),
         )
         report = validator.validate(strategy, context.scenario)
         if not report.valid:
@@ -130,7 +132,7 @@ class StrategyProposalAgent:
             attempts = audit["candidate_repair"]["patch_attempts"]  # type: ignore[index]
             attempts.append(_patch_audit(intent.candidate_id, "targeted_repair", patch, prior_error))  # type: ignore[union-attr]
             assembled = assembler.assemble(patch)
-            self._validate_candidate(intent=intent, strategy=assembled.strategy, changed_paths=assembled.changed_paths, context=context, validator=validator)
+            self._validate_candidate(intent=intent, strategy=assembled.strategy, changed_paths=assembled.changed_paths, context=context, catalog=catalog, validator=validator)
         except ProposalContractError as initial_error:
             try:
                 repair_calls += 1
@@ -140,7 +142,7 @@ class StrategyProposalAgent:
                 attempts = audit["candidate_repair"]["patch_attempts"]  # type: ignore[index]
                 attempts.append(_patch_audit(intent.candidate_id, "targeted_local_repair", patch, initial_error))  # type: ignore[union-attr]
                 assembled = assembler.assemble(patch)
-                self._validate_candidate(intent=intent, strategy=assembled.strategy, changed_paths=assembled.changed_paths, context=context, validator=validator)
+                self._validate_candidate(intent=intent, strategy=assembled.strategy, changed_paths=assembled.changed_paths, context=context, catalog=catalog, validator=validator)
             except ProposalContractError as repair_error:
                 raise CandidateProposalError(candidate_id=intent.candidate_id, stage="targeted_patch_repair", cause=repair_error) from repair_error
         finally:
@@ -197,7 +199,7 @@ class StrategyProposalAgent:
             patch = self._generator.generate(intent=intent, catalog=catalog, accepted=accepted)
             attempts.append(_patch_audit(intent.candidate_id, "initial", patch))
             assembled = assembler.assemble(patch)
-            self._validate_candidate(intent=intent, strategy=assembled.strategy, changed_paths=assembled.changed_paths, context=context, validator=validator)
+            self._validate_candidate(intent=intent, strategy=assembled.strategy, changed_paths=assembled.changed_paths, context=context, catalog=catalog, validator=validator)
         except ProposalContractError as initial_error:
             if initial_error.code == "proposal_json_invalid":
                 raise CandidateProposalError(candidate_id=intent.candidate_id, stage="patch_generation", cause=initial_error) from initial_error
@@ -205,7 +207,7 @@ class StrategyProposalAgent:
                 patch = self._generator.generate(intent=intent, catalog=catalog, accepted=accepted, error=initial_error)
                 attempts.append(_patch_audit(intent.candidate_id, "repair", patch, initial_error))
                 assembled = assembler.assemble(patch)
-                self._validate_candidate(intent=intent, strategy=assembled.strategy, changed_paths=assembled.changed_paths, context=context, validator=validator)
+                self._validate_candidate(intent=intent, strategy=assembled.strategy, changed_paths=assembled.changed_paths, context=context, catalog=catalog, validator=validator)
             except ProposalContractError as repair_error:
                 raise CandidateProposalError(candidate_id=intent.candidate_id, stage="patch_repair", cause=repair_error) from repair_error
             return StrategyCandidate(intent.candidate_id, assembled.strategy, patch.proposal_summary, assembled.changed_paths), 1, 1, attempts

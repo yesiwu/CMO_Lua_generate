@@ -9,6 +9,7 @@ from typing import Any, Protocol
 from cmo_lua_agent.llm.json_client import JsonCompletionError
 from cmo_lua_agent.optimization.proposal_models import AcceptedCandidateSummary, CandidateIntent, CandidatePatch, ProposalContractError, StrategyPatchOperation
 from cmo_lua_agent.optimization.strategy_patch import PatchableLeaf
+from cmo_lua_agent.optimization.strategy_dimensions import semantic_dimension
 
 
 class PatchJsonClient(Protocol):
@@ -20,6 +21,7 @@ class CandidatePatchGenerator:
         self._client = client
 
     def generate(self, *, intent: CandidateIntent, catalog: tuple[PatchableLeaf, ...], accepted: tuple[AcceptedCandidateSummary, ...], error: ProposalContractError | None = None) -> CandidatePatch:
+        grouped_catalog = _catalog_by_dimension(catalog)
         try:
             response = self._client.complete_json(
                 system=_SYSTEM,
@@ -27,10 +29,17 @@ class CandidatePatchGenerator:
                 "candidate_id": intent.candidate_id,
                 "role": intent.role,
                 "objective": intent.objective,
-                "strategy_dimensions": list(intent.strategy_dimensions),
+                "preferred_dimensions": list(intent.preferred_dimensions),
                 "required_dimensions": list(intent.required_dimensions),
                 "change_count": {"minimum": intent.min_changes, "maximum": intent.max_changes},
+                "minimum_distinct_dimensions": intent.minimum_distinct_dimensions,
+                "candidate_instruction": (
+                    "Select leaves from at least two different semantic dimension groups."
+                    if intent.candidate_id == "candidate_02"
+                    else "Respect the supplied change-count and semantic-dimension constraints."
+                ),
                 "patchable_leaves": [leaf.to_prompt_dict() for leaf in catalog],
+                "patchable_leaves_by_dimension": grouped_catalog,
                 "accepted_candidates": [
                     {"candidate_id": item.candidate_id, "changed_paths": list(item.changed_paths), "strategy_dimensions": list(item.strategy_dimensions)}
                     for item in accepted
@@ -84,3 +93,10 @@ def _repair_error(error: ProposalContractError | None) -> dict[str, object] | No
 _SYSTEM = """You are CandidatePatchGenerator. Return exactly one JSON object with proposal_summary and changes.
 changes is a non-empty JSON array of {path, value}; replace only listed scalar leaves. Do not output a full strategy, Lua, CMO commands, scoring, IDs, markdown, or extra fields.
 Respect the exact candidate ID, change-count bounds, allowed leaf constraints, and any previous structured error."""
+
+
+def _catalog_by_dimension(catalog: tuple[PatchableLeaf, ...]) -> dict[str, list[dict[str, object]]]:
+    grouped: dict[str, list[dict[str, object]]] = {}
+    for leaf in catalog:
+        grouped.setdefault(semantic_dimension(leaf.path), []).append(leaf.to_prompt_dict())
+    return {dimension: grouped[dimension] for dimension in sorted(grouped)}
