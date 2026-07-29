@@ -152,10 +152,11 @@ class AttackDirective:
     attack_id: str
     shooter_id: str
     target_ids: tuple[str, ...]
-    weapon_dbid: int
+    weapon_dbid: int | None
     fire_quantity: int
     delay_seconds: int
     reserve_quantity: int = 0
+    weapon_selection: str = "explicit"
 
     def __post_init__(self) -> None:
         for field_name in ("attack_id", "shooter_id"):
@@ -171,8 +172,13 @@ class AttackDirective:
         if not targets:
             raise ValueError("target_ids 至少需要一个目标")
         object.__setattr__(self, "target_ids", targets)
-        if not isinstance(self.weapon_dbid, int) or self.weapon_dbid <= 0:
-            raise ValueError("weapon_dbid 必须是正整数")
+        if self.weapon_selection not in {"auto", "explicit"}:
+            raise ValueError("weapon_selection 仅允许 auto 或 explicit")
+        if self.weapon_selection == "auto":
+            if self.weapon_dbid is not None:
+                raise ValueError("auto weapon_selection 不允许 weapon_dbid")
+        elif not isinstance(self.weapon_dbid, int) or self.weapon_dbid <= 0:
+            raise ValueError("explicit weapon_selection 要求 weapon_dbid 为正整数")
         for field_name in (
             "fire_quantity",
             "delay_seconds",
@@ -181,7 +187,7 @@ class AttackDirective:
             _require_non_negative(getattr(self, field_name), field_name=field_name)
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        result = {
             "attack_id": self.attack_id,
             "shooter_id": self.shooter_id,
             "target_ids": list(self.target_ids),
@@ -190,6 +196,9 @@ class AttackDirective:
             "delay_seconds": self.delay_seconds,
             "reserve_quantity": self.reserve_quantity,
         }
+        if self.weapon_selection == "auto":
+            result["weapon_selection"] = "auto"
+        return result
 
 
 @dataclass(frozen=True, slots=True)
@@ -368,10 +377,11 @@ def strategy_spec_from_dict(value: dict[str, Any]) -> StrategySpec:
             attack_id=item["attack_id"],
             shooter_id=item["shooter_id"],
             target_ids=tuple(item["target_ids"]),
-            weapon_dbid=item["weapon_dbid"],
+            weapon_dbid=item.get("weapon_dbid"),
             fire_quantity=item["fire_quantity"],
             delay_seconds=item["delay_seconds"],
             reserve_quantity=item.get("reserve_quantity", 0),
+            weapon_selection=item.get("weapon_selection", "explicit"),
         )
         for item in value.get("attacks", [])
     )

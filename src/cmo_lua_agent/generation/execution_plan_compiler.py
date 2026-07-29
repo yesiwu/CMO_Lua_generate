@@ -311,6 +311,10 @@ class ExecutionPlanCompiler:
                             "aircraft_id": sortie.aircraft_id,
                             "target_id": sortie.target_id,
                             "weapon_dbid": attack.weapon_dbid,
+                            **(
+                                {"weapon_selection": "auto"}
+                                if attack.weapon_selection == "auto" else {}
+                            ),
                         },
                         depends_on=(route_id, f"contact.{sortie.target_id}"),
                         source_strategy_path=f"/strategy/sorties/{sortie_index}",

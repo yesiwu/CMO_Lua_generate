@@ -152,8 +152,14 @@ def _validate_ship_attack(parameters: Mapping[str, Any]) -> str | None:
             return f"{k} must be a non-empty string"
     if not _non_empty_list(parameters.get("target_ids")):
         return "target_ids must be non-empty"
-    if not _positive_int(parameters.get("weapon_dbid")):
-        return "weapon_dbid must be a positive integer"
+    selection = parameters.get("weapon_selection", "explicit")
+    if selection not in {"auto", "explicit"}:
+        return "weapon_selection must be auto or explicit"
+    if selection == "auto":
+        if parameters.get("weapon_dbid") is not None:
+            return "auto weapon_selection requires weapon_dbid to be null"
+    elif not _positive_int(parameters.get("weapon_dbid")):
+        return "explicit weapon_selection requires weapon_dbid to be a positive integer"
     if not _positive_int(parameters.get("fire_quantity")):
         return "fire_quantity must be a positive integer"
     return None

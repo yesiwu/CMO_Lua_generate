@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from cmo_lua_agent.contract import (
+    AttackDirective,
     BaselineStrategy,
     ScenarioDefinition,
     StrategySpec,
@@ -76,3 +77,18 @@ def test_scenario_definition_from_dict_preserves_weapon_fact_boundary() -> None:
     assert isinstance(definition, ScenarioDefinition)
     assert definition.units[0].weapon_inventory[0].weapon_dbid == 2868
     assert definition.units[0].weapon_inventory[0].max_quantity == 16
+
+
+def test_attack_directive_preserves_auto_weapon_selection_without_a_dbid() -> None:
+    attack = AttackDirective(
+        attack_id="auto-ship-attack",
+        shooter_id="red_ship",
+        target_ids=("blue_ship",),
+        weapon_dbid=None,
+        fire_quantity=4,
+        delay_seconds=30,
+        weapon_selection="auto",
+    )
+
+    assert attack.to_dict()["weapon_selection"] == "auto"
+    assert attack.to_dict()["weapon_dbid"] is None

@@ -177,7 +177,7 @@ class LuaRuntimeProfile:
         return "evt_" + sha256(identity.encode("utf-8")).hexdigest()[:16] + f"_{_required_text(phase, 'phase')}_{attempt:02d}"
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        value = {
             "runtime_id": self.runtime_id,
             "runtime_version": self.runtime_version,
             "ship_settle_seconds": self.ship_settle_seconds,
@@ -185,8 +185,10 @@ class LuaRuntimeProfile:
             "attack_poll_seconds": self.attack_poll_seconds,
             "max_launch_attempts": self.max_launch_attempts,
             "max_attack_attempts": self.max_attack_attempts,
-            "execution_telemetry_enabled": self.execution_telemetry_enabled,
         }
+        if self.execution_telemetry_enabled:
+            value["execution_telemetry_enabled"] = True
+        return value
 
 
 # -----------------------------------------------------------------------------

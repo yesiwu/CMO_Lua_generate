@@ -48,23 +48,25 @@ class StrategyValidator:
                     "strategy.unknown_shooter", f"{path}.shooter_id", "射手不存在"
                 ))
                 continue
-            inventory = next(
-                (
-                    item
-                    for item in shooter.weapon_inventory
-                    if item.weapon_dbid == attack.weapon_dbid
-                ),
-                None,
+            inventory = (
+                next((item for item in shooter.weapon_inventory if item.weapon_dbid == attack.weapon_dbid), None)
+                if attack.weapon_selection == "explicit" else None
             )
-            if inventory is None:
+            if attack.weapon_selection == "auto" and not shooter.weapon_inventory:
                 issues.append(self._error(
-                    "strategy.weapon_not_available", f"{path}.weapon_dbid", "射手没有该武器"
+                    "strategy.weapon_not_available", f"{path}.weapon_selection", "射手没有可供自动选择的武器"
                 ))
+                continue
+            if inventory is None:
+                if attack.weapon_selection == "explicit":
+                    issues.append(self._error(
+                        "strategy.weapon_not_available", f"{path}.weapon_dbid", "射手没有该武器"
+                    ))
             elif attack.fire_quantity + attack.reserve_quantity > inventory.max_quantity:
                 issues.append(self._error(
                     "strategy.ammo_exceeded", f"{path}.fire_quantity", "发射量与保留量超过场景库存"
                 ))
-            else:
+            elif attack.weapon_selection == "explicit":
                 inventory_key = (attack.shooter_id, attack.weapon_dbid)
                 requested_fire[inventory_key] = (
                     requested_fire.get(inventory_key, 0)

@@ -53,7 +53,15 @@ class LuaRenderer:
         source_map: dict[str, LuaSourceSpan] = {}
 
         self._append_header(lines=lines, plan=plan, runtime=runtime, instrumentation=instrumentation)
-        self._append_runtime_helpers(lines=lines, runtime=runtime)
+        has_auto_weapon_selection = any(
+            operation.parameters.get("weapon_selection") == "auto"
+            for operation in plan.operations
+        )
+        self._append_runtime_helpers(
+            lines=lines,
+            runtime=runtime,
+            auto_weapon_selection=has_auto_weapon_selection,
+        )
 
         instrumentation_inserted = False
         for index, operation in enumerate(plan.operations):
@@ -96,6 +104,30 @@ class LuaRenderer:
             ]
         )
         if runtime.execution_telemetry_enabled:
+            telemetry_attack_retry = (
+                [
+                    "    local weapon_literal = weapon_dbid == nil and 'nil' or tostring(weapon_dbid)",
+                    "    local body = string.format('telemetry_air_attack_poll(%q,%q,%q,%q,%s,%d,%d,%q,%d)', operation_id, name, target_side, target, weapon_literal, quantity, return_delay, base_name, next_attempt)",
+                ]
+                if has_auto_weapon_selection
+                else ["    local body = string.format('telemetry_air_attack_poll(%q,%q,%q,%q,%d,%d,%d,%q,%d)', operation_id, name, target_side, target, weapon_dbid, quantity, return_delay, base_name, next_attempt)"]
+            )
+            telemetry_launch_attack = (
+                [
+                    "        local weapon_literal = weapon_dbid == nil and 'nil' or tostring(weapon_dbid)",
+                    "        local body = string.format('telemetry_air_attack_poll(%q,%q,%q,%q,%s,%d,%d,%q,%d)', operation_id, name, target_side, target, weapon_literal, quantity, return_delay, base_name, 1)",
+                ]
+                if has_auto_weapon_selection
+                else ["        local body = string.format('telemetry_air_attack_poll(%q,%q,%q,%q,%d,%d,%d,%q,%d)', operation_id, name, target_side, target, weapon_dbid, quantity, return_delay, base_name, 1)"]
+            )
+            telemetry_launch_retry = (
+                [
+                    "    local weapon_literal = weapon_dbid == nil and 'nil' or tostring(weapon_dbid)",
+                    "    local body = string.format('telemetry_air_launch_poll(%q,%q,%q,%q,%.8f,%.8f,%.8f,%.8f,%d,%q,%s,%d,%d,%q,%d)', operation_id, name, target_side, target, mid_lat, mid_lon, app_lat, app_lon, altitude, throttle, weapon_literal, quantity, return_delay, base_name, next_attempt)",
+                ]
+                if has_auto_weapon_selection
+                else ["    local body = string.format('telemetry_air_launch_poll(%q,%q,%q,%q,%.8f,%.8f,%.8f,%.8f,%d,%q,%d,%d,%d,%q,%d)', operation_id, name, target_side, target, mid_lat, mid_lon, app_lat, app_lon, altitude, throttle, weapon_dbid, quantity, return_delay, base_name, next_attempt)"]
+            )
             lines.extend(
                 [
                     "local function runtime_schedule_lua(operation_id, event_name, lua_script, delay_seconds)",
@@ -118,7 +150,7 @@ class LuaRenderer:
                     "    end",
                     f"    if attempt >= {runtime.max_attack_attempts} then pcall(ScenEdit_SetUnit, {{guid=unit.guid, rtb=true}}); runtime_log('CMO-RUNTIME operation_completed ' .. tostring(operation_id) .. ' terminal=attack_timeout'); return end",
                     "    local next_attempt = attempt + 1",
-                    "    local body = string.format('telemetry_air_attack_poll(%q,%q,%q,%q,%d,%d,%d,%q,%d)', operation_id, name, target_side, target, weapon_dbid, quantity, return_delay, base_name, next_attempt)",
+                    *telemetry_attack_retry,
                     f"    schedule_lua('evt_air_attack_' .. name .. '_' .. tostring(next_attempt), body, {runtime.attack_poll_seconds})",
                     "end",
                     "",
@@ -129,7 +161,7 @@ class LuaRenderer:
                     "    print_air_state('launch poll ' .. tostring(attempt), unit)",
                     "    if unit.isOperating then",
                     "        checked_cmo_call('Route/' .. name, ScenEdit_SetUnit, {guid=unit.guid, course={{latitude=mid_lat, longitude=mid_lon}, {latitude=app_lat, longitude=app_lon}}, altitude=altitude, throttle=throttle})",
-                    "        local body = string.format('telemetry_air_attack_poll(%q,%q,%q,%q,%d,%d,%d,%q,%d)', operation_id, name, target_side, target, weapon_dbid, quantity, return_delay, base_name, 1)",
+                    *telemetry_launch_attack,
                     f"        schedule_lua('evt_air_attack_' .. name .. '_1', body, {runtime.attack_poll_seconds})",
                     "        return",
                     "    end",
@@ -137,7 +169,7 @@ class LuaRenderer:
                     "    checked_cmo_call('ReadyRetry/' .. name, ScenEdit_SetUnit, {guid=unit.guid, timetoready_minutes=0})",
                     "    checked_cmo_call('Launch/' .. name, ScenEdit_SetUnit, {guid=unit.guid, launch=true})",
                     "    local next_attempt = attempt + 1",
-                    "    local body = string.format('telemetry_air_launch_poll(%q,%q,%q,%q,%.8f,%.8f,%.8f,%.8f,%d,%q,%d,%d,%d,%q,%d)', operation_id, name, target_side, target, mid_lat, mid_lon, app_lat, app_lon, altitude, throttle, weapon_dbid, quantity, return_delay, base_name, next_attempt)",
+                    *telemetry_launch_retry,
                     f"    schedule_lua('evt_air_launch_' .. name .. '_' .. tostring(next_attempt), body, {runtime.launch_poll_seconds})",
                     "end",
                     "",
@@ -205,7 +237,40 @@ class LuaRenderer:
         *,
         lines: list[str],
         runtime: LuaRuntimeProfile,
+        auto_weapon_selection: bool,
     ) -> None:
+        fire_options = (
+            [
+                "    local opts = {mode='1', qty=tonumber(quantity)}",
+                "    if weapon_dbid ~= nil then opts.weapon = tonumber(weapon_dbid) end",
+            ]
+            if auto_weapon_selection
+            else ["    local opts = {mode='1', weapon=tonumber(weapon_dbid), qty=tonumber(quantity)}"]
+        )
+        air_attack_retry = (
+            [
+                "    local weapon_literal = weapon_dbid == nil and 'nil' or tostring(weapon_dbid)",
+                "    local body = string.format('air_attack_poll(%q,%q,%q,%s,%d,%d,%q,%d)', name, target_side, target, weapon_literal, quantity, return_delay, base_name, next_attempt)",
+            ]
+            if auto_weapon_selection
+            else ["    local body = string.format('air_attack_poll(%q,%q,%q,%d,%d,%d,%q,%d)', name, target_side, target, weapon_dbid, quantity, return_delay, base_name, next_attempt)"]
+        )
+        air_launch_attack = (
+            [
+                "        local weapon_literal = weapon_dbid == nil and 'nil' or tostring(weapon_dbid)",
+                "        local body = string.format('air_attack_poll(%q,%q,%q,%s,%d,%d,%q,%d)', name, target_side, target, weapon_literal, quantity, return_delay, base_name, 1)",
+            ]
+            if auto_weapon_selection
+            else ["        local body = string.format('air_attack_poll(%q,%q,%q,%d,%d,%d,%q,%d)', name, target_side, target, weapon_dbid, quantity, return_delay, base_name, 1)"]
+        )
+        air_launch_retry = (
+            [
+                "    local weapon_literal = weapon_dbid == nil and 'nil' or tostring(weapon_dbid)",
+                "    local body = string.format('air_launch_poll(%q,%q,%q,%.8f,%.8f,%.8f,%.8f,%d,%q,%s,%d,%d,%q,%d)', name, target_side, target, mid_lat, mid_lon, app_lat, app_lon, altitude, throttle, weapon_literal, quantity, return_delay, base_name, next_attempt)",
+            ]
+            if auto_weapon_selection
+            else ["    local body = string.format('air_launch_poll(%q,%q,%q,%.8f,%.8f,%.8f,%.8f,%d,%q,%d,%d,%d,%q,%d)', name, target_side, target, mid_lat, mid_lon, app_lat, app_lon, altitude, throttle, weapon_dbid, quantity, return_delay, base_name, next_attempt)"]
+        )
         lines.extend(
             [
                 "local function runtime_log(message)",
@@ -293,7 +358,7 @@ class LuaRenderer:
                 "    if not attacker or not attacker.guid then runtime_log('missing attacker ' .. tostring(attacker_name)); return false end",
                 "    local contact = contact_guid(attacker_side, target_side, target_name)",
                 "    if not contact then runtime_log('missing contact ' .. tostring(target_name)); return false end",
-                "    local opts = {mode='1', weapon=tonumber(weapon_dbid), qty=tonumber(quantity)}",
+                *fire_options,
                 "    _errnum_ = 0",
                 "    _errmsg_ = ''",
                 "    local ok, result = pcall(ScenEdit_AttackContact, attacker.guid, contact, opts)",
@@ -323,7 +388,7 @@ class LuaRenderer:
                 "    end",
                 f"    if attempt >= {runtime.max_attack_attempts} then pcall(ScenEdit_SetUnit, {{guid=unit.guid, rtb=true}}); return end",
                 "    local next_attempt = attempt + 1",
-                "    local body = string.format('air_attack_poll(%q,%q,%q,%d,%d,%d,%q,%d)', name, target_side, target, weapon_dbid, quantity, return_delay, base_name, next_attempt)",
+                *air_attack_retry,
                 f"    schedule_lua('evt_air_attack_' .. name .. '_' .. tostring(next_attempt), body, {runtime.attack_poll_seconds})",
                 "end",
                 "",
@@ -333,7 +398,7 @@ class LuaRenderer:
                 "    print_air_state('launch poll ' .. tostring(attempt), unit)",
                 "    if unit.isOperating then",
                 "        checked_cmo_call('Route/' .. name, ScenEdit_SetUnit, {guid=unit.guid, course={{latitude=mid_lat, longitude=mid_lon}, {latitude=app_lat, longitude=app_lon}}, altitude=altitude, throttle=throttle})",
-                "        local body = string.format('air_attack_poll(%q,%q,%q,%d,%d,%d,%q,%d)', name, target_side, target, weapon_dbid, quantity, return_delay, base_name, 1)",
+                *air_launch_attack,
                 f"        schedule_lua('evt_air_attack_' .. name .. '_1', body, {runtime.attack_poll_seconds})",
                 "        return",
                 "    end",
@@ -341,7 +406,7 @@ class LuaRenderer:
                 "    checked_cmo_call('ReadyRetry/' .. name, ScenEdit_SetUnit, {guid=unit.guid, timetoready_minutes=0})",
                 "    checked_cmo_call('Launch/' .. name, ScenEdit_SetUnit, {guid=unit.guid, launch=true})",
                 "    local next_attempt = attempt + 1",
-                "    local body = string.format('air_launch_poll(%q,%q,%q,%.8f,%.8f,%.8f,%.8f,%d,%q,%d,%d,%d,%q,%d)', name, target_side, target, mid_lat, mid_lon, app_lat, app_lon, altitude, throttle, weapon_dbid, quantity, return_delay, base_name, next_attempt)",
+                *air_launch_retry,
                 f"    schedule_lua('evt_air_launch_' .. name .. '_' .. tostring(next_attempt), body, {runtime.launch_poll_seconds})",
                 "end",
                 "",
@@ -562,7 +627,7 @@ def _render_ship_attack(
                 _lua_value(context.unit_sides[target_id]),
                 _lua_value(context.unit_names[shooter_id]),
                 _lua_value(context.unit_names[target_id]),
-                str(parameters["weapon_dbid"]),
+                _lua_value(parameters["weapon_dbid"]),
                 str(parameters["fire_quantity"]),
             )
         )
@@ -612,7 +677,7 @@ def _render_air_launch(
         str(route["app_lon"]),
         str(route["altitude_meters"]),
         _lua_value(route["throttle"]),
-        str(attack["weapon_dbid"]),
+        _lua_value(attack["weapon_dbid"]),
         str(attack["fire_quantity"]),
         str(route["return_delay_seconds"]),
         _lua_value(base_name),

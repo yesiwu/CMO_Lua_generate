@@ -40,6 +40,26 @@ def test_compiler_lowers_ship_attack_into_plan_operations() -> None:
     assert attack.depends_on == ("inventory.red_ship", "contact.blue_ship")
 
 
+def test_compiler_preserves_auto_weapon_selection_in_the_execution_plan() -> None:
+    scenario = ScenarioDefinition(units=(
+        ScenarioUnit("red_ship", "red", "Red Ship", "ship", 1, weapon_inventory=(WeaponInventory(2868, "YJ-18", 16),)),
+        ScenarioUnit("blue_ship", "blue", "Blue Ship", "ship", 2),
+    ), scenario_id="golden")
+    strategy = StrategySpec(
+        scenario_id="golden",
+        attacks=(AttackDirective("ship-attack", "red_ship", ("blue_ship",), None, 8, 30, weapon_selection="auto"),),
+    )
+
+    result = ExecutionPlanCompiler().compile(
+        scenario=scenario, strategy=strategy,
+        runtime=LuaRuntimeProfile("cmo_naval_air_anti_surface", "1.0.0"),
+    )
+
+    assert result.capability_gaps == ()
+    assert result.plan.operations[-1].parameters["weapon_selection"] == "auto"
+    assert result.plan.operations[-1].parameters["weapon_dbid"] is None
+
+
 def test_compiler_returns_gap_for_submarine_attack() -> None:
     scenario = ScenarioDefinition(units=(
         ScenarioUnit("red_sub", "red", "Red Sub", "submarine", 1, weapon_inventory=(WeaponInventory(2868, "YJ-18", 8),)),
