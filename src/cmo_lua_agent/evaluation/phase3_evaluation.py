@@ -368,9 +368,23 @@ def _parse_execution_summary(
         raise ValueError("execution summary candidate_id does not match candidate")
     if run.get("scenario_id") != scenario.scenario_id:
         raise ValueError("execution summary scenario_id does not match scenario")
-    if score.get("side_id") != expected_scoring_side or run.get("scoring_side_id") != expected_scoring_side:
-        raise ValueError("execution summary scoring side does not match score contract")
-    if integrity.get("score_chain_consistent") is not True or integrity.get("results_complete") is not True:
+    # `display_name` is presentation-only.  The BatchRunner has already bound
+    # the official score to the stable side and the exact CMO side identifier.
+    if run.get("scoring_side_id") != expected_scoring_side:
+        raise ValueError("execution summary run scoring side does not match score contract")
+    if score.get("stable_side_id") != expected_scoring_side:
+        raise ValueError("execution summary stable side does not match score contract")
+    if score.get("cmo_side_id") != expected_scoring_side:
+        raise ValueError("execution summary exact CMO side does not match score contract")
+    if not isinstance(score.get("display_name"), str) or not score["display_name"].strip():
+        raise ValueError("execution summary display name is missing")
+    if score.get("status") != "VALID" or score.get("score_event_chain_status") != "VALID":
+        raise ValueError("execution summary official score is unscorable")
+    if (
+        integrity.get("status") != "VALID"
+        or integrity.get("score_chain_consistent") is not True
+        or integrity.get("results_complete") is not True
+    ):
         raise ValueError("execution summary evidence integrity is not valid")
     initial, final, declared_delta = score.get("initial"), score.get("final"), score.get("delta")
     if any(not isinstance(value, int) for value in (initial, final, declared_delta)):
@@ -388,9 +402,16 @@ def _parse_execution_summary(
     for item in raw_events:
         if not isinstance(item, dict):
             raise ValueError("score event must be an object")
-        fields = ("event_id", "event_sequence", "sim_time", "rule_id", "delta", "score_before", "score_after")
+        fields = (
+            "event_id", "event_sequence", "sim_time", "rule_id", "raw_rule_name",
+            "delta", "score_before", "score_after",
+        )
         if any(field not in item for field in fields):
             raise ValueError("score event has missing fields")
+        if not isinstance(item["rule_id"], str) or not item["rule_id"].startswith("native_score/"):
+            raise ValueError("score event rule_id is not a stable native score identifier")
+        if not isinstance(item["raw_rule_name"], str) or not item["raw_rule_name"].strip():
+            raise ValueError("score event raw_rule_name is missing")
         if not isinstance(item["event_sequence"], int) or any(not isinstance(item[field], int) for field in ("delta", "score_before", "score_after")):
             raise ValueError("score event has invalid numeric fields")
         events.append(NativeScoreEvent(

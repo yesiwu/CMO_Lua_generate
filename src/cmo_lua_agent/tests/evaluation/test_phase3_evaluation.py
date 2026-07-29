@@ -45,14 +45,18 @@ def _create_result(root: Path) -> Path:
     (job / "execution-summary.json").write_text(json.dumps({
         "schema_version": "1.0",
         "run": {"run_id": root.name, "scenario_id": "red_blue_6v4_liaoning", "candidate_id": "candidate_test", "scoring_side_id": "red"},
-        "official_score": {"side_id": "red", "initial": 0, "final": -40, "delta": -40},
+        "official_score": {
+            "stable_side_id": "red", "cmo_side_id": "red", "display_name": "红方",
+            "initial": 0, "final": -40, "delta": -40,
+            "status": "VALID", "score_event_chain_status": "VALID",
+        },
         "score_events": [
-            {"event_id": "evt:1", "event_sequence": 1, "sim_time": "2026-07-01T00:27:10Z", "rule_id": "SCORE_LOSS_RED_J15_1_MINUS20", "unit_id": "red_j15_1", "delta": -20, "score_before": 0, "score_after": -20, "evidence_ref": "events.sqlite#1"},
-            {"event_id": "evt:2", "event_sequence": 2, "sim_time": "2026-07-01T00:27:42Z", "rule_id": "SCORE_LOSS_RED_J15_2_MINUS20", "unit_id": "red_j15_2", "delta": -20, "score_before": -20, "score_after": -40, "evidence_ref": "events.sqlite#2"},
+            {"event_id": "evt:1", "event_sequence": 1, "sim_time": "2026-07-01T00:27:10Z", "rule_id": "native_score/red_j15_1", "raw_rule_name": "SCORE_LOSS_RED_J15_1_MINUS20", "unit_id": "red_j15_1", "delta": -20, "score_before": 0, "score_after": -20, "evidence_ref": "events.sqlite#1"},
+            {"event_id": "evt:2", "event_sequence": 2, "sim_time": "2026-07-01T00:27:42Z", "rule_id": "native_score/red_j15_2", "raw_rule_name": "SCORE_LOSS_RED_J15_2_MINUS20", "unit_id": "red_j15_2", "delta": -20, "score_before": -20, "score_after": -40, "evidence_ref": "events.sqlite#2"},
         ],
         "losses": {"red": [{"unit_id": "red_j15_1"}, {"unit_id": "red_j15_2"}]},
         "target_damage": [], "weapon_expenditures": [],
-        "evidence_integrity": {"score_chain_consistent": True, "results_complete": True},
+        "evidence_integrity": {"status": "VALID", "score_chain_consistent": True, "results_complete": True},
     }), encoding="utf-8")
     return root
 
@@ -67,13 +71,13 @@ def test_execution_summary_uses_last_official_score_not_minimum(tmp_path: Path) 
         events = []
         for sequence, delta in enumerate(chain, 1):
             after = before + delta
-            events.append({"event_id": f"e{sequence}", "event_sequence": sequence, "sim_time": f"t{sequence}", "rule_id": f"r{sequence}", "unit_id": None, "delta": delta, "score_before": before, "score_after": after})
+            events.append({"event_id": f"e{sequence}", "event_sequence": sequence, "sim_time": f"t{sequence}", "rule_id": f"native_score/r{sequence}", "raw_rule_name": f"SCORE_{sequence}", "unit_id": None, "delta": delta, "score_before": before, "score_after": after})
             before = after
         path.write_text(json.dumps({
             "run": {"run_id": "batch", "scenario_id": scenario.scenario_id, "candidate_id": "candidate_00", "scoring_side_id": "red"},
-            "official_score": {"side_id": "red", "initial": 0, "final": final, "delta": final},
+            "official_score": {"stable_side_id": "red", "cmo_side_id": "red", "display_name": "红方", "initial": 0, "final": final, "delta": final, "status": "VALID", "score_event_chain_status": "VALID"},
             "score_events": events, "losses": {}, "weapon_expenditures": [],
-            "evidence_integrity": {"score_chain_consistent": True, "results_complete": True},
+            "evidence_integrity": {"status": "VALID", "score_chain_consistent": True, "results_complete": True},
         }), encoding="utf-8")
         snapshot, parsed = _parse_execution_summary(path, scenario=scenario, expected_batch_run_id="batch", expected_candidate_id="candidate_00", expected_scoring_side="red")
         assert snapshot.native_score_final == final
@@ -87,9 +91,9 @@ def test_execution_summary_rejects_inconsistent_score_chain(tmp_path: Path) -> N
     path = tmp_path / "bad.json"
     path.write_text(json.dumps({
         "run": {"run_id": "batch", "scenario_id": scenario.scenario_id, "candidate_id": "candidate_00", "scoring_side_id": "red"},
-        "official_score": {"side_id": "red", "initial": 0, "final": 60, "delta": 60},
-        "score_events": [{"event_id": "e1", "event_sequence": 1, "sim_time": "t", "rule_id": "r", "delta": -40, "score_before": 0, "score_after": -40}],
-        "evidence_integrity": {"score_chain_consistent": True, "results_complete": True},
+        "official_score": {"stable_side_id": "red", "cmo_side_id": "red", "display_name": "红方", "initial": 0, "final": 60, "delta": 60, "status": "VALID", "score_event_chain_status": "VALID"},
+        "score_events": [{"event_id": "e1", "event_sequence": 1, "sim_time": "t", "rule_id": "native_score/r", "raw_rule_name": "R", "delta": -40, "score_before": 0, "score_after": -40}],
+        "evidence_integrity": {"status": "VALID", "score_chain_consistent": True, "results_complete": True},
     }), encoding="utf-8")
     import pytest
     with pytest.raises(ValueError, match="endpoints|deltas"):
@@ -103,9 +107,9 @@ def test_execution_summary_accepts_zero_score_without_events(tmp_path: Path) -> 
     path = tmp_path / "zero-score.json"
     path.write_text(json.dumps({
         "run": {"run_id": "batch", "scenario_id": scenario.scenario_id, "candidate_id": "candidate_00", "scoring_side_id": "red"},
-        "official_score": {"side_id": "red", "initial": 0, "final": 0, "delta": 0},
+        "official_score": {"stable_side_id": "red", "cmo_side_id": "red", "display_name": "红方", "initial": 0, "final": 0, "delta": 0, "status": "VALID", "score_event_chain_status": "VALID"},
         "score_events": [],
-        "evidence_integrity": {"score_chain_consistent": True, "results_complete": True},
+        "evidence_integrity": {"status": "VALID", "score_chain_consistent": True, "results_complete": True},
     }), encoding="utf-8")
 
     snapshot, events = _parse_execution_summary(
@@ -114,6 +118,36 @@ def test_execution_summary_accepts_zero_score_without_events(tmp_path: Path) -> 
 
     assert snapshot.native_score_final == 0
     assert events == ()
+
+
+def test_phase3_rejects_unscorable_or_display_side_summary_without_repair(tmp_path: Path) -> None:
+    """Phase 3 consumes the source contract and never falls back to display names."""
+    import pytest
+    from cmo_lua_agent.evaluation.phase3_evaluation import _parse_execution_summary
+
+    scenario = load_scenario_definition(Path(__file__).resolve().parents[4] / "baseline" / "6v4" / "scenario_definition.json")
+    path = tmp_path / "unscorable-summary.json"
+    payload = {
+        "run": {"run_id": "batch", "scenario_id": scenario.scenario_id, "candidate_id": "candidate_00", "scoring_side_id": "red"},
+        "official_score": {
+            "stable_side_id": "red", "cmo_side_id": "红方", "display_name": "红方",
+            "initial": None, "final": None, "delta": None,
+            "status": "UNSCORABLE", "score_event_chain_status": "INVALID",
+        },
+        "score_events": [],
+        "evidence_integrity": {"status": "UNSCORABLE", "score_chain_consistent": False, "results_complete": True},
+    }
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    original = path.read_bytes()
+
+    with pytest.raises(ValueError):
+        _parse_execution_summary(
+            path, scenario=scenario, expected_batch_run_id="batch",
+            expected_candidate_id="candidate_00", expected_scoring_side="red",
+        )
+
+    assert path.read_bytes() == original
+    assert not (tmp_path / "execution-summary.source.json").exists()
 
 
 def test_phase3_evaluation_builds_minimal_evidence_and_reward_artifacts(tmp_path: Path) -> None:
