@@ -7,7 +7,7 @@ from cmo_lua_agent.optimization.candidate_intent_planner import CandidateIntentP
 from cmo_lua_agent.optimization.candidate_patch_generator import CandidatePatchGenerator
 from cmo_lua_agent.optimization.candidate_set_validator import _dimension
 from cmo_lua_agent.optimization.phase6_models import StrategyCandidate, StrategyProposalContext
-from cmo_lua_agent.optimization.proposal_models import AcceptedCandidateSummary, CandidateProposalError, ProposalContractError, StrategyProposalUsage, StrategyValidationProposalError
+from cmo_lua_agent.optimization.proposal_models import AcceptedCandidateSummary, CandidateIntent, CandidateProposalError, ProposalContractError, StrategyProposalUsage, StrategyValidationProposalError
 from cmo_lua_agent.optimization.strategy_patch import StrategyPatchAssembler, build_patchable_leaf_catalog
 
 
@@ -40,7 +40,9 @@ class StrategyProposalAgent:
             audit: dict[str, object] = {
                 "intents": [
                     {"candidate_id": item.candidate_id, "role": item.role, "objective": item.objective,
-                     "strategy_dimensions": list(item.strategy_dimensions)}
+                     "strategy_dimensions": list(item.strategy_dimensions),
+                     "min_changes": item.min_changes, "max_changes": item.max_changes,
+                     "required_dimensions": list(item.required_dimensions)}
                     for item in intents
                 ],
                 "accepted_candidates": [],
@@ -110,12 +112,58 @@ class StrategyProposalAgent:
             violations = tuple(_validation_violation(issue, strategy) for issue in report.errors)
             raise StrategyValidationProposalError(violations=violations, changed_paths=tuple(changed_paths))
 
+    def repair_candidate(
+        self,
+        context: StrategyProposalContext,
+        *,
+        intent: CandidateIntent,
+        accepted: tuple[AcceptedCandidateSummary, ...],
+        prior_error: ProposalContractError,
+    ) -> StrategyCandidate:
+        """Regenerate only one named candidate; never invokes the intent planner."""
+        patch_calls = repair_calls = 0
+        catalog = build_patchable_leaf_catalog(
+            baseline=context.baseline,
+            scenario=context.scenario,
+            allowed_paths=context.allowed_strategy_paths,
+        )
+        assembler = StrategyPatchAssembler(baseline=context.baseline, catalog=catalog)
+        validator = StrategyValidator()
+        audit: dict[str, object] = {"candidate_repair": {"candidate_id": intent.candidate_id, "patch_attempts": []}}
+        try:
+            patch_calls += 1
+            patch = self._generator.generate(
+                intent=intent, catalog=catalog, accepted=accepted, error=prior_error
+            )
+            attempts = audit["candidate_repair"]["patch_attempts"]  # type: ignore[index]
+            attempts.append(_patch_audit(intent.candidate_id, "targeted_repair", patch, prior_error))  # type: ignore[union-attr]
+            assembled = assembler.assemble(patch)
+            self._validate_candidate(intent=intent, strategy=assembled.strategy, changed_paths=assembled.changed_paths, context=context, validator=validator)
+        except ProposalContractError as initial_error:
+            try:
+                repair_calls += 1
+                patch = self._generator.generate(
+                    intent=intent, catalog=catalog, accepted=accepted, error=initial_error
+                )
+                attempts = audit["candidate_repair"]["patch_attempts"]  # type: ignore[index]
+                attempts.append(_patch_audit(intent.candidate_id, "targeted_local_repair", patch, initial_error))  # type: ignore[union-attr]
+                assembled = assembler.assemble(patch)
+                self._validate_candidate(intent=intent, strategy=assembled.strategy, changed_paths=assembled.changed_paths, context=context, validator=validator)
+            except ProposalContractError as repair_error:
+                raise CandidateProposalError(candidate_id=intent.candidate_id, stage="targeted_patch_repair", cause=repair_error) from repair_error
+        finally:
+            self._last_usage = StrategyProposalUsage(0, patch_calls, repair_calls)
+            audit["usage"] = {"intent_calls": 0, "patch_calls": patch_calls, "repair_calls": repair_calls}
+            self._last_audit = audit
+        return StrategyCandidate(intent.candidate_id, assembled.strategy, patch.proposal_summary, assembled.changed_paths)
+
 
 def _patch_audit(candidate_id, phase, patch, prior_error=None) -> dict[str, object]:
     return {
         "candidate_id": candidate_id,
         "phase": phase,
         "changes": [{"path": change.path, "value": change.value} for change in patch.changes],
+        "proposal_summary": patch.proposal_summary,
         "prior_error_code": None if prior_error is None else prior_error.code,
     }
 

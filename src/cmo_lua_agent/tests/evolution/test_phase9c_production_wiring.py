@@ -14,6 +14,7 @@ from cmo_lua_agent.evolution.production_models import ControlledScenarioAsset
 from cmo_lua_agent.evolution.production_preview_builder import (
     ProductionPreviewBuilder,
 )
+from cmo_lua_agent.evolution.novelty import CandidateNoveltyError
 from cmo_lua_agent.evolution.production_knowledge import (
     ProductionKnowledgeSnapshotProvider,
 )
@@ -58,8 +59,23 @@ def test_preview_failure_audit_classifies_post_proposal_novelty_failure() -> Non
 
     assert audit["failure_stage"] == "novelty_validation"
     assert audit["error_code"] == "novelty_explore_dimension_missing"
+    assert audit["preview_status"] == "novelty_repair_required"
     assert audit["proposal_llm_calls"] == 5
     assert "intents" not in audit
+
+
+def test_novelty_error_exposes_a_repairable_candidate_contract() -> None:
+    error = CandidateNoveltyError(
+        code="novelty_explore_dimension_missing",
+        failed_candidate_ids=("candidate_02",),
+        required_dimensions=("attacks", "sorties"),
+        actual_dimensions=("attacks",),
+        related_changed_paths=("/attacks/2/delay_seconds",),
+    )
+
+    assert error.code == "novelty_explore_dimension_missing"
+    assert error.failed_candidate_ids == ("candidate_02",)
+    assert error.related_changed_paths == ("/attacks/2/delay_seconds",)
 
 
 def test_chat_parser_exposes_explicit_standard_and_campaign_profiles() -> None:

@@ -212,6 +212,9 @@ class ProductionEvolutionCampaignService:
     def preview_generation(self, **kwargs: Any):
         return self._service(str(kwargs["campaign_id"])).preview_generation(**kwargs)
 
+    def repair_preview_candidate(self, **kwargs: Any):
+        return self._service(str(kwargs["campaign_id"])).repair_preview_candidate(**kwargs)
+
     def execute_generation(self, **kwargs: Any):
         return self._service(str(kwargs["campaign_id"])).execute_generation(**kwargs)
 

@@ -57,6 +57,23 @@ class _PreviewBuilder:
         )
 
 
+@dataclass
+class _RepairPreviewBuilder(_PreviewBuilder):
+    repair_calls: list[str] = None  # type: ignore[assignment]
+
+    def __post_init__(self) -> None:
+        self.repair_calls = []
+
+    def repair_candidate(self, *, candidate_id: str, preview_revision: int, **_kwargs):
+        self.repair_calls.append(candidate_id)
+        return GenerationPreviewPayload(
+            knowledge_snapshot_checksum="snapshot-repair",
+            candidate_set_checksum="candidates-repair",
+            strategy_diffs=({"candidate_id": candidate_id},),
+            proposal_llm_calls=1,
+        )
+
+
 class _Executor:
     def __init__(self) -> None:
         self.calls = 0
@@ -210,3 +227,27 @@ def test_resume_marks_started_operation_for_reconciliation_without_replaying_wor
     summary = service.resume_campaign("control_fixture")
     assert summary["reconciliation_required_operations"] == [operation.operation_id]
     assert executor.calls == 0
+
+
+def test_targeted_preview_repair_only_consumes_one_patch_call(tmp_path: Path) -> None:
+    preview = _RepairPreviewBuilder()
+    executor = _Executor()
+    service = EvolutionCampaignService(
+        campaigns_root=tmp_path / "runs" / "evolution",
+        preview_builder=preview,
+        generation_executor=executor,
+        synchronous_fake_workers=True,
+    )
+    service.prepare_campaign(_spec())
+
+    result = service.repair_preview_candidate(
+        campaign_id="control_fixture",
+        generation_index=0,
+        source_revision=0,
+        candidate_id="candidate_02",
+    )
+
+    assert preview.calls == 0
+    assert preview.repair_calls == ["candidate_02"]
+    assert result.preview_revision == 1
+    assert service.inspect_campaign("control_fixture")["budget"]["llm_call_counts"] == {"strategy_proposal": 1}

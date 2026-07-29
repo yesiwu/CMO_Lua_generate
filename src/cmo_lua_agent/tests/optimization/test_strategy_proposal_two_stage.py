@@ -8,6 +8,7 @@ from cmo_lua_agent.contract.strategy_models import (
     WeaponInventory,
 )
 from cmo_lua_agent.optimization.phase6_models import BootstrapSkillSnapshot, StrategyProposalContext
+from cmo_lua_agent.optimization.proposal_models import CandidateIntent, ProposalContractError
 from cmo_lua_agent.optimization.strategy_proposal_agent import StrategyProposalAgent
 
 
@@ -77,3 +78,35 @@ def test_proposal_agent_uses_one_intent_and_four_ordered_patch_calls() -> None:
         "/attacks/0/fire_quantity",
     )
     assert client.calls == 5
+
+
+def test_targeted_candidate_repair_does_not_call_the_intent_planner() -> None:
+    class RepairClient:
+        calls = 0
+
+        def complete_json(self, **_kwargs: object) -> object:
+            self.calls += 1
+            return {
+                "proposal_summary": "Explore timing and quantity.",
+                "changes": [
+                    {"path": "/attacks/0/fire_quantity", "value": 3},
+                    {"path": "/attacks/0/delay_seconds", "value": 4},
+                ],
+            }
+
+    client = RepairClient()
+    agent = StrategyProposalAgent(client)
+    intent = CandidateIntent(
+        "candidate_02", "explore", "Explore two dimensions.",
+        ("fire_quantity", "attack_timing"), 2, 3,
+    )
+
+    candidate = agent.repair_candidate(
+        _context(), intent=intent, accepted=(),
+        prior_error=ProposalContractError("novelty_explore_dimension_missing"),
+    )
+
+    assert client.calls == 1
+    assert agent.last_usage.intent_calls == 0
+    assert agent.last_usage.patch_calls == 1
+    assert candidate.candidate_id == "candidate_02"
