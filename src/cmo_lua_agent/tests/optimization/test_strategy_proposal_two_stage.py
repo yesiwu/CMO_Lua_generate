@@ -52,8 +52,8 @@ class _TwoStageClient:
             },
             {"proposal_summary": "More missiles.", "changes": [{"path": "/attacks/0/fire_quantity", "value": 5}]},
             {"proposal_summary": "Delay launch.", "changes": [{"path": "/attacks/0/delay_seconds", "value": 1}]},
-            {"proposal_summary": "Split the change.", "changes": [{"path": "/attacks/0/fire_quantity", "value": 3}, {"path": "/attacks/0/delay_seconds", "value": 2}]},
-            {"proposal_summary": "Conservative delay.", "changes": [{"path": "/attacks/0/delay_seconds", "value": 3}]},
+            {"proposal_summary": "Split the change.", "changes": [{"path": "/attacks/0/fire_quantity", "value": 3}, {"path": "/attacks/0/delay_seconds", "value": 4}]},
+            {"proposal_summary": "Conservative delay.", "changes": [{"path": "/attacks/0/delay_seconds", "value": 5}]},
         ]
 
     def complete_json(self, **_: object) -> object:
