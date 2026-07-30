@@ -53,12 +53,7 @@ class CandidatePatchGenerator:
                 "candidate_instruction": (
                     _candidate_instruction(intent)
                 ),
-                "repair_instruction": (
-                    "Return one complete replacement Patch. changes must contain every "
-                    "corrected change, not only incremental additions to the initial Patch."
-                    if error is not None
-                    else None
-                ),
+                "repair_instruction": _repair_instruction(error),
                 "patchable_leaves": [leaf.to_prompt_dict() for leaf in catalog],
                 "patchable_leaves_by_dimension": grouped_catalog,
                 "accepted_candidates": [
@@ -105,7 +100,7 @@ def _repair_error(error: ProposalContractError | None) -> dict[str, object] | No
     if error is None:
         return None
     violations = getattr(error, "violations", ())
-    return {
+    payload: dict[str, object] = {
         "code": error.code,
         "diagnostics": dict(error.diagnostics),
         "changed_paths": list(getattr(error, "changed_paths", ())),
@@ -120,6 +115,34 @@ def _repair_error(error: ProposalContractError | None) -> dict[str, object] | No
             if isinstance(item, Mapping)
         ],
     }
+    for key in (
+        "previous_patch",
+        "actual_change_count",
+        "actual_dimensions",
+        "minimum_dimension_count",
+        "required_change_range",
+        "changed_paths",
+        "actual_operation_count",
+    ):
+        if key in error.diagnostics:
+            payload[key] = error.diagnostics[key]
+    return payload
+
+
+def _repair_instruction(error: ProposalContractError | None) -> str | None:
+    if error is None:
+        return None
+    if error.code == "candidate_intent_dimension_missing":
+        return (
+            "Return one complete replacement Patch. Preserve legal changes from previous_patch, "
+            "then add or replace only the minimum changes needed to reach the required distinct "
+            "dimension floor and remain inside the required change range. Do not require every "
+            "preferred dimension. changes must contain every corrected change, never an incremental delta."
+        )
+    return (
+        "Return one complete replacement Patch. changes must contain every corrected change, "
+        "not only incremental additions to the initial Patch."
+    )
 
 
 def _candidate_instruction(intent: CandidateIntent) -> str:

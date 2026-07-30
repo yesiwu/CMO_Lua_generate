@@ -134,11 +134,15 @@ class StrategyProposalAgent:
                     patch_calls += 1
                     if error.stage == "patch_repair":
                         repair_calls += 1
-                    failed_initial = error.diagnostics.get("initial_patch_failure")
-                    if isinstance(failed_initial, dict):
-                        cast_attempts = audit["patch_attempts"]
-                        assert isinstance(cast_attempts, list)
-                        cast_attempts.append(failed_initial)
+                    failed_attempts = error.diagnostics.get("candidate_patch_attempts")
+                    cast_attempts = audit["patch_attempts"]
+                    assert isinstance(cast_attempts, list)
+                    if isinstance(failed_attempts, list):
+                        cast_attempts.extend(failed_attempts)
+                    else:
+                        failed_initial = error.diagnostics.get("initial_patch_failure")
+                        if isinstance(failed_initial, dict):
+                            cast_attempts.append(failed_initial)
                     raise
                 patch_calls += used_patch
                 repair_calls += used_repair
@@ -252,7 +256,8 @@ class StrategyProposalAgent:
             patch_calls = 1
             repair_calls = 1 if error.stage == "patch_repair" else 0
             self._last_usage = StrategyProposalUsage(0, patch_calls, repair_calls)
-            self._last_audit = {"candidate_generation": {"candidate_id": intent.candidate_id, "patch_attempts": []}, "usage": {"intent_calls": 0, "patch_calls": patch_calls, "repair_calls": repair_calls}}
+            attempts = error.diagnostics.get("candidate_patch_attempts", [])
+            self._last_audit = {"candidate_generation": {"candidate_id": intent.candidate_id, "patch_attempts": attempts}, "usage": {"intent_calls": 0, "patch_calls": patch_calls, "repair_calls": repair_calls}}
             raise
         self._last_usage = StrategyProposalUsage(0, patch_calls, repair_calls)
         self._last_audit = {"candidate_generation": {"candidate_id": intent.candidate_id, "patch_attempts": audit}, "usage": {"intent_calls": 0, "patch_calls": patch_calls, "repair_calls": repair_calls}}
@@ -269,6 +274,7 @@ class StrategyProposalAgent:
         validator: StrategyValidator,
     ) -> tuple[StrategyCandidate, int, int, list[dict[str, object]]]:
         attempts: list[dict[str, object]] = []
+        patch = None
         try:
             patch = self._generator.generate(
                 intent=intent,
@@ -280,8 +286,10 @@ class StrategyProposalAgent:
             assembled = assembler.assemble(patch)
             self._validate_candidate(intent=intent, strategy=assembled.strategy, changed_paths=assembled.changed_paths, context=context, catalog=catalog, validator=validator)
         except ProposalContractError as initial_error:
+            context_audit = _patch_context(intent, patch) if patch is not None else {}
+            initial_error.diagnostics.update(context_audit)
             initial_failure = _patch_failure_audit(
-                intent.candidate_id, "initial_failed", initial_error
+                intent.candidate_id, "initial_failed", initial_error, patch=patch
             )
             attempts.append(initial_failure)
             if initial_error.code in {
@@ -302,6 +310,7 @@ class StrategyProposalAgent:
                 self._validate_candidate(intent=intent, strategy=assembled.strategy, changed_paths=assembled.changed_paths, context=context, catalog=catalog, validator=validator)
             except ProposalContractError as repair_error:
                 repair_error.diagnostics["initial_patch_failure"] = initial_failure
+                repair_error.diagnostics["candidate_patch_attempts"] = attempts
                 raise CandidateProposalError(
                     candidate_id=intent.candidate_id,
                     stage="patch_repair",
@@ -329,10 +338,16 @@ class StrategyProposalAgent:
 
 
 def _patch_audit(candidate_id, phase, patch, prior_error=None) -> dict[str, object]:
+    context = _patch_context(None, patch)
     return {
         "candidate_id": candidate_id,
         "phase": phase,
         "changes": [{"path": change.path, "value": change.value} for change in patch.changes],
+        "actual_change_count": context["actual_change_count"],
+        "changed_paths": context["changed_paths"],
+        "actual_dimensions": context["actual_dimensions"],
+        "actual_operation_count": context["actual_operation_count"],
+        "error_code": None,
         "proposal_summary": patch.proposal_summary,
         "prior_error_code": None if prior_error is None else prior_error.code,
     }
@@ -342,15 +357,55 @@ def _patch_failure_audit(
     candidate_id: str,
     phase: str,
     error: ProposalContractError,
+    *,
+    patch=None,
 ) -> dict[str, object]:
     diagnostics = error.diagnostics
-    return {
+    context = _patch_context(None, patch) if patch is not None else {}
+    audit: dict[str, object] = {
         "candidate_id": candidate_id,
         "phase": phase,
         "error_code": error.code,
-        "actual_change_count": diagnostics.get("actual_change_count"),
-        "proposed_paths": list(diagnostics.get("proposed_paths", ())),
+        "actual_change_count": diagnostics.get("actual_change_count", context.get("actual_change_count")),
+        "proposed_paths": list(diagnostics.get("proposed_paths", context.get("changed_paths", ()))),
     }
+    if context:
+        previous_patch = context["previous_patch"]
+        assert isinstance(previous_patch, dict)
+        audit.update({
+            "changes": previous_patch["changes"],
+            "changed_paths": diagnostics.get("changed_paths", context["changed_paths"]),
+            "actual_dimensions": diagnostics.get("actual_dimensions", context["actual_dimensions"]),
+            "actual_operation_count": diagnostics.get("actual_operation_count", context["actual_operation_count"]),
+        })
+    return audit
+
+
+def _patch_context(intent, patch) -> dict[str, object]:
+    changed_paths = tuple(change.path for change in patch.changes)
+    dimensions = semantic_dimensions(changed_paths)
+    operations = tuple(sorted({
+        "/".join(path.strip("/").split("/")[:2])
+        for path in changed_paths
+        if len(path.strip("/").split("/")) >= 2
+    }))
+    context: dict[str, object] = {
+        "previous_patch": {
+            "proposal_summary": patch.proposal_summary,
+            "changes": [{"path": change.path, "value": change.value} for change in patch.changes],
+        },
+        "actual_change_count": len(changed_paths),
+        "changed_paths": list(changed_paths),
+        "actual_dimensions": list(dimensions),
+        "actual_operation_count": len(operations),
+    }
+    if intent is not None:
+        context["minimum_dimension_count"] = intent.minimum_distinct_dimensions
+        context["required_change_range"] = {
+            "minimum": intent.min_changes,
+            "maximum": intent.max_changes,
+        }
+    return context
 
 
 def _accepted_summary(candidate: StrategyCandidate, dimensions: tuple[str, ...]) -> AcceptedCandidateSummary:

@@ -184,9 +184,3 @@ class CandidateIntentConformanceValidator:
                 required_dimensions=tuple(intent.failure_semantic_dimensions),
                 **kwargs,
             )
-        if not preferred_hits:
-            raise CandidateIntentConformanceError(
-                code="candidate_intent_dimension_missing",
-                required_dimensions=intent.preferred_dimensions,
-                **kwargs,
-            )

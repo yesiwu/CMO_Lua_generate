@@ -262,19 +262,18 @@ def test_explore_intent_accepts_any_two_dimensions_with_a_preferred_hit(paths: t
     )
 
 
-def test_explore_intent_rejects_no_preferred_dimension_and_forbidden_path() -> None:
+def test_intent_preferred_dimensions_do_not_become_a_hard_requirement() -> None:
     intent = CandidateIntent(
         "candidate_02", "explore", "Explore safely.",
         ("target_assignment", "fire_quantity"), 2, 3,
     )
     validator = CandidateIntentConformanceValidator()
-    with pytest.raises(CandidateIntentConformanceError) as no_preferred:
-        validator.validate(
-            intent=intent,
-            changed_paths=("/attacks/0/delay_seconds", "/attacks/0/reserve_quantity"),
-            catalog_paths=("/attacks/0/delay_seconds", "/attacks/0/reserve_quantity"),
-        )
-    assert no_preferred.value.code == "candidate_intent_dimension_missing"
+
+    validator.validate(
+        intent=intent,
+        changed_paths=("/attacks/0/delay_seconds", "/attacks/0/reserve_quantity"),
+        catalog_paths=("/attacks/0/delay_seconds", "/attacks/0/reserve_quantity"),
+    )
     with pytest.raises(CandidateIntentConformanceError) as forbidden:
         validator.validate(
             intent=intent,
@@ -282,6 +281,128 @@ def test_explore_intent_rejects_no_preferred_dimension_and_forbidden_path() -> N
             catalog_paths=("/attacks/0/target_ids/0",),
         )
     assert forbidden.value.code == "candidate_intent_path_not_cataloged"
+
+
+def _conformance_repair_context() -> StrategyProposalContext:
+    scenario = ScenarioDefinition(
+        "proposal-conformance-repair",
+        (
+            ScenarioUnit("red", "red", "Red", "ship", 1, weapon_inventory=(WeaponInventory(10, "W", 40),)),
+            ScenarioUnit("blue-1", "blue", "Blue 1", "ship", 2),
+            ScenarioUnit("blue-2", "blue", "Blue 2", "ship", 3),
+            ScenarioUnit("blue-3", "blue", "Blue 3", "ship", 4),
+            ScenarioUnit("blue-4", "blue", "Blue 4", "ship", 5),
+        ),
+    )
+    baseline = StrategySpec(
+        "proposal-conformance-repair",
+        (
+            AttackDirective("attack.red.blue.1", "red", ("blue-1",), 10, 4, 2, 0),
+            AttackDirective("attack.red.blue.2", "red", ("blue-2",), 10, 4, 2, 0),
+            AttackDirective("attack.red.blue.3", "red", ("blue-3",), 10, 4, 2, 0),
+            AttackDirective("attack.red.blue.4", "red", ("blue-4",), 10, 4, 2, 0),
+        ),
+    )
+    return StrategyProposalContext(
+        scenario, baseline, "Repair a bounded candidate patch.",
+        (
+            "/attacks/0/target_ids/0", "/attacks/1/target_ids/0",
+            "/attacks/2/target_ids/0", "/attacks/3/target_ids/0",
+            "/attacks/0/delay_seconds",
+        ),
+        ("target_assignment", "attack_timing"), "runtime", "1.0.0",
+        BootstrapSkillSnapshot(
+            "bootstrap", "1", "bootstrap", "human-authored", "none",
+            ("StrategyProposalAgent",), "bootstrap.md", "rules", "bootstrap-checksum",
+        ),
+    )
+
+
+class _ConformanceRepairClient:
+    def __init__(self, repair_changes: list[dict[str, object]]) -> None:
+        self.calls = 0
+        self.prompts: list[dict[str, object]] = []
+        self._repair_changes = repair_changes
+
+    def complete_json(self, *, prompt: str, **_kwargs: object) -> object:
+        self.prompts.append(__import__("json").loads(prompt))
+        self.calls += 1
+        if self.calls == 1:
+            return {
+                "proposal_summary": "Retarget four attacks.",
+                "changes": [
+                    {"path": "/attacks/0/target_ids/0", "value": "blue-2"},
+                    {"path": "/attacks/1/target_ids/0", "value": "blue-3"},
+                    {"path": "/attacks/2/target_ids/0", "value": "blue-4"},
+                    {"path": "/attacks/3/target_ids/0", "value": "blue-1"},
+                ],
+            }
+        return {"proposal_summary": "Retarget and stagger.", "changes": self._repair_changes}
+
+
+def _candidate_01_intent() -> CandidateIntent:
+    return CandidateIntent(
+        "candidate_01", "robust_repair", "Bounded repair.",
+        ("target_assignment", "attack_timing", "fire_quantity"), 3, 5,
+        min_operations=2, min_dimensions=2,
+    )
+
+
+def test_conformance_repair_preserves_complete_initial_patch_and_needs_only_two_dimensions() -> None:
+    client = _ConformanceRepairClient([
+        {"path": "/attacks/0/target_ids/0", "value": "blue-2"},
+        {"path": "/attacks/1/target_ids/0", "value": "blue-3"},
+        {"path": "/attacks/2/target_ids/0", "value": "blue-4"},
+        {"path": "/attacks/0/delay_seconds", "value": 9},
+    ])
+    agent = StrategyProposalAgent(client)
+
+    candidate = agent.generate_candidate(
+        _conformance_repair_context(), intent=_candidate_01_intent(), accepted=(),
+    )
+
+    assert candidate.intended_difference == (
+        "/attacks/0/delay_seconds", "/attacks/0/target_ids/0",
+        "/attacks/1/target_ids/0", "/attacks/2/target_ids/0",
+    )
+    assert client.calls == 2
+    repair_prompt = client.prompts[1]
+    assert repair_prompt["previous_error"]["code"] == "candidate_intent_dimension_missing"
+    assert repair_prompt["previous_error"]["actual_change_count"] == 4
+    assert repair_prompt["previous_error"]["actual_dimensions"] == ["target_assignment"]
+    assert repair_prompt["previous_error"]["minimum_dimension_count"] == 2
+    assert repair_prompt["previous_error"]["required_change_range"] == {"minimum": 3, "maximum": 5}
+    assert len(repair_prompt["previous_error"]["previous_patch"]["changes"]) == 4
+    assert "Preserve legal changes" in repair_prompt["repair_instruction"]
+    trace = agent.last_audit["candidate_generation"]["patch_attempts"]
+    initial_failure = next(item for item in trace if item["phase"] == "initial_failed")
+    assert initial_failure["error_code"] == "candidate_intent_dimension_missing"
+    assert initial_failure["actual_change_count"] == 4
+    assert initial_failure["actual_dimensions"] == ["target_assignment"]
+    assert len(initial_failure["changes"]) == 4
+
+
+def test_conformance_repair_failure_keeps_initial_patch_in_trace() -> None:
+    client = _ConformanceRepairClient([
+        {"path": "/attacks/0/target_ids/0", "value": "blue-2"},
+        {"path": "/attacks/1/target_ids/0", "value": "blue-3"},
+        {"path": "/attacks/2/target_ids/0", "value": "blue-4"},
+        {"path": "/attacks/3/target_ids/0", "value": "blue-1"},
+        {"path": "/attacks/0/delay_seconds", "value": 9},
+        {"path": "/attacks/1/delay_seconds", "value": 10},
+    ])
+    agent = StrategyProposalAgent(client)
+
+    with pytest.raises(CandidateProposalError) as raised:
+        agent.generate_candidate(
+            _conformance_repair_context(), intent=_candidate_01_intent(), accepted=(),
+        )
+
+    assert raised.value.code == "candidate_change_count_out_of_bounds"
+    trace = raised.value.diagnostics["candidate_patch_attempts"]
+    initial_failure = next(item for item in trace if item["phase"] == "initial_failed")
+    assert initial_failure["actual_change_count"] == 4
+    assert len(initial_failure["changes"]) == 4
 
 
 def test_explore_repair_adds_second_dimension_without_regenerating_other_candidates() -> None:
