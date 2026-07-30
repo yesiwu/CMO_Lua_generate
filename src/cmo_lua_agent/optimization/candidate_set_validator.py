@@ -14,6 +14,7 @@ from cmo_lua_agent.contract.strategy_models import ScenarioDefinition, StrategyS
 from cmo_lua_agent.contract.strategy_validator import StrategyValidator
 # Phase6 多样性报告、单条候选、候选批次集合模型
 from cmo_lua_agent.optimization.phase6_models import DiversityReport, StrategyCandidate, StrategyCandidateSet
+from cmo_lua_agent.optimization.executable_patch_paths import is_executable_patch_path
 from cmo_lua_agent.optimization.strategy_dimensions import semantic_dimension
 
 
@@ -65,6 +66,16 @@ class CandidateSetValidator:
 
             # 对比基线，找出本条候选所有改动路径，同时校验只允许修改白名单字段
             changed_paths = _leaf_diff(baseline, candidate.strategy_spec, allowed_paths)
+            non_executable_paths = tuple(
+                path for path in changed_paths if not is_executable_patch_path(path)
+            )
+            if non_executable_paths:
+                violations.append(
+                    f"{candidate.candidate_id}:patch_path_not_executable"
+                )
+                changed_paths = [
+                    path for path in changed_paths if is_executable_patch_path(path)
+                ]
             diffs[candidate.candidate_id] = tuple(changed_paths)
 
             # 规则4：候选必须有改动，不允许和基线完全一致

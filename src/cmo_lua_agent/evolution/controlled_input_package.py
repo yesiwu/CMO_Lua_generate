@@ -62,8 +62,10 @@ class ControlledCampaignInputPackageLoader:
         "/attacks/3/fire_quantity",
         "/attacks/4/target_ids/0",
         "/attacks/4/fire_quantity",
-        "/sorties/0/fire_delay_seconds",
-        "/sorties/1/fire_delay_seconds",
+        "/sorties/0/route/0/latitude",
+        "/sorties/0/route/0/longitude",
+        "/sorties/1/route/0/latitude",
+        "/sorties/1/route/0/longitude",
         "/sorties/1/target_id",
     )
 
@@ -169,7 +171,12 @@ class ControlledCampaignInputPackageLoader:
             scenario_asset=asset,
             baseline_failure_profile=failure_profile,
             allowed_strategy_paths=self._ALLOWED_PATHS,
-            diversity_dimensions=("target_assignment", "attack_timing", "fire_quantity"),
+            diversity_dimensions=(
+                "target_assignment",
+                "attack_timing",
+                "fire_quantity",
+                "air_route",
+            ),
             checksums=checksums,
             git_commit=commit,
             working_tree_dirty=dirty,

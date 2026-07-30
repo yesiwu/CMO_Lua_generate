@@ -201,7 +201,10 @@ class StrategyProposalAgent:
             assembled = assembler.assemble(patch)
             self._validate_candidate(intent=intent, strategy=assembled.strategy, changed_paths=assembled.changed_paths, context=context, catalog=catalog, validator=validator)
         except ProposalContractError as initial_error:
-            if initial_error.code == "proposal_json_invalid":
+            if initial_error.code in {
+                "proposal_json_invalid",
+                "patch_path_not_executable",
+            }:
                 raise CandidateProposalError(candidate_id=intent.candidate_id, stage="patch_generation", cause=initial_error) from initial_error
             try:
                 patch = self._generator.generate(intent=intent, catalog=catalog, accepted=accepted, error=initial_error)

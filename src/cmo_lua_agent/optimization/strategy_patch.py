@@ -8,6 +8,10 @@ from typing import Any
 
 from cmo_lua_agent.contract.strategy_models import ScenarioDefinition, StrategySpec, strategy_spec_from_dict
 from cmo_lua_agent.optimization.candidate_set_validator import strategy_leaf_diff
+from cmo_lua_agent.optimization.executable_patch_paths import (
+    is_executable_patch_path,
+    non_executable_patch_diagnostics,
+)
 from cmo_lua_agent.optimization.proposal_models import AssembledStrategyPatch, CandidatePatch, JsonScalar, ProposalContractError
 
 
@@ -42,10 +46,15 @@ def build_patchable_leaf_catalog(*, baseline: StrategySpec, scenario: ScenarioDe
     """Expose only concrete scalar leaves and deterministic safe constraints."""
     if baseline.scenario_id != scenario.scenario_id:
         raise ProposalContractError("scenario_baseline_mismatch")
+    if len(set(allowed_paths)) != len(allowed_paths):
+        raise ProposalContractError("duplicate_allowed_patch_path")
     payload = baseline.to_dict()
     units = scenario.unit_by_id()
     catalog: list[PatchableLeaf] = []
-    for path in sorted(set(allowed_paths)):
+    executable_paths = tuple(
+        path for path in sorted(set(allowed_paths)) if is_executable_patch_path(path)
+    )
+    for path in executable_paths:
         tokens = _tokens(path)
         if not tokens or tokens[-1] in _STABLE_FIELD_NAMES:
             raise ProposalContractError("stable_field_not_patchable")
@@ -53,8 +62,6 @@ def build_patchable_leaf_catalog(*, baseline: StrategySpec, scenario: ScenarioDe
         if type(value) not in (str, int, float, bool):
             raise ProposalContractError("patch_path_not_scalar")
         catalog.append(_leaf_constraint(path, value, payload, units))
-    if len(catalog) != len(allowed_paths):
-        raise ProposalContractError("duplicate_allowed_patch_path")
     return tuple(catalog)
 
 
@@ -68,6 +75,7 @@ class StrategyPatchAssembler:
         return tuple(self._catalog[path] for path in sorted(self._catalog))
 
     def assemble(self, patch: CandidatePatch) -> AssembledStrategyPatch:
+        validate_patch_paths_executable(patch)
         payload = deepcopy(self._baseline.to_dict())
         expected_paths: list[str] = []
         for operation in patch.changes:
@@ -98,6 +106,18 @@ class StrategyPatchAssembler:
             raise ProposalContractError("value_below_minimum")
         if leaf.maximum is not None and value > leaf.maximum:  # type: ignore[operator]
             raise ProposalContractError("value_above_maximum")
+
+
+def validate_patch_paths_executable(patch: CandidatePatch) -> None:
+    """Reject deferred StrategySpec leaves before patch assembly."""
+    for change in patch.changes:
+        diagnostics = non_executable_patch_diagnostics(
+            path=change.path, candidate_id=patch.candidate_id
+        )
+        if diagnostics is not None:
+            raise ProposalContractError(
+                "patch_path_not_executable", diagnostics=diagnostics
+            )
 
 
 def _leaf_constraint(path: str, value: JsonScalar, payload: dict[str, Any], units: dict[str, Any]) -> PatchableLeaf:

@@ -8,7 +8,10 @@ from typing import Any, Protocol
 
 from cmo_lua_agent.llm.json_client import JsonCompletionError
 from cmo_lua_agent.optimization.proposal_models import AcceptedCandidateSummary, CandidateIntent, CandidatePatch, ProposalContractError, StrategyPatchOperation
-from cmo_lua_agent.optimization.strategy_patch import PatchableLeaf
+from cmo_lua_agent.optimization.strategy_patch import (
+    PatchableLeaf,
+    validate_patch_paths_executable,
+)
 from cmo_lua_agent.optimization.strategy_dimensions import semantic_dimension
 
 
@@ -62,6 +65,7 @@ class CandidatePatchGenerator:
                 raise ProposalContractError("invalid_patch_change_fields")
             operations.append(StrategyPatchOperation(row["path"], row["value"]))
         patch = CandidatePatch(intent.candidate_id, summary, tuple(operations))
+        validate_patch_paths_executable(patch)
         if not intent.min_changes <= len(patch.changes) <= intent.max_changes:
             raise ProposalContractError("candidate_change_count_out_of_bounds")
         known = {leaf.path for leaf in catalog}

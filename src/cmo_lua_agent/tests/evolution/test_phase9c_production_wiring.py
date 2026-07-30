@@ -354,7 +354,7 @@ def test_test_factory_runs_frozen_preview_and_generation_without_second_proposal
                 ("/attacks/0/fire_quantity", lambda value: value - 1),
                 ("/attacks/0/delay_seconds", lambda value: value + 3),
                 ("/attacks/1/target_ids/0", lambda _value: "blue_cvn70"),
-                ("/sorties/0/fire_delay_seconds", lambda value: value + 5),
+                ("/sorties/0/route/0/latitude", lambda value: value + 0.1),
             )
             rows = []
             for index, (path, change) in enumerate(edits):
@@ -404,12 +404,13 @@ def test_test_factory_runs_frozen_preview_and_generation_without_second_proposal
                     ("/attacks/0/fire_quantity", None),
                     ("/attacks/0/delay_seconds", None),
                     ("/attacks/1/target_ids/0", None),
-                    ("/sorties/0/fire_delay_seconds", None),
+                    ("/sorties/0/route/0/latitude", None),
                 )),
                 diversity_dimensions=(
                     "fire_quantity",
                     "attack_timing",
                     "target_assignment",
+                    "air_route",
                 ),
                     checksums={
                         "scenario_definition_derived": "scenario",

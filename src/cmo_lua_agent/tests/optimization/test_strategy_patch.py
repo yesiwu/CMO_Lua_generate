@@ -1,9 +1,19 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import pytest
 
-from cmo_lua_agent.contract.strategy_models import AttackDirective, ScenarioDefinition, ScenarioUnit, StrategySpec, WeaponInventory
-from cmo_lua_agent.optimization.proposal_models import CandidatePatch, ProposalContractError, StrategyPatchOperation
+from cmo_lua_agent.contract.baseline_strategy_builder import BaselineStrategyBuilder
+from cmo_lua_agent.contract.strategy_models import AttackDirective, ScenarioDefinition, ScenarioUnit, StrategySpec, WeaponInventory, strategy_spec_from_dict
+from cmo_lua_agent.generation.execution_plan_compiler import ExecutionPlanCompiler
+from cmo_lua_agent.generation.runtime_models import LuaRuntimeProfile
+from cmo_lua_agent.optimization.candidate_set_validator import CandidateSetValidator
+from cmo_lua_agent.optimization.phase6_models import StrategyCandidate
+from cmo_lua_agent.optimization.phase6_models import BootstrapSkillSnapshot, StrategyProposalContext
+from cmo_lua_agent.optimization.proposal_models import CandidateIntent, CandidatePatch, CandidateProposalError, ProposalContractError, StrategyPatchOperation
+from cmo_lua_agent.optimization.strategy_proposal_agent import StrategyProposalAgent
 from cmo_lua_agent.optimization.strategy_patch import StrategyPatchAssembler, build_patchable_leaf_catalog
 
 
@@ -94,3 +104,137 @@ def test_repair_patch_cannot_exceed_available_inventory_after_reserve() -> None:
         )))
 
     assert raised.value.code == "value_above_maximum"
+
+
+def _derived_sortie_context() -> tuple[ScenarioDefinition, StrategySpec]:
+    root = Path(__file__).resolve().parents[4]
+    scenario_ir = json.loads(
+        (root / "json_data" / "6v4ScenarioIR.json").read_text(encoding="utf-8")
+    )
+    derived = BaselineStrategyBuilder().build(scenario_ir)
+    return derived.scenario, derived.strategy
+
+
+def test_fire_delay_is_hidden_from_catalog_and_rejected_before_assembly() -> None:
+    scenario, baseline = _derived_sortie_context()
+    fire_delay_path = "/sorties/0/fire_delay_seconds"
+    route_path = "/sorties/0/route/0/latitude"
+    catalog = build_patchable_leaf_catalog(
+        baseline=baseline,
+        scenario=scenario,
+        allowed_paths=(fire_delay_path, route_path),
+    )
+
+    assert [leaf.path for leaf in catalog] == [route_path]
+
+    assembler = StrategyPatchAssembler(baseline=baseline, catalog=catalog)
+    with pytest.raises(ProposalContractError) as raised:
+        assembler.assemble(
+            CandidatePatch(
+                "candidate_03",
+                "Delay the aircraft launch.",
+                (StrategyPatchOperation(fire_delay_path, 45),),
+            )
+        )
+
+    assert raised.value.code == "patch_path_not_executable"
+    assert raised.value.diagnostics == {
+        "candidate_id": "candidate_03",
+        "path": fire_delay_path,
+        "strategy_field": "fire_delay_seconds",
+        "reason": "not_preserved_by_execution_plan",
+        "supported_alternatives": [
+            "/sorties/0/route/0/latitude",
+            "/sorties/0/route/0/longitude",
+        ],
+    }
+
+
+def test_baseline_fire_delay_remains_valid_while_route_is_executable() -> None:
+    scenario, baseline = _derived_sortie_context()
+    assert baseline.sorties[0].fire_delay_seconds == 30
+    assert ExecutionPlanCompiler().compile(
+        scenario=scenario,
+        strategy=baseline,
+        runtime=LuaRuntimeProfile("cmo_naval_air_anti_surface_scored", "2.0.0"),
+    ).plan is not None
+
+
+def test_fake_proposal_cannot_repair_a_hand_forged_fire_delay_patch() -> None:
+    scenario, baseline = _derived_sortie_context()
+    fire_delay_path = "/sorties/0/fire_delay_seconds"
+    route_path = "/sorties/0/route/0/latitude"
+
+    class ForgedPatchClient:
+        calls = 0
+        prompt: dict[str, object] | None = None
+
+        def complete_json(self, *, prompt: str, **_: object) -> object:
+            self.calls += 1
+            self.prompt = json.loads(prompt)
+            return {
+                "proposal_summary": "Delay the aircraft launch.",
+                "changes": [{"path": fire_delay_path, "value": 45}],
+            }
+
+    client = ForgedPatchClient()
+    context = StrategyProposalContext(
+        scenario,
+        baseline,
+        "Adjust only executable aircraft behavior.",
+        (fire_delay_path, route_path),
+        ("air_route",),
+        "runtime",
+        "2.0.0",
+        BootstrapSkillSnapshot(
+            "bootstrap", "1", "bootstrap", "human-authored", "none",
+            ("StrategyProposalAgent",), "bootstrap.md", "rules", "checksum",
+        ),
+    )
+    agent = StrategyProposalAgent(client)
+    intent = CandidateIntent(
+        "candidate_03", "conservative", "Use a route adjustment.",
+        ("air_route",), 1, 1,
+    )
+
+    with pytest.raises(CandidateProposalError) as raised:
+        agent.generate_candidate(context, intent=intent, accepted=())
+
+    assert raised.value.code == "patch_path_not_executable"
+    assert raised.value.stage == "patch_generation"
+    assert client.calls == 1
+    assert agent.last_usage.repair_calls == 0
+    assert client.prompt is not None
+    paths = {
+        item["path"] for item in client.prompt["patchable_leaves"]  # type: ignore[index]
+    }
+    assert fire_delay_path not in paths
+    assert route_path in paths
+
+
+def test_candidate_set_does_not_count_a_non_executable_fire_delay_change() -> None:
+    scenario, baseline = _derived_sortie_context()
+    payload = baseline.to_dict()
+    payload["sorties"][0]["fire_delay_seconds"] = 45
+    changed = strategy_spec_from_dict(payload)
+    candidates = tuple(
+        StrategyCandidate(
+            f"candidate_{index:02d}",
+            changed if index == 0 else baseline,
+            "fixture",
+            (),
+        )
+        for index in range(4)
+    )
+
+    result = CandidateSetValidator().validate(
+        scenario=scenario,
+        baseline=baseline,
+        candidates=candidates,
+        allowed_paths=("/sorties/0/fire_delay_seconds",),
+        diversity_dimensions=("attack_timing",),
+    )
+
+    assert "candidate_00:patch_path_not_executable" in result.diversity_report.violations
+    assert result.diversity_report.candidate_diffs["candidate_00"] == ()
+    assert "attack_timing" not in result.diversity_report.dimensions_covered
