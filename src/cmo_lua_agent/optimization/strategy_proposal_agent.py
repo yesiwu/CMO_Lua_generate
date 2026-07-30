@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 from cmo_lua_agent.contract.strategy_validator import StrategyValidator
 from cmo_lua_agent.optimization.candidate_intent_planner import CandidateIntentPlanner, IntentJsonClient
 from cmo_lua_agent.optimization.candidate_patch_generator import CandidatePatchGenerator
@@ -10,6 +12,7 @@ from cmo_lua_agent.optimization.candidate_intent_conformance import (
     check_candidate_role_feasibility,
 )
 from cmo_lua_agent.optimization.phase6_models import StrategyCandidate, StrategyProposalContext
+from cmo_lua_agent.optimization.proposal_context_builder import ProposalTacticalContextBuilder
 from cmo_lua_agent.optimization.proposal_models import (
     AcceptedCandidateSummary,
     CandidateIntent,
@@ -31,6 +34,7 @@ class StrategyProposalAgent:
         self._generator = CandidatePatchGenerator(client)
         self._last_usage = StrategyProposalUsage()
         self._last_audit: dict[str, object] = {}
+        self._last_tactical_context: dict[str, object] | None = None
 
     @property
     def last_usage(self) -> StrategyProposalUsage:
@@ -44,8 +48,13 @@ class StrategyProposalAgent:
     def last_audit(self) -> dict[str, object]:
         return dict(self._last_audit)
 
+    @property
+    def last_tactical_context(self) -> dict[str, object] | None:
+        return None if self._last_tactical_context is None else dict(self._last_tactical_context)
+
     def propose(self, context: StrategyProposalContext) -> tuple[StrategyCandidate, ...]:
         intent_calls = patch_calls = repair_calls = 0
+        self._last_tactical_context = None
         audit: dict[str, object] = {"intents": [], "accepted_candidates": [], "patch_attempts": []}
         try:
             catalog = build_patchable_leaf_catalog(
@@ -77,6 +86,19 @@ class StrategyProposalAgent:
                     raise ProposalContractError(
                         "candidate_role_not_feasible", diagnostics=failed.to_dict()
                     )
+                tactical = ProposalTacticalContextBuilder().build(
+                    scenario=context.scenario,
+                    baseline=context.baseline,
+                    patch_catalog=catalog,
+                    role_specs=role_specs,
+                    accepted_candidates=(),
+                )
+                self._last_tactical_context = tactical.to_dict()
+                context = replace(context, proposal_tactical_context=self._last_tactical_context)
+                audit["proposal_context_checksum"] = tactical.checksum
+                audit["baseline_operation_count"] = len(tactical.baseline_operations)
+                audit["patchable_path_count"] = len(catalog)
+                audit["failure_profile_available"] = bool(tactical.failure_profile["available"])
             intent_calls += 1
             intents = self._planner.plan(context, role_specs=role_specs)
             audit["intents"] = [
@@ -121,7 +143,7 @@ class StrategyProposalAgent:
                 if any(item.strategy_checksum == candidate.strategy_checksum for item in accepted):
                     raise ProposalContractError("duplicate_accepted_strategy")
                 dimensions = semantic_dimensions(candidate.intended_difference)
-                accepted.append(AcceptedCandidateSummary(candidate.candidate_id, candidate.strategy_checksum, candidate.intended_difference, dimensions))
+                accepted.append(_accepted_summary(candidate, dimensions))
                 cast_accepted = audit["accepted_candidates"]
                 assert isinstance(cast_accepted, list)
                 cast_accepted.append({"candidate_id": candidate.candidate_id, "strategy_checksum": candidate.strategy_checksum,
@@ -166,7 +188,11 @@ class StrategyProposalAgent:
         try:
             patch_calls += 1
             patch = self._generator.generate(
-                intent=intent, catalog=catalog, accepted=accepted, error=prior_error
+                intent=intent,
+                catalog=catalog,
+                accepted=accepted,
+                tactical_context=self._patch_tactical_context(context, catalog, accepted),
+                error=prior_error,
             )
             attempts = audit["candidate_repair"]["patch_attempts"]  # type: ignore[index]
             attempts.append(_patch_audit(intent.candidate_id, "targeted_repair", patch, prior_error))  # type: ignore[union-attr]
@@ -176,7 +202,11 @@ class StrategyProposalAgent:
             try:
                 repair_calls += 1
                 patch = self._generator.generate(
-                    intent=intent, catalog=catalog, accepted=accepted, error=initial_error
+                    intent=intent,
+                    catalog=catalog,
+                    accepted=accepted,
+                    tactical_context=self._patch_tactical_context(context, catalog, accepted),
+                    error=initial_error,
                 )
                 attempts = audit["candidate_repair"]["patch_attempts"]  # type: ignore[index]
                 attempts.append(_patch_audit(intent.candidate_id, "targeted_local_repair", patch, initial_error))  # type: ignore[union-attr]
@@ -235,7 +265,12 @@ class StrategyProposalAgent:
     ) -> tuple[StrategyCandidate, int, int, list[dict[str, object]]]:
         attempts: list[dict[str, object]] = []
         try:
-            patch = self._generator.generate(intent=intent, catalog=catalog, accepted=accepted)
+            patch = self._generator.generate(
+                intent=intent,
+                catalog=catalog,
+                accepted=accepted,
+                tactical_context=self._patch_tactical_context(context, catalog, accepted),
+            )
             attempts.append(_patch_audit(intent.candidate_id, "initial", patch))
             assembled = assembler.assemble(patch)
             self._validate_candidate(intent=intent, strategy=assembled.strategy, changed_paths=assembled.changed_paths, context=context, catalog=catalog, validator=validator)
@@ -246,7 +281,13 @@ class StrategyProposalAgent:
             }:
                 raise CandidateProposalError(candidate_id=intent.candidate_id, stage="patch_generation", cause=initial_error) from initial_error
             try:
-                patch = self._generator.generate(intent=intent, catalog=catalog, accepted=accepted, error=initial_error)
+                patch = self._generator.generate(
+                    intent=intent,
+                    catalog=catalog,
+                    accepted=accepted,
+                    tactical_context=self._patch_tactical_context(context, catalog, accepted),
+                    error=initial_error,
+                )
                 attempts.append(_patch_audit(intent.candidate_id, "repair", patch, initial_error))
                 assembled = assembler.assemble(patch)
                 self._validate_candidate(intent=intent, strategy=assembled.strategy, changed_paths=assembled.changed_paths, context=context, catalog=catalog, validator=validator)
@@ -254,6 +295,23 @@ class StrategyProposalAgent:
                 raise CandidateProposalError(candidate_id=intent.candidate_id, stage="patch_repair", cause=repair_error) from repair_error
             return StrategyCandidate(intent.candidate_id, assembled.strategy, patch.proposal_summary, assembled.changed_paths), 1, 1, attempts
         return StrategyCandidate(intent.candidate_id, assembled.strategy, patch.proposal_summary, assembled.changed_paths), 1, 0, attempts
+
+    @staticmethod
+    def _patch_tactical_context(
+        context: StrategyProposalContext,
+        catalog,
+        accepted: tuple[AcceptedCandidateSummary, ...],
+    ) -> dict[str, object] | None:
+        if context.generation_context is None:
+            return context.proposal_tactical_context
+        tactical = ProposalTacticalContextBuilder().build(
+            scenario=context.scenario,
+            baseline=context.baseline,
+            patch_catalog=catalog,
+            role_specs=candidate_role_specs(context.generation_context),
+            accepted_candidates=accepted,
+        )
+        return tactical.to_dict()
 
 
 def _patch_audit(candidate_id, phase, patch, prior_error=None) -> dict[str, object]:
@@ -264,6 +322,30 @@ def _patch_audit(candidate_id, phase, patch, prior_error=None) -> dict[str, obje
         "proposal_summary": patch.proposal_summary,
         "prior_error_code": None if prior_error is None else prior_error.code,
     }
+
+
+def _accepted_summary(candidate: StrategyCandidate, dimensions: tuple[str, ...]) -> AcceptedCandidateSummary:
+    """Keep only accepted coverage facts for later Patch prompts."""
+    operation_keys = tuple(sorted({
+        "/".join(path.strip("/").split("/")[:2])
+        for path in candidate.intended_difference
+        if len(path.strip("/").split("/")) >= 2
+    }))
+    attacks = {f"attacks/{index}": attack.target_ids[0] for index, attack in enumerate(candidate.strategy_spec.attacks)}
+    sorties = {f"sorties/{index}": sortie.target_id for index, sortie in enumerate(candidate.strategy_spec.sorties)}
+    target_summary = tuple(
+        sorted((attacks | sorties)[operation]
+               for operation in operation_keys
+               if operation in attacks or operation in sorties)
+    )
+    return AcceptedCandidateSummary(
+        candidate.candidate_id,
+        candidate.strategy_checksum,
+        candidate.intended_difference,
+        dimensions,
+        operation_keys,
+        target_summary,
+    )
 
 
 def _validation_violation(issue, strategy) -> dict[str, object]:

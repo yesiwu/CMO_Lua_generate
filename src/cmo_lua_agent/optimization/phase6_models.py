@@ -133,11 +133,13 @@ class StrategyProposalContext:
     retrieved_experience_cards: tuple[dict[str, Any], ...] = ()
     active_curated_skill: dict[str, Any] | None = None
     generation_context: dict[str, Any] | None = None
+    # C3 compact deterministic projection. It deliberately excludes complete
+    # StrategySpec, Lua, score implementation, and execution artifacts.
+    proposal_tactical_context: dict[str, Any] | None = None
 
     def to_prompt_dict(self) -> dict[str, Any]:
         """整理成可以直接喂给LLM的结构化字典"""
         value = {
-            "scenario": self.scenario.to_dict(), "baseline_strategy": self.baseline.to_dict(),
             "user_objective": self.user_objective,
             "allowed_strategy_paths": list(self.allowed_strategy_paths),
             "diversity_dimensions": list(self.diversity_dimensions),
@@ -150,6 +152,8 @@ class StrategyProposalContext:
             value["active_curated_skill"] = dict(self.active_curated_skill)
         if self.generation_context is not None:
             value["generation_context"] = dict(self.generation_context)
+        if self.proposal_tactical_context is not None:
+            value["proposal_tactical_context"] = dict(self.proposal_tactical_context)
         return value
 
 

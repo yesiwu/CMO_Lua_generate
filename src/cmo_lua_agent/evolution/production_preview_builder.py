@@ -129,6 +129,7 @@ class ProductionPreviewBuilder:
         try:
             candidates = self._proposal_agent.propose(context)
         except Exception as error:
+            self._write_proposal_context(preview_root)
             trace = getattr(self._proposal_agent, "last_audit", {})
             if trace:
                 self._atomic_json(preview_root / "proposal-trace.json", trace)
@@ -141,6 +142,7 @@ class ProductionPreviewBuilder:
             usage = getattr(self._proposal_agent, "last_usage", None)
             self.proposal_calls = int(getattr(usage, "total_calls", 0))
         trace = getattr(self._proposal_agent, "last_audit", {})
+        self._write_proposal_context(preview_root)
         if trace:
             self._atomic_json(preview_root / "proposal-trace.json", trace)
         try:
@@ -457,6 +459,16 @@ class ProductionPreviewBuilder:
             encoding="utf-8",
         )
         os.replace(temporary, path)
+
+    def _write_proposal_context(self, preview_root: Path) -> None:
+        tactical = getattr(self._proposal_agent, "last_tactical_context", None)
+        if tactical is not None:
+            payload = dict(tactical)
+            audit = getattr(self._proposal_agent, "last_audit", {})
+            checksum = audit.get("proposal_context_checksum") if isinstance(audit, dict) else None
+            if isinstance(checksum, str):
+                payload["context_checksum"] = checksum
+            self._atomic_json(preview_root / "proposal-context.json", payload)
 
 
 def _intent_from_trace(trace: dict[str, object], candidate_id: str) -> CandidateIntent:

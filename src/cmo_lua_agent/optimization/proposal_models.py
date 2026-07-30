@@ -255,6 +255,8 @@ class AcceptedCandidateSummary:
     strategy_checksum: str
     changed_paths: tuple[str, ...]
     strategy_dimensions: tuple[str, ...]
+    changed_operation_ids: tuple[str, ...] = ()
+    target_assignment_summary: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if self.candidate_id not in CANDIDATE_IDS:
@@ -265,6 +267,10 @@ class AcceptedCandidateSummary:
             raise ProposalContractError("invalid_accepted_changed_paths")
         if any(dimension not in STRATEGY_DIMENSIONS for dimension in self.strategy_dimensions):
             raise ProposalContractError("unknown_strategy_dimension")
+        if any(not isinstance(value, str) or not value for value in self.changed_operation_ids):
+            raise ProposalContractError("invalid_changed_operation_id")
+        if any(not isinstance(value, str) or not value for value in self.target_assignment_summary):
+            raise ProposalContractError("invalid_target_assignment_summary")
 
 
 @dataclass(frozen=True, slots=True)

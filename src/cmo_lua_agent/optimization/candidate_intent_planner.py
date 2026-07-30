@@ -52,6 +52,11 @@ class CandidateIntentPlanner:
                 ),
                 "retrieved_experience_cards": [dict(card) for card in context.retrieved_experience_cards],
                 "generation_context": dict(context.generation_context or {}),
+                "proposal_tactical_context": (
+                    None
+                    if context.proposal_tactical_context is None
+                    else dict(context.proposal_tactical_context)
+                ),
                 "candidate_role_constraints": [
                     {
                         "candidate_id": spec.candidate_id,

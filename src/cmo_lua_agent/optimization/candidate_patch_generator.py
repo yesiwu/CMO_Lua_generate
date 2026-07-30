@@ -23,7 +23,15 @@ class CandidatePatchGenerator:
     def __init__(self, client: PatchJsonClient) -> None:
         self._client = client
 
-    def generate(self, *, intent: CandidateIntent, catalog: tuple[PatchableLeaf, ...], accepted: tuple[AcceptedCandidateSummary, ...], error: ProposalContractError | None = None) -> CandidatePatch:
+    def generate(
+        self,
+        *,
+        intent: CandidateIntent,
+        catalog: tuple[PatchableLeaf, ...],
+        accepted: tuple[AcceptedCandidateSummary, ...],
+        tactical_context: dict[str, object] | None = None,
+        error: ProposalContractError | None = None,
+    ) -> CandidatePatch:
         grouped_catalog = _catalog_by_dimension(catalog)
         try:
             response = self._client.complete_json(
@@ -51,6 +59,7 @@ class CandidatePatchGenerator:
                     {"candidate_id": item.candidate_id, "changed_paths": list(item.changed_paths), "strategy_dimensions": list(item.strategy_dimensions)}
                     for item in accepted
                 ],
+                "proposal_tactical_context": tactical_context,
                 "previous_error": _repair_error(error),
                 }, ensure_ascii=False, sort_keys=True),
             )

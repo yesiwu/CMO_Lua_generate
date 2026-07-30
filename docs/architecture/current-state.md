@@ -290,6 +290,25 @@ Pause/Stop、恢复规则和 Phase 6/7/8 调用边界的 Fake 工程验收，不
 - This milestone changes no CMO, approval, scoring, or Candidate Quality
   Report behavior.
 
+## Phase 9C Proposal Tactical Context
+
+- `ProposalTacticalContextBuilder` deterministically projects the Derived
+  Baseline, ScenarioDefinition, executable Patch Catalog, C2 role contract,
+  optional frozen Failure Profile, and accepted candidate summaries into a
+  canonical JSON context with a checksum.
+- The context contains only scenario/unit summaries, operation-level target,
+  timing, quantity, reserve, route, and patchable-path facts; target and
+  platform coupling groups; role requirements; and accepted coverage facts.
+- Planner and Patch Generator prompts receive this compact context. They do
+  not receive a complete StrategySpec, candidate Lua, Runtime Lua, native
+  score implementation, SQLite, AALog, execution timeline, legacy Baseline,
+  or score prediction.
+- Production Preview persists `proposal-context.json` and records its checksum,
+  baseline-operation count, patchable-path count, and Failure Profile
+  availability in `proposal-trace.json`.
+- C3 does not modify C2 role thresholds, Patch validation, CMO execution,
+  scoring, approvals, or Candidate Quality Report behavior.
+
 ## Phase 9C Baseline Derivation
 
 - `json_data/6v4ScenarioIR.json` is the only production 6v4 Baseline input.
