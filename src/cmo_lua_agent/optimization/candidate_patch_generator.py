@@ -35,11 +35,15 @@ class CandidatePatchGenerator:
                 "preferred_dimensions": list(intent.preferred_dimensions),
                 "required_dimensions": list(intent.required_dimensions),
                 "change_count": {"minimum": intent.min_changes, "maximum": intent.max_changes},
-                "minimum_distinct_dimensions": intent.minimum_distinct_dimensions,
+                "operation_count": {"minimum": intent.min_operations, "maximum": intent.max_operations},
+                "dimension_count": {"minimum": intent.min_dimensions, "maximum": intent.max_dimensions},
+                "require_surface": intent.require_surface,
+                "require_sortie": intent.require_sortie,
+                "failure_profile_available": intent.failure_profile_mode == "required",
+                "failure_operation_ids": list(intent.failure_operation_ids),
+                "failure_semantic_dimensions": list(intent.failure_semantic_dimensions),
                 "candidate_instruction": (
-                    "Select leaves from at least two different semantic dimension groups."
-                    if intent.candidate_id == "candidate_02"
-                    else "Respect the supplied change-count and semantic-dimension constraints."
+                    "Select leaves across the system-provided operation and semantic-dimension floors."
                 ),
                 "patchable_leaves": [leaf.to_prompt_dict() for leaf in catalog],
                 "patchable_leaves_by_dimension": grouped_catalog,

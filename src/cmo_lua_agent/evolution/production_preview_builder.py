@@ -189,13 +189,12 @@ class ProductionPreviewBuilder:
 
     def _default_generation_context(self, generation_index: int) -> dict[str, object]:
         profile = getattr(self._package, "baseline_failure_profile", None)
-        repair_role = "repair" if profile is not None else "conservative_risk_reduction"
         return {
             "generation_index": generation_index,
             "candidate_roles": {
                 "candidate_00": "exploit",
-                "candidate_01": repair_role,
-                "candidate_02": "explore",
+                "candidate_01": "robust_repair",
+                "candidate_02": "coordinated_explore",
                 "candidate_03": "conservative_control",
             },
             "allowed_strategy_paths": list(self._package.allowed_strategy_paths),
@@ -203,6 +202,9 @@ class ProductionPreviewBuilder:
             "previous_generation_failures": (
                 list(profile.failure_indicators) if profile is not None else []
             ),
+            # Existing profiles do not yet contain frozen operation/dimension
+            # references. Do not fabricate a C2 failure-profile contract.
+            "failure_profile_available": False,
             "conservative_max_changed_leaves": 1,
         }
 
@@ -460,7 +462,29 @@ class ProductionPreviewBuilder:
 def _intent_from_trace(trace: dict[str, object], candidate_id: str) -> CandidateIntent:
     for row in trace.get("intents", []):
         if isinstance(row, dict) and row.get("candidate_id") == candidate_id:
-            return CandidateIntent(candidate_id, str(row["role"]), str(row["objective"]), tuple(row["strategy_dimensions"]), int(row["min_changes"]), int(row["max_changes"]), tuple(row.get("required_dimensions", ())))
+            return CandidateIntent(
+                candidate_id,
+                str(row["role"]),
+                str(row["objective"]),
+                tuple(row["strategy_dimensions"]),
+                int(row["min_changes"]),
+                int(row["max_changes"]),
+                tuple(row.get("required_dimensions", ())),
+                min_operations=int(row.get("min_operations", 1)),
+                min_dimensions=int(row.get("min_dimensions", 1)),
+                require_surface=bool(row.get("require_surface", False)),
+                require_sortie=bool(row.get("require_sortie", False)),
+                max_operations=(
+                    None if row.get("max_operations") is None else int(row["max_operations"])
+                ),
+                max_dimensions=(
+                    None if row.get("max_dimensions") is None else int(row["max_dimensions"])
+                ),
+                failure_profile_mode=str(row.get("failure_profile_mode", "unavailable")),
+                failure_operation_ids=tuple(row.get("failure_operation_ids", ())),
+                failure_semantic_dimensions=tuple(row.get("failure_semantic_dimensions", ())),
+                failure_profile_source_checksum=row.get("failure_profile_source_checksum"),
+            )
     raise ValueError("awaiting_operator_action")
 
 

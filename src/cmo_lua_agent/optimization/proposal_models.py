@@ -8,7 +8,16 @@ from typing import TypeAlias
 
 JsonScalar: TypeAlias = str | int | float | bool
 CANDIDATE_IDS = tuple(f"candidate_{index:02d}" for index in range(4))
-CANDIDATE_ROLES = ("exploit", "repair", "explore", "conservative")
+CANDIDATE_ROLES = (
+    "exploit",
+    "robust_repair",
+    "coordinated_explore",
+    "conservative_control",
+    # These legacy names remain valid for persisted Phase 9C preview traces.
+    "repair",
+    "explore",
+    "conservative",
+)
 STRATEGY_DIMENSIONS = (
     "target_assignment",
     "attack_timing",
@@ -76,6 +85,16 @@ class CandidateIntent:
     min_changes: int
     max_changes: int
     required_dimensions: tuple[str, ...] = ()
+    min_operations: int = 1
+    min_dimensions: int = 1
+    require_surface: bool = False
+    require_sortie: bool = False
+    max_operations: int | None = None
+    max_dimensions: int | None = None
+    failure_profile_mode: str = "unavailable"
+    failure_operation_ids: tuple[str, ...] = ()
+    failure_semantic_dimensions: tuple[str, ...] = ()
+    failure_profile_source_checksum: str | None = None
 
     @property
     def preferred_dimensions(self) -> tuple[str, ...]:
@@ -88,8 +107,12 @@ class CandidateIntent:
 
     @property
     def minimum_distinct_dimensions(self) -> int:
-        """The system-owned role floor; the planner cannot weaken it."""
-        return 2 if self.candidate_id == "candidate_02" else 1
+        # Preserve the old standalone ``explore`` intent contract. Formal C2
+        # coordinated exploration supplies its explicit floor of three.
+        return max(
+            self.min_dimensions,
+            2 if self.candidate_id == "candidate_02" and self.role == "explore" else 1,
+        )
 
     def __post_init__(self) -> None:
         if self.candidate_id not in CANDIDATE_IDS:
@@ -105,12 +128,89 @@ class CandidateIntent:
             raise ProposalContractError("unknown_strategy_dimension")
         if self.min_changes < 1 or self.max_changes < self.min_changes:
             raise ProposalContractError("invalid_change_bounds")
+        if self.min_operations < 1 or self.min_dimensions < 1:
+            raise ProposalContractError("invalid_role_constraint")
+        if self.max_operations is not None and self.max_operations < self.min_operations:
+            raise ProposalContractError("invalid_role_constraint")
+        if self.max_dimensions is not None and self.max_dimensions < self.min_dimensions:
+            raise ProposalContractError("invalid_role_constraint")
         required = tuple(self.required_dimensions)
         if any(dimension not in dimensions for dimension in required):
             raise ProposalContractError("repair_dimension_not_declared")
+        failure_dimensions = tuple(self.failure_semantic_dimensions)
+        if any(dimension not in STRATEGY_DIMENSIONS for dimension in failure_dimensions):
+            raise ProposalContractError("unknown_strategy_dimension")
+        if self.failure_profile_mode not in {"unavailable", "required"}:
+            raise ProposalContractError("invalid_failure_profile_mode")
+        failure_operations = tuple(self.failure_operation_ids)
+        if self.failure_profile_mode == "required":
+            if not (failure_operations or failure_dimensions):
+                raise ProposalContractError("invalid_failure_profile")
+            if not isinstance(self.failure_profile_source_checksum, str) or not self.failure_profile_source_checksum:
+                raise ProposalContractError("invalid_failure_profile")
+        elif failure_operations or failure_dimensions or self.failure_profile_source_checksum is not None:
+            raise ProposalContractError("invalid_failure_profile")
         object.__setattr__(self, "objective", self.objective.strip())
         object.__setattr__(self, "strategy_dimensions", dimensions)
         object.__setattr__(self, "required_dimensions", required)
+        object.__setattr__(self, "failure_operation_ids", failure_operations)
+        object.__setattr__(self, "failure_semantic_dimensions", failure_dimensions)
+
+
+@dataclass(frozen=True, slots=True)
+class CandidateRoleSpec:
+    """System-owned role constraints; these cannot be weakened by an LLM intent."""
+
+    candidate_id: str
+    role: str
+    min_changed_leaves: int
+    max_changed_leaves: int
+    min_operations: int
+    min_dimensions: int
+    require_surface: bool = False
+    require_sortie: bool = False
+    max_operations: int | None = None
+    max_dimensions: int | None = None
+    failure_profile_mode: str = "unavailable"
+    failure_operation_ids: tuple[str, ...] = ()
+    failure_semantic_dimensions: tuple[str, ...] = ()
+    failure_profile_source_checksum: str | None = None
+
+
+def candidate_role_specs(generation_context: object | None = None) -> tuple[CandidateRoleSpec, ...]:
+    """Return the fixed Phase 9C role contract with an optional frozen repair profile."""
+    profile = generation_context.get("failure_profile") if isinstance(generation_context, dict) else None
+    operation_ids: tuple[str, ...] = ()
+    dimensions: tuple[str, ...] = ()
+    source_checksum: str | None = None
+    if isinstance(profile, dict):
+        raw_operations = profile.get("operation_ids")
+        raw_dimensions = profile.get("semantic_dimensions")
+        raw_checksum = profile.get("source_checksum")
+        if (
+            isinstance(raw_operations, (list, tuple))
+            and all(isinstance(value, str) and value for value in raw_operations)
+            and isinstance(raw_dimensions, (list, tuple))
+            and all(value in STRATEGY_DIMENSIONS for value in raw_dimensions)
+            and isinstance(raw_checksum, str)
+            and raw_checksum
+        ):
+            operation_ids = tuple(sorted(set(raw_operations)))
+            dimensions = tuple(sorted(set(raw_dimensions)))
+            source_checksum = raw_checksum
+    failure_mode = "required" if operation_ids or dimensions else "unavailable"
+    return (
+        CandidateRoleSpec("candidate_00", "exploit", 3, 5, 2, 2),
+        CandidateRoleSpec(
+            "candidate_01", "robust_repair", 3, 5, 2, 2,
+            failure_profile_mode=failure_mode,
+            failure_operation_ids=operation_ids,
+            failure_semantic_dimensions=dimensions,
+            failure_profile_source_checksum=source_checksum,
+        ),
+        CandidateRoleSpec("candidate_02", "coordinated_explore", 5, 8, 3, 3, True, True),
+        CandidateRoleSpec("candidate_03", "conservative_control", 1, 2, 1, 1, max_operations=1, max_dimensions=1),
+    )
 
 
 @dataclass(frozen=True, slots=True)

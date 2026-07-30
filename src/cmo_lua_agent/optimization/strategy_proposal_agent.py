@@ -5,9 +5,20 @@ from __future__ import annotations
 from cmo_lua_agent.contract.strategy_validator import StrategyValidator
 from cmo_lua_agent.optimization.candidate_intent_planner import CandidateIntentPlanner, IntentJsonClient
 from cmo_lua_agent.optimization.candidate_patch_generator import CandidatePatchGenerator
-from cmo_lua_agent.optimization.candidate_intent_conformance import CandidateIntentConformanceValidator
+from cmo_lua_agent.optimization.candidate_intent_conformance import (
+    CandidateIntentConformanceValidator,
+    check_candidate_role_feasibility,
+)
 from cmo_lua_agent.optimization.phase6_models import StrategyCandidate, StrategyProposalContext
-from cmo_lua_agent.optimization.proposal_models import AcceptedCandidateSummary, CandidateIntent, CandidateProposalError, ProposalContractError, StrategyProposalUsage, StrategyValidationProposalError
+from cmo_lua_agent.optimization.proposal_models import (
+    AcceptedCandidateSummary,
+    CandidateIntent,
+    CandidateProposalError,
+    ProposalContractError,
+    StrategyProposalUsage,
+    StrategyValidationProposalError,
+    candidate_role_specs,
+)
 from cmo_lua_agent.optimization.strategy_patch import StrategyPatchAssembler, build_patchable_leaf_catalog
 from cmo_lua_agent.optimization.strategy_dimensions import semantic_dimensions
 
@@ -35,25 +46,54 @@ class StrategyProposalAgent:
 
     def propose(self, context: StrategyProposalContext) -> tuple[StrategyCandidate, ...]:
         intent_calls = patch_calls = repair_calls = 0
+        audit: dict[str, object] = {"intents": [], "accepted_candidates": [], "patch_attempts": []}
         try:
-            intent_calls += 1
-            intents = self._planner.plan(context)
-            audit: dict[str, object] = {
-                "intents": [
-                    {"candidate_id": item.candidate_id, "role": item.role, "objective": item.objective,
-                     "strategy_dimensions": list(item.strategy_dimensions),
-                     "min_changes": item.min_changes, "max_changes": item.max_changes,
-                     "required_dimensions": list(item.required_dimensions)}
-                    for item in intents
-                ],
-                "accepted_candidates": [],
-                "patch_attempts": [],
-            }
             catalog = build_patchable_leaf_catalog(
                 baseline=context.baseline,
                 scenario=context.scenario,
                 allowed_paths=context.allowed_strategy_paths,
             )
+            role_specs = (
+                candidate_role_specs(context.generation_context)
+                if context.generation_context is not None
+                else None
+            )
+            if role_specs is not None:
+                feasibility = tuple(
+                    check_candidate_role_feasibility(
+                        candidate_id=spec.candidate_id,
+                        role_spec=spec,
+                        patch_catalog=catalog,
+                    )
+                    for spec in role_specs
+                )
+                audit["role_feasibility"] = [item.to_dict() for item in feasibility]
+                # Report the most constrained role first. This gives the operator the
+                # useful blocker when a catalog cannot support coordinated exploration.
+                failed = next(
+                    (item for item in reversed(feasibility) if not item.feasible), None
+                )
+                if failed is not None:
+                    raise ProposalContractError(
+                        "candidate_role_not_feasible", diagnostics=failed.to_dict()
+                    )
+            intent_calls += 1
+            intents = self._planner.plan(context, role_specs=role_specs)
+            audit["intents"] = [
+                    {"candidate_id": item.candidate_id, "role": item.role, "objective": item.objective,
+                     "strategy_dimensions": list(item.strategy_dimensions),
+                     "min_changes": item.min_changes, "max_changes": item.max_changes,
+                     "min_operations": item.min_operations, "min_dimensions": item.min_dimensions,
+                     "require_surface": item.require_surface, "require_sortie": item.require_sortie,
+                     "max_operations": item.max_operations, "max_dimensions": item.max_dimensions,
+                     "failure_profile_mode": item.failure_profile_mode,
+                     "failure_profile_available": item.failure_profile_mode == "required",
+                     "failure_operation_ids": list(item.failure_operation_ids),
+                     "failure_semantic_dimensions": list(item.failure_semantic_dimensions),
+                     "failure_profile_source_checksum": item.failure_profile_source_checksum,
+                     "required_dimensions": list(item.required_dimensions)}
+                    for item in intents
+                ]
             assembler = StrategyPatchAssembler(baseline=context.baseline, catalog=catalog)
             validator = StrategyValidator()
             accepted: list[AcceptedCandidateSummary] = []
@@ -90,16 +130,15 @@ class StrategyProposalAgent:
             return tuple(candidates)
         finally:
             self._last_usage = StrategyProposalUsage(intent_calls, patch_calls, repair_calls)
-            if "audit" in locals():
-                audit["usage"] = {"intent_calls": intent_calls, "patch_calls": patch_calls, "repair_calls": repair_calls}
-                self._last_audit = audit
+            audit["usage"] = {"intent_calls": intent_calls, "patch_calls": patch_calls, "repair_calls": repair_calls}
+            self._last_audit = audit
 
     @staticmethod
     def _validate_candidate(*, intent, strategy, changed_paths, context, catalog, validator: StrategyValidator) -> None:
         CandidateIntentConformanceValidator().validate(
             intent=intent,
             changed_paths=tuple(changed_paths),
-            catalog_paths=tuple(leaf.path for leaf in catalog),
+            catalog=catalog,
         )
         report = validator.validate(strategy, context.scenario)
         if not report.valid:

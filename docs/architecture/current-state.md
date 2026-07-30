@@ -269,6 +269,27 @@ Pause/Stop、恢复规则和 Phase 6/7/8 调用边界的 Fake 工程验收，不
   additional proposal calls.
 - This change does not invoke CMO or a production LLM endpoint.
 
+## Phase 9C Candidate Role Constraints
+
+- Formal Phase 9C previews use four system-owned role contracts before any
+  proposal LLM call: `exploit` (3-5 leaves, 2 operations, 2 dimensions),
+  `robust_repair` (3-5, 2, 2), `coordinated_explore` (5-8, 3, 3 with both
+  surface and sortie coverage), and `conservative_control` (1-2 leaves in
+  exactly one operation and one semantic dimension).
+- `StrategyProposalAgent` performs deterministic catalog feasibility checks
+  before invoking the Intent Planner or Patch Generator. An insufficient
+  catalog returns `candidate_role_not_feasible` with operation, dimension,
+  surface, and sortie counts, and consumes zero proposal calls.
+- Candidate intent constraints are system-owned. The LLM supplies only an
+  objective and preferred dimensions; conformance derives actual leaves,
+  operations, dimensions, platform coverage, and optional frozen failure
+  profile coverage from the assembled Patch.
+- A missing failure profile leaves `candidate_01` as generic `robust_repair`;
+  no failure evidence is invented. When a frozen profile is supplied, its
+  operation IDs or semantic dimensions must be touched.
+- This milestone changes no CMO, approval, scoring, or Candidate Quality
+  Report behavior.
+
 ## Phase 9C Baseline Derivation
 
 - `json_data/6v4ScenarioIR.json` is the only production 6v4 Baseline input.
