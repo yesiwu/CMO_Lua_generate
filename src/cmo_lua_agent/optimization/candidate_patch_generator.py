@@ -7,7 +7,7 @@ from collections.abc import Mapping
 from typing import Any, Protocol
 
 from cmo_lua_agent.llm.json_client import JsonCompletionError
-from cmo_lua_agent.optimization.proposal_models import AcceptedCandidateSummary, CandidateIntent, CandidatePatch, ProposalContractError, StrategyPatchOperation
+from cmo_lua_agent.optimization.proposal_models import AcceptedCandidateSummary, CandidateIntent, CandidatePatch, ProposalContractError, StrategyPatchOperation, MAX_EFFECTIVE_PATCH_LEAVES, MIN_EFFECTIVE_PATCH_LEAVES
 from cmo_lua_agent.optimization.strategy_patch import (
     PatchableLeaf,
     validate_patch_paths_executable,
@@ -42,7 +42,8 @@ class CandidatePatchGenerator:
                 "objective": intent.objective,
                 "preferred_dimensions": list(intent.preferred_dimensions),
                 "required_dimensions": list(intent.required_dimensions),
-                "change_count": {"minimum": intent.min_changes, "maximum": intent.max_changes},
+                "hard_change_count": {"minimum": MIN_EFFECTIVE_PATCH_LEAVES, "maximum": MAX_EFFECTIVE_PATCH_LEAVES},
+                "role_change_preference": {"minimum": intent.min_changes, "maximum": intent.max_changes},
                 "operation_count": {"minimum": intent.min_operations, "maximum": intent.max_operations},
                 "dimension_count": {"minimum": intent.min_dimensions, "maximum": intent.max_dimensions},
                 "require_surface": intent.require_surface,
@@ -53,7 +54,7 @@ class CandidatePatchGenerator:
                 "candidate_instruction": (
                     _candidate_instruction(intent)
                 ),
-                "repair_instruction": _repair_instruction(error),
+                "repair_instruction": _repair_instruction(intent, error),
                 "patchable_leaves": [leaf.to_prompt_dict() for leaf in catalog],
                 "patchable_leaves_by_dimension": grouped_catalog,
                 "accepted_candidates": [
@@ -80,13 +81,13 @@ class CandidatePatchGenerator:
             operations.append(StrategyPatchOperation(row["path"], row["value"]))
         patch = CandidatePatch(intent.candidate_id, summary, tuple(operations))
         validate_patch_paths_executable(patch)
-        if not intent.min_changes <= len(patch.changes) <= intent.max_changes:
+        if not MIN_EFFECTIVE_PATCH_LEAVES <= len(patch.changes) <= MAX_EFFECTIVE_PATCH_LEAVES:
             raise ProposalContractError(
                 "candidate_change_count_out_of_bounds",
                 diagnostics={
                     "actual_change_count": len(patch.changes),
-                    "required_min_changes": intent.min_changes,
-                    "required_max_changes": intent.max_changes,
+                    "required_min_changes": MIN_EFFECTIVE_PATCH_LEAVES,
+                    "required_max_changes": MAX_EFFECTIVE_PATCH_LEAVES,
                     "proposed_paths": [change.path for change in patch.changes],
                 },
             )
@@ -121,6 +122,8 @@ def _repair_error(error: ProposalContractError | None) -> dict[str, object] | No
         "actual_dimensions",
         "minimum_dimension_count",
         "required_change_range",
+        "required_operation_range",
+        "required_dimension_range",
         "changed_paths",
         "actual_operation_count",
     ):
@@ -129,31 +132,32 @@ def _repair_error(error: ProposalContractError | None) -> dict[str, object] | No
     return payload
 
 
-def _repair_instruction(error: ProposalContractError | None) -> str | None:
+def _repair_instruction(
+    intent: CandidateIntent,
+    error: ProposalContractError | None,
+) -> str | None:
     if error is None:
         return None
-    if error.code == "candidate_intent_dimension_missing":
-        return (
-            "Return one complete replacement Patch. Preserve legal changes from previous_patch, "
-            "then add or replace only the minimum changes needed to reach the required distinct "
-            "dimension floor and remain inside the required change range. Do not require every "
-            "preferred dimension. changes must contain every corrected change, never an incremental delta."
-        )
     return (
-        "Return one complete replacement Patch. changes must contain every corrected change, "
-        "not only incremental additions to the initial Patch."
+        "Return one complete replacement Patch. Preserve legal initial changes where possible, "
+        "fix every hard validation error, and use the role-quality warnings as preferences. "
+        "changes must contain every corrected change, not only incremental additions."
     )
 
 
 def _candidate_instruction(intent: CandidateIntent) -> str:
     if intent.candidate_id == "candidate_02":
         return (
-            "Return one complete patch containing 5 to 8 unique changes. "
-            "Cover at least 3 distinct operations and 3 semantic dimensions. "
-            "Include at least one surface attack operation and one sortie operation. "
-            "Select every path from patchable_leaves."
+            "Prefer 5 to 8 unique changes across at least 3 operations and 3 semantic dimensions, "
+            "including surface and sortie operations when useful. These are quality goals, not hard "
+            "schema requirements. Select every path from patchable_leaves."
         )
-    return "Select leaves across the system-provided operation and semantic-dimension floors."
+    if intent.candidate_id == "candidate_03":
+        return (
+            "Prefer one or two changes focused on one operation and one semantic dimension so the "
+            "result remains easy to interpret. This is a quality preference, not a hard schema rule."
+        )
+    return "Use role preferences to make the experiment useful, while keeping every change inside the offered executable leaves."
 
 
 _SYSTEM = """You are CandidatePatchGenerator. Return exactly one JSON object with proposal_summary and changes.

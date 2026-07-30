@@ -26,6 +26,10 @@ STRATEGY_DIMENSIONS = (
     "air_route",
     "risk_policy",
 )
+# Candidate patches must always stay inside this executable, system-owned range.
+# Role-specific ranges remain quality preferences, never freeze gates.
+MIN_EFFECTIVE_PATCH_LEAVES = 1
+MAX_EFFECTIVE_PATCH_LEAVES = 10
 
 
 class ProposalContractError(ValueError):

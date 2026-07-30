@@ -122,7 +122,16 @@ def _validate(intent: CandidateIntent, paths: tuple[str, ...]) -> None:
     )
 
 
-def test_exploit_requires_three_leaves_two_operations_and_two_dimensions() -> None:
+def test_exploit_role_bounds_are_quality_preferences() -> None:
+    report = CandidateIntentConformanceValidator().validate(
+        intent=_intent("candidate_00"),
+        changed_paths=(
+            "/attacks/0/target_ids/0", "/attacks/1/fire_quantity",
+        ),
+        catalog=_catalog(_context()),
+    )
+    assert report.role_adherence == "partial"
+    assert report.repair_recommended is False
     _validate(
         _intent("candidate_00"),
         (
@@ -131,15 +140,9 @@ def test_exploit_requires_three_leaves_two_operations_and_two_dimensions() -> No
             "/attacks/1/fire_quantity",
         ),
     )
-    with pytest.raises(CandidateIntentConformanceError) as raised:
-        _validate(
-            _intent("candidate_00"),
-            ("/attacks/0/target_ids/0", "/attacks/1/fire_quantity"),
-        )
-    assert raised.value.code == "candidate_intent_change_count_invalid"
 
 
-def test_robust_repair_requires_frozen_failure_coverage_only_when_available() -> None:
+def test_robust_repair_failure_profile_is_quality_preference() -> None:
     paths = (
         "/attacks/0/target_ids/0",
         "/attacks/0/delay_seconds",
@@ -154,16 +157,11 @@ def test_robust_repair_requires_frozen_failure_coverage_only_when_available() ->
         ),
         paths,
     )
-    with pytest.raises(CandidateIntentConformanceError) as raised:
-        _validate(
-            _intent(
-                "candidate_01",
-                failure_profile_mode="required",
-                failure_semantic_dimensions=("air_route",),
-            ),
-            paths,
-        )
-    assert raised.value.code == "candidate_intent_failure_profile_not_covered"
+    report = CandidateIntentConformanceValidator().validate(
+        intent=_intent("candidate_01", failure_profile_mode="required", failure_semantic_dimensions=("air_route",)),
+        changed_paths=paths, catalog=_catalog(_context()),
+    )
+    assert "failure_profile_not_covered" in report.role_warnings
 
 
 @pytest.mark.parametrize(
@@ -211,12 +209,13 @@ def test_robust_repair_requires_frozen_failure_coverage_only_when_available() ->
         ),
     ),
 )
-def test_coordinated_explore_rejects_incomplete_multiplatform_shapes(
+def test_coordinated_explore_reports_incomplete_multiplatform_shapes(
     paths: tuple[str, ...], code: str
 ) -> None:
-    with pytest.raises(CandidateIntentConformanceError) as raised:
-        _validate(_intent("candidate_02"), paths)
-    assert raised.value.code == code
+    report = CandidateIntentConformanceValidator().validate(
+        intent=_intent("candidate_02"), changed_paths=paths, catalog=_catalog(_context())
+    )
+    assert report.role_adherence in {"partial", "weak"}
 
 
 def test_coordinated_explore_accepts_surface_sortie_three_operation_three_dimension_patch() -> None:
@@ -232,37 +231,54 @@ def test_coordinated_explore_accepts_surface_sortie_three_operation_three_dimens
     )
 
 
-def test_conservative_control_allows_one_or_two_same_operation_same_dimension_leaves_only() -> None:
+def test_conservative_control_scope_is_quality_not_freeze_gate() -> None:
     _validate(_intent("candidate_03"), ("/sorties/0/route/0/latitude",))
     _validate(
         _intent("candidate_03"),
         ("/sorties/0/route/0/latitude", "/sorties/0/route/0/longitude"),
     )
-    with pytest.raises(CandidateIntentConformanceError) as too_many:
-        _validate(
-            _intent("candidate_03"),
-            (
-                "/sorties/0/route/0/latitude",
-                "/sorties/0/route/0/longitude",
-                "/attacks/0/fire_quantity",
-            ),
-        )
-    assert too_many.value.code == "candidate_intent_change_count_invalid"
-    with pytest.raises(CandidateIntentConformanceError) as cross_operation:
-        _validate(
-            _intent("candidate_03"),
-            ("/attacks/0/target_ids/0", "/attacks/1/target_ids/0"),
-        )
-    assert cross_operation.value.code == "candidate_intent_operation_count_invalid"
+    report = CandidateIntentConformanceValidator().validate(
+        intent=_intent("candidate_03"),
+        changed_paths=("/attacks/0/target_ids/0", "/attacks/1/target_ids/0"),
+        catalog=_catalog(_context()),
+    )
+    assert report.role_adherence == "partial"
 
 
-def test_infeasible_role_blocks_before_any_proposal_client_call() -> None:
+def test_global_effective_leaf_range_is_hard_while_role_shape_is_not() -> None:
+    context = _context()
+    catalog = _catalog(context)
+    intent = _intent("candidate_03")
+    with pytest.raises(CandidateIntentConformanceError) as empty:
+        CandidateIntentConformanceValidator().validate(
+            intent=intent, changed_paths=(), catalog=catalog
+        )
+    assert empty.value.code == "candidate_intent_change_count_invalid"
+    with pytest.raises(CandidateIntentConformanceError) as oversized:
+        CandidateIntentConformanceValidator().validate(
+            intent=intent,
+            changed_paths=tuple(leaf.path for leaf in catalog[:11]),
+            catalog=catalog,
+        )
+    assert oversized.value.code == "candidate_intent_change_count_invalid"
+    report = CandidateIntentConformanceValidator().validate(
+        intent=intent,
+        changed_paths=("/attacks/0/target_ids/0", "/attacks/0/fire_quantity"),
+        catalog=catalog,
+    )
+    assert len(report.changed_paths) == 2
+    assert len(report.actual_operations) == 1
+    assert len(report.actual_dimensions) == 2
+    assert report.role_adherence == "partial"
+
+
+def test_infeasible_role_is_recorded_without_preflight_block() -> None:
     class FakeClient:
         calls = 0
 
         def complete_json(self, **_: object) -> object:
             self.calls += 1
-            raise AssertionError("role feasibility must run before any LLM call")
+            return {"intents": []}
 
     client = FakeClient()
     agent = StrategyProposalAgent(client)
@@ -276,8 +292,5 @@ def test_infeasible_role_blocks_before_any_proposal_client_call() -> None:
 
     with pytest.raises(ProposalContractError) as raised:
         agent.propose(context)
-
-    assert raised.value.code == "candidate_role_not_feasible"
-    assert raised.value.diagnostics["candidate_id"] == "candidate_02"
-    assert client.calls == 0
-    assert agent.last_usage.total_calls == 0
+    assert raised.value.code == "intent_count_must_be_four"
+    assert client.calls == 1

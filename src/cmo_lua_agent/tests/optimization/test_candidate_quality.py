@@ -116,7 +116,7 @@ def test_valid_batch_has_stable_coverage_and_pairwise_value_difference() -> None
     assert coordinated.sortie_operation_count > 0
     control = next(item for item in report.candidate_reports if item.candidate_id == "candidate_03")
     assert control.changed_leaf_count == 1
-    assert control.role_conformance["valid"] is True
+    assert control.role_conformance["role_adherence"] == "full"
     pair = next(
         item for item in report.pairwise_reports
         if (item.left_candidate_id, item.right_candidate_id) == ("candidate_00", "candidate_01")
@@ -127,7 +127,7 @@ def test_valid_batch_has_stable_coverage_and_pairwise_value_difference() -> None
     assert report.report_checksum == _evaluate().report_checksum
 
 
-def test_quality_rejects_same_primary_operation_set() -> None:
+def test_quality_warns_same_primary_operation_set() -> None:
     derived, catalog, tactical = _inputs()
     candidates = (
         _candidate("candidate_00", catalog, ("/attacks/0/target_ids/0", "blue_cg59"), ("/attacks/0/delay_seconds", 31), ("/attacks/1/delay_seconds", 31), ("/sorties/0/route/0/latitude", 23.7)),
@@ -139,11 +139,9 @@ def test_quality_rejects_same_primary_operation_set() -> None:
         baseline=derived.strategy, candidates=candidates,
         intents=candidate_role_specs({}), proposal_context=tactical,
     )
-    assert report.status == "failed"
-    assert "candidate_00_01_02_same_operation_set" in report.failed_rules
-    with pytest.raises(CandidateBatchQualityError) as raised:
-        report.require_passed()
-    assert raised.value.code == "candidate_batch_quality_failed"
+    assert report.status == "passed"
+    assert "candidate_00_01_02_same_operation_set" in report.warnings
+    report.require_passed()
 
 
 def test_quality_rejects_duplicate_strategy_checksums() -> None:
@@ -203,10 +201,11 @@ def test_quality_reports_structured_batch_failures(mutator: str, expected: str) 
             for item in intents
         )
     report = CandidateQualityEvaluator().evaluate(baseline=derived.strategy, candidates=candidates, intents=intents, proposal_context=tactical)
-    assert expected in report.failed_rules
+    assert report.status == "passed"
+    assert expected in report.warnings
 
 
-def test_preview_quality_failure_persists_report_without_freezing_or_extra_calls(tmp_path: Path) -> None:
+def test_preview_quality_warnings_persist_and_freeze_without_extra_calls(tmp_path: Path) -> None:
     derived, catalog, tactical = _inputs()
     candidates = (
         _candidate("candidate_00", catalog, ("/attacks/0/target_ids/0", "blue_cg59"), ("/attacks/0/delay_seconds", 31), ("/attacks/1/delay_seconds", 31), ("/sorties/0/route/0/latitude", 23.7)),
@@ -243,18 +242,18 @@ def test_preview_quality_failure_persists_report_without_freezing_or_extra_calls
     )
     spec = SimpleNamespace(campaign_id="quality_fixture", generation_objective="fixture")
 
-    with pytest.raises(CandidateBatchQualityError):
-        builder.build(spec=spec, generation_index=0, preview_revision=0)
+    builder.build(spec=spec, generation_index=0, preview_revision=0)
 
     root = tmp_path / "previews" / "generation_000" / "revision_000"
     report = json.loads((root / "candidate-quality-report.json").read_text(encoding="utf-8"))
     trace = json.loads((root / "proposal-trace.json").read_text(encoding="utf-8"))
-    failure = json.loads((root / "proposal-failure.json").read_text(encoding="utf-8"))
-    assert report["status"] == "failed"
-    assert trace["candidate_quality_status"] == "failed"
+    assert report["status"] == "passed"
+    assert trace["candidate_quality_status"] == "passed"
     assert trace["candidate_quality_report_checksum"] == report["report_checksum"]
-    assert failure["error_code"] == "candidate_batch_quality_failed"
-    assert failure["preview_status"] == "awaiting_operator_action"
-    assert not (root / "frozen-candidate-set.json").exists()
+    assert (root / "candidate-quality-index.json").is_file()
+    for candidate_id in ("candidate_00", "candidate_01", "candidate_02", "candidate_03"):
+        assert (root / "candidates" / candidate_id / "strategy-diff.json").is_file()
+        assert (root / "candidates" / candidate_id / "candidate-quality-report.json").is_file()
+    assert (root / "frozen-candidate-set.json").is_file()
     assert proposal.calls == 1
     assert builder.proposal_calls == 5

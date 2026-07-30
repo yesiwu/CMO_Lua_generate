@@ -45,22 +45,38 @@ class CandidateQualityCandidateReport:
     sortie_operation_count: int
     role_conformance: Mapping[str, Any]
     baseline_distance: Mapping[str, int]
+    repair_summary: Mapping[str, Any] | None = None
 
-    def to_dict(self) -> dict[str, Any]:
+    @property
+    def report_checksum(self) -> str:
+        return canonical_checksum(self._body())
+
+    def _body(self) -> dict[str, Any]:
         return {
+            "schema_version": "1.0",
             "candidate_id": self.candidate_id,
             "role": self.role,
             "strategy_checksum": self.strategy_checksum,
-            "changed_leaf_count": self.changed_leaf_count,
-            "changed_paths": list(self.changed_paths),
-            "changed_operation_ids": list(self.changed_operation_ids),
-            "changed_platform_ids": list(self.changed_platform_ids),
-            "semantic_dimensions": list(self.semantic_dimensions),
-            "surface_operation_count": self.surface_operation_count,
-            "sortie_operation_count": self.sortie_operation_count,
-            "role_conformance": dict(self.role_conformance),
+            "hard_validation": {"valid": True},
+            "actual_changes": {
+                "changed_leaf_count": self.changed_leaf_count,
+                "changed_paths": list(self.changed_paths),
+                "changed_operation_ids": list(self.changed_operation_ids),
+                "changed_platform_ids": list(self.changed_platform_ids),
+                "semantic_dimensions": list(self.semantic_dimensions),
+                "surface_operation_count": self.surface_operation_count,
+                "sortie_operation_count": self.sortie_operation_count,
+            },
+            "role_quality": dict(self.role_conformance),
+            "repair_summary": dict(self.repair_summary or {"attempted": False}),
+            "interpretability": _interpretability(
+                len(self.changed_operation_ids), len(self.semantic_dimensions)
+            ),
             "baseline_distance": dict(self.baseline_distance),
         }
+
+    def to_dict(self) -> dict[str, Any]:
+        return {**self._body(), "report_checksum": self.report_checksum}
 
 
 @dataclass(frozen=True, slots=True)
@@ -90,6 +106,7 @@ class CandidateQualityReport:
     batch_coverage: Mapping[str, tuple[str, ...]]
     failed_rules: tuple[str, ...]
     report_checksum: str
+    warnings: tuple[str, ...] = ()
     schema_version: str = "1.0"
 
     @property
@@ -104,6 +121,7 @@ class CandidateQualityReport:
         pairwise_reports: tuple[CandidateQualityPairwiseReport, ...],
         batch_coverage: Mapping[str, tuple[str, ...]],
         failed_rules: tuple[str, ...],
+        warnings: tuple[str, ...] = (),
     ) -> "CandidateQualityReport":
         body = {
             "schema_version": "1.0",
@@ -112,12 +130,14 @@ class CandidateQualityReport:
             "pairwise_reports": [item.to_dict() for item in pairwise_reports],
             "batch_coverage": {key: list(value) for key, value in sorted(batch_coverage.items())},
             "failed_rules": list(failed_rules),
+            "warnings": list(warnings),
         }
         return cls(
             candidate_reports=candidate_reports,
             pairwise_reports=pairwise_reports,
             batch_coverage={key: tuple(value) for key, value in sorted(batch_coverage.items())},
             failed_rules=failed_rules,
+            warnings=warnings,
             report_checksum=canonical_checksum(body),
         )
 
@@ -129,6 +149,7 @@ class CandidateQualityReport:
             "pairwise_reports": [item.to_dict() for item in self.pairwise_reports],
             "batch_coverage": {key: list(value) for key, value in sorted(self.batch_coverage.items())},
             "failed_rules": list(self.failed_rules),
+            "warnings": list(self.warnings),
             "report_checksum": self.report_checksum,
         }
 
@@ -161,6 +182,7 @@ class CandidateQualityEvaluator:
         candidates: tuple[StrategyCandidate, ...],
         intents: tuple[object, ...],
         proposal_context: Mapping[str, Any],
+        repair_summaries: Mapping[str, Mapping[str, Any]] | None = None,
     ) -> CandidateQualityReport:
         intent_by_id = {str(getattr(item, "candidate_id")): item for item in intents}
         operation_metadata = _operation_metadata(baseline, proposal_context)
@@ -172,6 +194,7 @@ class CandidateQualityEvaluator:
                 intent=intent_by_id.get(candidate.candidate_id),
                 operation_metadata=operation_metadata,
                 patchable_paths=patchable_paths,
+                repair_summary=(repair_summaries or {}).get(candidate.candidate_id),
             )
             for candidate in sorted(candidates, key=lambda item: item.candidate_id)
         )
@@ -189,16 +212,17 @@ class CandidateQualityEvaluator:
                 if value in platform_types_by_operation
             })),
         }
-        failed = self._failed_rules(reports, coverage)
+        failed, warnings = self._quality_messages(reports, coverage, pairwise)
         return CandidateQualityReport.create(
             candidate_reports=reports,
             pairwise_reports=pairwise,
             batch_coverage=coverage,
             failed_rules=tuple(sorted(failed)),
+            warnings=tuple(sorted(warnings)),
         )
 
     @staticmethod
-    def _candidate_report(*, baseline, candidate, intent, operation_metadata, patchable_paths):
+    def _candidate_report(*, baseline, candidate, intent, operation_metadata, patchable_paths, repair_summary=None):
         paths = strategy_leaf_diff(
             baseline,
             candidate.strategy_spec,
@@ -255,6 +279,7 @@ class CandidateQualityEvaluator:
                 "changed_operation_count": len(operation_ids),
                 "changed_dimension_count": len(dimensions),
             },
+            repair_summary=repair_summary,
         )
 
     @staticmethod
@@ -280,33 +305,29 @@ class CandidateQualityEvaluator:
         return tuple(rows)
 
     @staticmethod
-    def _failed_rules(reports, coverage):
+    def _quality_messages(reports, coverage, pairwise):
         failed: list[str] = []
+        warnings: list[str] = []
         for item in reports:
-            if not bool(item.role_conformance["valid"]):
-                failed.append(f"{item.candidate_id}_role_conformance")
+            if item.role_conformance["role_adherence"] != "full":
+                warnings.append(f"{item.candidate_id}_role_{item.role_conformance['role_adherence']}")
         checksums = [item.strategy_checksum for item in reports]
         if len(checksums) != len(set(checksums)):
             failed.append("unique_strategy_checksums_required")
         if len(coverage["operation_ids"]) < 4:
-            failed.append("minimum_batch_operation_coverage")
+            warnings.append("minimum_batch_operation_coverage")
         if len(coverage["semantic_dimensions"]) < 3:
-            failed.append("minimum_batch_dimension_coverage")
+            warnings.append("minimum_batch_dimension_coverage")
         if len(coverage["platform_types"]) < 2:
-            failed.append("minimum_batch_platform_type_coverage")
+            warnings.append("minimum_batch_platform_type_coverage")
         if not any(item.surface_operation_count and item.sortie_operation_count for item in reports):
-            failed.append("surface_sortie_candidate_required")
+            warnings.append("surface_sortie_candidate_required")
         first_three = [set(item.changed_operation_ids) for item in reports if item.candidate_id in {"candidate_00", "candidate_01", "candidate_02"}]
         if len(first_three) == 3 and first_three[0] == first_three[1] == first_three[2]:
-            failed.append("candidate_00_01_02_same_operation_set")
-        control = next((item for item in reports if item.candidate_id == "candidate_03"), None)
-        if control is None or not (
-            1 <= control.changed_leaf_count <= 2
-            and len(control.changed_operation_ids) == 1
-            and len(control.semantic_dimensions) == 1
-        ):
-            failed.append("candidate_03_control_scope_invalid")
-        return failed
+            warnings.append("candidate_00_01_02_same_operation_set")
+        if any(item.path_jaccard >= 0.8 for item in pairwise):
+            warnings.append("pairwise_path_jaccard_high")
+        return failed, warnings
 
 
 def _operation_metadata(baseline: StrategySpec, proposal_context: Mapping[str, Any]) -> dict[str, dict[str, str]]:
@@ -355,7 +376,7 @@ def _role_conformance(*, candidate_id, intent, changed_leaf_count, operation_cou
     violations: list[str] = []
     if intent is None:
         violations.append("intent_missing")
-        return {"valid": False, "violations": violations}
+        return {"role_adherence": "weak", "warnings": violations, "repair_recommended": True}
     minimum = int(getattr(intent, "min_changed_leaves", getattr(intent, "min_changes", 1)))
     maximum = int(getattr(intent, "max_changed_leaves", getattr(intent, "max_changes", changed_leaf_count)))
     min_operations = int(getattr(intent, "min_operations", 1))
@@ -380,8 +401,15 @@ def _role_conformance(*, candidate_id, intent, changed_leaf_count, operation_cou
         failure_dimensions = set(getattr(intent, "failure_semantic_dimensions", ()))
         if not (failure_operations & set(local_operations) or failure_dimensions & set(dimensions)):
             violations.append("failure_profile_not_covered")
-    return {
-        "valid": not violations,
-        "violations": sorted(violations),
-        "candidate_id": candidate_id,
-    }
+    adherence = "full" if not violations else "partial" if len(violations) == 1 else "weak"
+    return {"role_adherence": adherence, "warnings": sorted(violations), "repair_recommended": adherence == "weak", "candidate_id": candidate_id}
+
+
+def _interpretability(operation_count: int, dimension_count: int) -> dict[str, str]:
+    if operation_count == 1 and dimension_count == 1:
+        return {"level": "high", "claim_scope": "single_factor_hypothesis"}
+    if operation_count > 1 and dimension_count == 1:
+        return {"level": "medium", "claim_scope": "same_dimension_pattern"}
+    if operation_count == 1:
+        return {"level": "medium", "claim_scope": "combined_strategy_hypothesis"}
+    return {"level": "low", "claim_scope": "combined_strategy_observation"}

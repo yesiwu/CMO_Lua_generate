@@ -77,15 +77,8 @@ class StrategyProposalAgent:
                     for spec in role_specs
                 )
                 audit["role_feasibility"] = [item.to_dict() for item in feasibility]
-                # Report the most constrained role first. This gives the operator the
-                # useful blocker when a catalog cannot support coordinated exploration.
-                failed = next(
-                    (item for item in reversed(feasibility) if not item.feasible), None
-                )
-                if failed is not None:
-                    raise ProposalContractError(
-                        "candidate_role_not_feasible", diagnostics=failed.to_dict()
-                    )
+                # Role feasibility is advisory. A constrained catalog must not turn
+                # a hard-valid, executable candidate into a terminal preview error.
                 tactical = ProposalTacticalContextBuilder().build(
                     scenario=context.scenario,
                     baseline=context.baseline,
@@ -165,8 +158,8 @@ class StrategyProposalAgent:
             self._last_audit = audit
 
     @staticmethod
-    def _validate_candidate(*, intent, strategy, changed_paths, context, catalog, validator: StrategyValidator) -> None:
-        CandidateIntentConformanceValidator().validate(
+    def _validate_candidate(*, intent, strategy, changed_paths, context, catalog, validator: StrategyValidator):
+        conformance = CandidateIntentConformanceValidator().validate(
             intent=intent,
             changed_paths=tuple(changed_paths),
             catalog=catalog,
@@ -175,6 +168,7 @@ class StrategyProposalAgent:
         if not report.valid:
             violations = tuple(_validation_violation(issue, strategy) for issue in report.errors)
             raise StrategyValidationProposalError(violations=violations, changed_paths=tuple(changed_paths))
+        return conformance
 
     def repair_candidate(
         self,
@@ -284,7 +278,12 @@ class StrategyProposalAgent:
             )
             attempts.append(_patch_audit(intent.candidate_id, "initial", patch))
             assembled = assembler.assemble(patch)
-            self._validate_candidate(intent=intent, strategy=assembled.strategy, changed_paths=assembled.changed_paths, context=context, catalog=catalog, validator=validator)
+            conformance = self._validate_candidate(intent=intent, strategy=assembled.strategy, changed_paths=assembled.changed_paths, context=context, catalog=catalog, validator=validator)
+            if conformance.repair_recommended:
+                raise ProposalContractError(
+                    "candidate_role_quality_weak",
+                    diagnostics={"conformance_report": conformance.to_dict()},
+                )
         except ProposalContractError as initial_error:
             context_audit = _patch_context(intent, patch) if patch is not None else {}
             initial_error.diagnostics.update(context_audit)
@@ -307,6 +306,8 @@ class StrategyProposalAgent:
                 )
                 attempts.append(_patch_audit(intent.candidate_id, "repair", patch, initial_error))
                 assembled = assembler.assemble(patch)
+                # A repair is bounded to one call. Once it is hard-valid, retain any
+                # remaining role-quality warning instead of rejecting the preview.
                 self._validate_candidate(intent=intent, strategy=assembled.strategy, changed_paths=assembled.changed_paths, context=context, catalog=catalog, validator=validator)
             except ProposalContractError as repair_error:
                 repair_error.diagnostics["initial_patch_failure"] = initial_failure
@@ -404,6 +405,14 @@ def _patch_context(intent, patch) -> dict[str, object]:
         context["required_change_range"] = {
             "minimum": intent.min_changes,
             "maximum": intent.max_changes,
+        }
+        context["required_operation_range"] = {
+            "minimum": intent.min_operations,
+            "maximum": intent.max_operations,
+        }
+        context["required_dimension_range"] = {
+            "minimum": intent.minimum_distinct_dimensions,
+            "maximum": intent.max_dimensions,
         }
     return context
 

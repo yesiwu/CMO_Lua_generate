@@ -204,26 +204,36 @@ def test_resumed_candidate_generation_skips_intent_and_is_bounded_to_one_repair(
     assert agent.last_usage.repair_calls == 1
 
 
-def test_explore_intent_requires_two_semantic_dimensions_not_two_target_leaves() -> None:
+def test_explore_intent_dimension_preference_does_not_block_hard_valid_patch() -> None:
     intent = CandidateIntent(
         "candidate_02", "explore", "Cover separate targets.",
         ("target_assignment", "fire_quantity"), 2, 3,
     )
 
+    report = CandidateIntentConformanceValidator().validate(
+        intent=intent,
+        changed_paths=("/attacks/0/target_ids/0", "/attacks/1/target_ids/0"),
+        catalog_paths=(
+            "/attacks/0/target_ids/0", "/attacks/1/target_ids/0",
+            "/attacks/0/fire_quantity",
+        ),
+    )
+    assert report.role_adherence == "partial"
+
+
+def test_explicit_required_dimension_remains_a_hard_gate() -> None:
+    intent = CandidateIntent(
+        "candidate_00", "exploit", "Use timing.",
+        ("target_assignment", "attack_timing"), 3, 5,
+        required_dimensions=("attack_timing",),
+    )
     with pytest.raises(CandidateIntentConformanceError) as raised:
         CandidateIntentConformanceValidator().validate(
             intent=intent,
-            changed_paths=("/attacks/0/target_ids/0", "/attacks/1/target_ids/0"),
-            catalog_paths=(
-                "/attacks/0/target_ids/0",
-                "/attacks/1/target_ids/0",
-                "/attacks/0/fire_quantity",
-            ),
+            changed_paths=("/attacks/0/target_ids/0",),
+            catalog_paths=("/attacks/0/target_ids/0",),
         )
-
-    assert raised.value.code == "candidate_intent_dimension_missing"
-    assert raised.value.required_dimensions == ("minimum_distinct_dimensions=2",)
-    assert raised.value.actual_dimensions == ("target_assignment",)
+    assert raised.value.code == "candidate_intent_required_dimension_missing"
 
 
 def test_conservative_intent_must_change_exactly_one_leaf() -> None:
@@ -308,7 +318,8 @@ def _conformance_repair_context() -> StrategyProposalContext:
         (
             "/attacks/0/target_ids/0", "/attacks/1/target_ids/0",
             "/attacks/2/target_ids/0", "/attacks/3/target_ids/0",
-            "/attacks/0/delay_seconds",
+            "/attacks/0/delay_seconds", "/attacks/0/fire_quantity",
+            "/attacks/1/delay_seconds",
         ),
         ("target_assignment", "attack_timing"), "runtime", "1.0.0",
         BootstrapSkillSnapshot(
@@ -319,10 +330,20 @@ def _conformance_repair_context() -> StrategyProposalContext:
 
 
 class _ConformanceRepairClient:
-    def __init__(self, repair_changes: list[dict[str, object]]) -> None:
+    def __init__(
+        self,
+        repair_changes: list[dict[str, object]],
+        initial_changes: list[dict[str, object]] | None = None,
+    ) -> None:
         self.calls = 0
         self.prompts: list[dict[str, object]] = []
         self._repair_changes = repair_changes
+        self._initial_changes = initial_changes or [
+            {"path": "/attacks/0/target_ids/0", "value": "blue-2"},
+            {"path": "/attacks/1/target_ids/0", "value": "blue-3"},
+            {"path": "/attacks/2/target_ids/0", "value": "blue-4"},
+            {"path": "/attacks/3/target_ids/0", "value": "blue-1"},
+        ]
 
     def complete_json(self, *, prompt: str, **_kwargs: object) -> object:
         self.prompts.append(__import__("json").loads(prompt))
@@ -330,12 +351,7 @@ class _ConformanceRepairClient:
         if self.calls == 1:
             return {
                 "proposal_summary": "Retarget four attacks.",
-                "changes": [
-                    {"path": "/attacks/0/target_ids/0", "value": "blue-2"},
-                    {"path": "/attacks/1/target_ids/0", "value": "blue-3"},
-                    {"path": "/attacks/2/target_ids/0", "value": "blue-4"},
-                    {"path": "/attacks/3/target_ids/0", "value": "blue-1"},
-                ],
+                "changes": self._initial_changes,
             }
         return {"proposal_summary": "Retarget and stagger.", "changes": self._repair_changes}
 
@@ -361,28 +377,11 @@ def test_conformance_repair_preserves_complete_initial_patch_and_needs_only_two_
         _conformance_repair_context(), intent=_candidate_01_intent(), accepted=(),
     )
 
-    assert candidate.intended_difference == (
-        "/attacks/0/delay_seconds", "/attacks/0/target_ids/0",
-        "/attacks/1/target_ids/0", "/attacks/2/target_ids/0",
-    )
-    assert client.calls == 2
-    repair_prompt = client.prompts[1]
-    assert repair_prompt["previous_error"]["code"] == "candidate_intent_dimension_missing"
-    assert repair_prompt["previous_error"]["actual_change_count"] == 4
-    assert repair_prompt["previous_error"]["actual_dimensions"] == ["target_assignment"]
-    assert repair_prompt["previous_error"]["minimum_dimension_count"] == 2
-    assert repair_prompt["previous_error"]["required_change_range"] == {"minimum": 3, "maximum": 5}
-    assert len(repair_prompt["previous_error"]["previous_patch"]["changes"]) == 4
-    assert "Preserve legal changes" in repair_prompt["repair_instruction"]
-    trace = agent.last_audit["candidate_generation"]["patch_attempts"]
-    initial_failure = next(item for item in trace if item["phase"] == "initial_failed")
-    assert initial_failure["error_code"] == "candidate_intent_dimension_missing"
-    assert initial_failure["actual_change_count"] == 4
-    assert initial_failure["actual_dimensions"] == ["target_assignment"]
-    assert len(initial_failure["changes"]) == 4
+    assert client.calls == 1
+    assert len(candidate.intended_difference) == 4
 
 
-def test_conformance_repair_failure_keeps_initial_patch_in_trace() -> None:
+def test_hard_valid_patch_is_not_rejected_only_for_role_quality() -> None:
     client = _ConformanceRepairClient([
         {"path": "/attacks/0/target_ids/0", "value": "blue-2"},
         {"path": "/attacks/1/target_ids/0", "value": "blue-3"},
@@ -393,19 +392,37 @@ def test_conformance_repair_failure_keeps_initial_patch_in_trace() -> None:
     ])
     agent = StrategyProposalAgent(client)
 
-    with pytest.raises(CandidateProposalError) as raised:
-        agent.generate_candidate(
-            _conformance_repair_context(), intent=_candidate_01_intent(), accepted=(),
-        )
-
-    assert raised.value.code == "candidate_change_count_out_of_bounds"
-    trace = raised.value.diagnostics["candidate_patch_attempts"]
-    initial_failure = next(item for item in trace if item["phase"] == "initial_failed")
-    assert initial_failure["actual_change_count"] == 4
-    assert len(initial_failure["changes"]) == 4
+    candidate = agent.generate_candidate(
+        _conformance_repair_context(), intent=_candidate_01_intent(), accepted=(),
+    )
+    assert candidate.intended_difference
 
 
-def test_explore_repair_adds_second_dimension_without_regenerating_other_candidates() -> None:
+def test_conservative_partial_quality_does_not_force_repair() -> None:
+    client = _ConformanceRepairClient(
+        [{"path": "/attacks/0/fire_quantity", "value": 5}],
+        initial_changes=[
+            {"path": "/attacks/0/fire_quantity", "value": 5},
+            {"path": "/attacks/1/delay_seconds", "value": 9},
+        ],
+    )
+    agent = StrategyProposalAgent(client)
+    intent = CandidateIntent(
+        "candidate_03", "conservative_control", "Bounded conservative change.",
+        ("fire_quantity",), 1, 2,
+        min_operations=1, min_dimensions=1,
+        max_operations=1, max_dimensions=1,
+    )
+
+    candidate = agent.generate_candidate(
+        _conformance_repair_context(), intent=intent, accepted=(),
+    )
+
+    assert candidate.intended_difference == ("/attacks/0/fire_quantity",)
+    assert client.calls == 2
+
+
+def test_explore_partial_quality_is_accepted_without_repair() -> None:
     class RepairClient:
         def __init__(self) -> None:
             self.calls = 0
@@ -439,10 +456,10 @@ def test_explore_repair_adds_second_dimension_without_regenerating_other_candida
         accepted=(),
     )
 
-    assert client.calls == 2
+    assert client.calls == 1
     assert agent.last_usage.intent_calls == 0
     assert agent.last_usage.patch_calls == 1
-    assert agent.last_usage.repair_calls == 1
+    assert agent.last_usage.repair_calls == 0
     assert candidate.intended_difference == (
-        "/attacks/0/fire_quantity", "/attacks/0/target_ids/0",
+        "/attacks/0/target_ids/0", "/attacks/1/target_ids/0",
     )

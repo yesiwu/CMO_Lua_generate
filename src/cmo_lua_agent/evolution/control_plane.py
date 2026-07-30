@@ -113,6 +113,7 @@ class GenerationPreviewPayload:
     baseline_checksum: str = ""
     frozen_candidate_set_ref: str = ""
     strategy_diff_ref: str = ""
+    candidate_quality_index_ref: str = ""
 
 
 @dataclass(frozen=True, slots=True)

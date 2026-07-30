@@ -87,8 +87,9 @@ class CandidateSetValidator:
                 dimensions.add(semantic_dimension(path))
 
         # 规则5：整批候选至少覆盖2个不同改动维度，保证策略多样性
+        warnings: list[str] = []
         if len(dimensions) < 2:
-            violations.append("insufficient_diversity_dimensions")
+            warnings.append("insufficient_diversity_dimensions")
 
         # 生成多样性&违规汇总报告
         diversity_report = DiversityReport(
@@ -96,7 +97,8 @@ class CandidateSetValidator:
             dimensions_covered=tuple(sorted(dimensions)),
             candidate_diffs=diffs,
             duplicates=duplicate_checksums,
-            violations=tuple(violations)
+            violations=tuple(violations),
+            warnings=tuple(warnings),
         )
         # 封装批次信息与报告返回
         return StrategyCandidateSet(baseline, candidates, diversity_report)

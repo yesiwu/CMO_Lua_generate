@@ -12,7 +12,7 @@ from cmo_lua_agent.optimization.executable_patch_paths import (
     is_executable_patch_path,
     non_executable_patch_diagnostics,
 )
-from cmo_lua_agent.optimization.proposal_models import AssembledStrategyPatch, CandidatePatch, JsonScalar, ProposalContractError
+from cmo_lua_agent.optimization.proposal_models import AssembledStrategyPatch, CandidatePatch, JsonScalar, ProposalContractError, MAX_EFFECTIVE_PATCH_LEAVES, MIN_EFFECTIVE_PATCH_LEAVES
 
 
 _STABLE_FIELD_NAMES = {"scenario_id", "attack_id", "sortie_id", "shooter_id", "aircraft_id", "base_unit_id", "weapon_dbid"}
@@ -76,6 +76,8 @@ class StrategyPatchAssembler:
 
     def assemble(self, patch: CandidatePatch) -> AssembledStrategyPatch:
         validate_patch_paths_executable(patch)
+        if not MIN_EFFECTIVE_PATCH_LEAVES <= len(patch.changes) <= MAX_EFFECTIVE_PATCH_LEAVES:
+            raise ProposalContractError("candidate_change_count_out_of_bounds")
         payload = deepcopy(self._baseline.to_dict())
         expected_paths: list[str] = []
         for operation in patch.changes:

@@ -190,7 +190,7 @@ def test_complete_fake_preview_freezes_auditable_non_production_candidates(tmp_p
     assert replay.proposal_llm_calls == 0
 
 
-def test_candidate_02_repair_receives_count_diagnostics_and_replaces_the_whole_patch(
+def test_candidate_02_partial_role_quality_is_accepted_without_repair(
     tmp_path: Path,
 ) -> None:
     responses = _valid_responses()
@@ -200,71 +200,16 @@ def test_candidate_02_repair_receives_count_diagnostics_and_replaces_the_whole_p
         ("/attacks/1/fire_quantity", 7),
         ("/sorties/0/route/0/latitude", 23.7),
     ])
-    responses.insert(4, _patch("Complete coordinated replacement.", [
-        ("/attacks/0/target_ids/0", "blue_cvn70"),
-        ("/attacks/0/delay_seconds", 35),
-        ("/attacks/1/fire_quantity", 7),
-        ("/sorties/0/route/0/latitude", 23.7),
-        ("/sorties/1/target_id", "blue_cg59"),
-        ("/attacks/2/delay_seconds", 40),
-    ]))
     _derived, client, builder = _builder(tmp_path, responses)
 
     payload = builder.build(spec=_spec(), generation_index=0, preview_revision=0)
 
-    repair_prompt = next(
-        parsed
-        for prompt in client.prompts
-        if isinstance((parsed := json.loads(prompt)), dict)
-        and parsed.get("previous_error") is not None
-    )
-    previous_error = repair_prompt["previous_error"]
-    assert previous_error["code"] == "candidate_change_count_out_of_bounds"
-    assert previous_error["diagnostics"] == {
-        "actual_change_count": 4,
-        "proposed_paths": [
-            "/attacks/0/target_ids/0",
-            "/attacks/0/delay_seconds",
-            "/attacks/1/fire_quantity",
-            "/sorties/0/route/0/latitude",
-        ],
-        "required_max_changes": 8,
-        "required_min_changes": 5,
-    }
-    assert "complete replacement Patch" in repair_prompt["repair_instruction"]
-    assert "5 to 8 unique changes" in repair_prompt["candidate_instruction"]
-
-    trace = json.loads(
-        (Path(payload.frozen_candidate_set_ref).parent / "proposal-trace.json").read_text(
-            encoding="utf-8"
-        )
-    )
-    initial_failure = next(
-        row
-        for row in trace["patch_attempts"]
-        if row["candidate_id"] == "candidate_02" and row["phase"] == "initial_failed"
-    )
-    assert initial_failure == {
-        "actual_change_count": 4,
-        "candidate_id": "candidate_02",
-        "error_code": "candidate_change_count_out_of_bounds",
-        "phase": "initial_failed",
-        "proposed_paths": [
-            "/attacks/0/target_ids/0",
-            "/attacks/0/delay_seconds",
-            "/attacks/1/fire_quantity",
-            "/sorties/0/route/0/latitude",
-        ],
-    }
-    repaired = next(
-        row
-        for row in trace["patch_attempts"]
-        if row["candidate_id"] == "candidate_02" and row["phase"] == "repair"
-    )
-    assert len(repaired["changes"]) == 6
+    quality = json.loads((Path(payload.frozen_candidate_set_ref).parent / "candidates" / "candidate_02" / "candidate-quality-report.json").read_text(encoding="utf-8"))
+    assert quality["role_quality"]["role_adherence"] == "partial"
+    assert quality["repair_summary"]["attempted"] is False
 
 
-def test_fake_preview_rejects_role_failure_before_freezing(tmp_path: Path) -> None:
+def test_fake_preview_accepts_role_warning_before_freezing(tmp_path: Path) -> None:
     responses = _valid_responses()
     invalid = _patch("Surface-only coordinated candidate.", [
         ("/attacks/0/target_ids/0", "blue_cvn70"),
@@ -277,32 +222,26 @@ def test_fake_preview_rejects_role_failure_before_freezing(tmp_path: Path) -> No
     responses.insert(4, invalid)
     _derived, client, builder = _builder(tmp_path, responses)
 
-    with pytest.raises(CandidateProposalError) as raised:
-        builder.build(spec=_spec(), generation_index=0, preview_revision=0)
+    payload = builder.build(spec=_spec(), generation_index=0, preview_revision=0)
 
     root = _preview_root(tmp_path)
-    failure = json.loads((root / "proposal-failure.json").read_text(encoding="utf-8"))
-    assert raised.value.candidate_id == "candidate_02"
-    assert failure["validator_violations"][0]["code"] == "candidate_intent_sortie_required"
-    assert not (root / "frozen-candidate-set.json").exists()
+    quality = json.loads((root / "candidates" / "candidate_02" / "candidate-quality-report.json").read_text(encoding="utf-8"))
+    assert quality["role_quality"]["role_adherence"] in {"partial", "weak"}
+    assert Path(payload.frozen_candidate_set_ref).is_file()
     assert not (tmp_path / "approvals").exists()
-    assert len(client.calls) == 5
+    assert len(client.calls) == 6
 
 
-def test_fake_preview_persists_quality_failure_without_automatic_reproposal(tmp_path: Path) -> None:
+def test_fake_preview_persists_quality_warning_without_automatic_reproposal(tmp_path: Path) -> None:
     _derived, client, builder = _builder(tmp_path, _same_operation_responses())
 
-    with pytest.raises(Exception) as raised:
-        builder.build(spec=_spec(), generation_index=0, preview_revision=0)
+    payload = builder.build(spec=_spec(), generation_index=0, preview_revision=0)
 
     root = _preview_root(tmp_path)
     quality = json.loads((root / "candidate-quality-report.json").read_text(encoding="utf-8"))
-    failure = json.loads((root / "proposal-failure.json").read_text(encoding="utf-8"))
-    assert type(raised.value).__name__ == "CandidateBatchQualityError"
-    assert quality["status"] == "failed"
-    assert failure["error_code"] == "candidate_batch_quality_failed"
-    assert failure["preview_status"] == "awaiting_operator_action"
-    assert not (root / "frozen-candidate-set.json").exists()
+    assert quality["status"] == "passed"
+    assert quality["warnings"]
+    assert Path(payload.frozen_candidate_set_ref).is_file()
     assert len(client.calls) == 5
     assert builder.proposal_calls == 5
 

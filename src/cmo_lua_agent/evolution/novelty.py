@@ -39,7 +39,6 @@ class CandidateNoveltyValidator:
     ) -> None:
         allowed = tuple(generation_context.get("allowed_strategy_paths", ()))
         history = set(generation_context.get("history_fingerprints", ()))
-        roles = dict(generation_context.get("candidate_roles", {}))
         fingerprints: set[str] = set()
 
         for candidate in candidates:
@@ -53,13 +52,3 @@ class CandidateNoveltyValidator:
             if not changed:
                 raise ValueError("novelty_matches_rolling_baseline")
             semantic_dimensions(changed)
-
-            role = roles.get(candidate.candidate_id)
-            if role == "conservative_control" and len(changed) > int(
-                generation_context.get("conservative_max_changed_leaves", 1)
-            ):
-                raise ValueError("novelty_conservative_scope_exceeded")
-            if role == "repair" and not generation_context.get(
-                "previous_generation_failures"
-            ):
-                raise ValueError("novelty_repair_has_no_prior_failure")
