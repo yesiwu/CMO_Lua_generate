@@ -27,6 +27,13 @@ class FrozenCandidateSet:
     candidate_checksums: tuple[str, ...]
     candidate_set_checksum: str
     source_proposal_operation_id: str
+    scenario_ir_checksum: str | None = None
+    derived_baseline_checksum: str | None = None
+    proposal_context_checksum: str | None = None
+    knowledge_snapshot_checksum: str | None = None
+    candidate_quality_report_checksum: str | None = None
+    proposal_provider: str = "unknown"
+    production_execution_eligible: bool = False
 
     @classmethod
     def create(
@@ -38,6 +45,13 @@ class FrozenCandidateSet:
         baseline: Mapping[str, Any],
         candidates: tuple[Mapping[str, Any], ...],
         source_proposal_operation_id: str,
+        scenario_ir_checksum: str | None = None,
+        derived_baseline_checksum: str | None = None,
+        proposal_context_checksum: str | None = None,
+        knowledge_snapshot_checksum: str | None = None,
+        candidate_quality_report_checksum: str | None = None,
+        proposal_provider: str = "unknown",
+        production_execution_eligible: bool = False,
     ) -> "FrozenCandidateSet":
         baseline_value = json.loads(canonical_json(dict(baseline)))
         candidate_values = tuple(json.loads(canonical_json(dict(item))) for item in candidates)
@@ -56,6 +70,13 @@ class FrozenCandidateSet:
             "candidate_ids": ids,
             "candidate_checksums": list(candidate_checksums),
             "source_proposal_operation_id": source_proposal_operation_id,
+            "scenario_ir_checksum": scenario_ir_checksum,
+            "derived_baseline_checksum": derived_baseline_checksum,
+            "proposal_context_checksum": proposal_context_checksum,
+            "knowledge_snapshot_checksum": knowledge_snapshot_checksum,
+            "candidate_quality_report_checksum": candidate_quality_report_checksum,
+            "proposal_provider": proposal_provider,
+            "production_execution_eligible": production_execution_eligible,
         }
         return cls(
             campaign_id=campaign_id,
@@ -67,6 +88,13 @@ class FrozenCandidateSet:
             candidate_checksums=candidate_checksums,
             candidate_set_checksum=canonical_checksum(identity),
             source_proposal_operation_id=source_proposal_operation_id,
+            scenario_ir_checksum=scenario_ir_checksum,
+            derived_baseline_checksum=derived_baseline_checksum,
+            proposal_context_checksum=proposal_context_checksum,
+            knowledge_snapshot_checksum=knowledge_snapshot_checksum,
+            candidate_quality_report_checksum=candidate_quality_report_checksum,
+            proposal_provider=proposal_provider,
+            production_execution_eligible=production_execution_eligible,
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -80,6 +108,13 @@ class FrozenCandidateSet:
             "candidate_checksums": list(self.candidate_checksums),
             "candidate_set_checksum": self.candidate_set_checksum,
             "source_proposal_operation_id": self.source_proposal_operation_id,
+            "scenario_ir_checksum": self.scenario_ir_checksum,
+            "derived_baseline_checksum": self.derived_baseline_checksum,
+            "proposal_context_checksum": self.proposal_context_checksum,
+            "knowledge_snapshot_checksum": self.knowledge_snapshot_checksum,
+            "candidate_quality_report_checksum": self.candidate_quality_report_checksum,
+            "proposal_provider": self.proposal_provider,
+            "production_execution_eligible": self.production_execution_eligible,
         }
 
     @classmethod
@@ -91,6 +126,13 @@ class FrozenCandidateSet:
             baseline=dict(value["baseline"]),
             candidates=tuple(dict(item) for item in value["candidates"]),
             source_proposal_operation_id=str(value["source_proposal_operation_id"]),
+            scenario_ir_checksum=value.get("scenario_ir_checksum"),
+            derived_baseline_checksum=value.get("derived_baseline_checksum"),
+            proposal_context_checksum=value.get("proposal_context_checksum"),
+            knowledge_snapshot_checksum=value.get("knowledge_snapshot_checksum"),
+            candidate_quality_report_checksum=value.get("candidate_quality_report_checksum"),
+            proposal_provider=str(value.get("proposal_provider", "unknown")),
+            production_execution_eligible=bool(value.get("production_execution_eligible", False)),
         )
         if candidate.baseline_checksum != value.get("baseline_checksum"):
             raise ValueError("frozen_baseline_checksum_mismatch")

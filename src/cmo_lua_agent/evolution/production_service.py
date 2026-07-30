@@ -181,6 +181,10 @@ class ProductionEvolutionCampaignService:
             novelty_validator=CandidateNoveltyValidator(),
             campaign_root_provider=root_for,
             knowledge_snapshot_provider=self._knowledge,
+            proposal_provider=(
+                "fake" if self.artifact_provenance == "test_fixture" else "configured_json_client"
+            ),
+            production_execution_eligible=self.artifact_provenance != "test_fixture",
         )
         executor = ProductionGenerationExecutor(
             package=package,

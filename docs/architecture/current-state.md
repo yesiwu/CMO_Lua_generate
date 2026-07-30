@@ -329,6 +329,24 @@ Pause/Stop、恢复规则和 Phase 6/7/8 调用边界的 Fake 工程验收，不
   `awaiting_operator_action`, and never freezes candidates, calls an extra
   LLM, creates an Approval, or starts CMO.
 
+## Phase 9C Fake Preview Acceptance
+
+- The formal bounded preview chain has a deterministic Fake JSON acceptance
+  test: ScenarioIR-derived Baseline, tactical context, one Intent Planner call,
+  four Patch Generator calls, assembly, all validators, quality gate, and
+  FrozenCandidateSet. No CMO, Approval, Phase 7, or Phase 8 is invoked.
+- Preview now persists `candidate-intents.json` and `candidate-patches.json`
+  from the bounded proposal trace. A FrozenCandidateSet also binds the
+  ScenarioIR, derived Baseline, tactical-context, knowledge-snapshot, and
+  candidate-quality checksums in addition to its four strategy checksums.
+- Fake previews are explicitly marked `proposal_provider="fake"` and
+  `production_execution_eligible=false`; they cannot be confused with an
+  execution-eligible production preview. Replaying an already frozen revision
+  reads the same artifacts and consumes zero additional proposal calls.
+- C5 includes role-conformance, post-proposal batch-quality, and deferred
+  `fire_delay_seconds` failure cases. These failure paths never freeze a
+  candidate set or start CMO.
+
 ## Phase 9C Baseline Derivation
 
 - `json_data/6v4ScenarioIR.json` is the only production 6v4 Baseline input.

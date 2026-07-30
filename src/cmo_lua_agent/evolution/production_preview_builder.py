@@ -49,6 +49,8 @@ class ProductionPreviewBuilder:
         campaign_root_provider,
         generation_context_builder=None,
         knowledge_snapshot_provider=None,
+        proposal_provider: str = "configured_json_client",
+        production_execution_eligible: bool = True,
     ) -> None:
         self._package = package
         self._proposal_agent = proposal_agent
@@ -56,6 +58,8 @@ class ProductionPreviewBuilder:
         self._root_for = campaign_root_provider
         self._context_builder = generation_context_builder
         self._knowledge = knowledge_snapshot_provider
+        self._proposal_provider = proposal_provider
+        self._production_execution_eligible = production_execution_eligible
         self.proposal_calls = 0
 
     def build(self, *, spec, generation_index: int, preview_revision: int) -> GenerationPreviewPayload:
@@ -141,6 +145,7 @@ class ProductionPreviewBuilder:
             trace = getattr(self._proposal_agent, "last_audit", {})
             if trace:
                 self._atomic_json(preview_root / "proposal-trace.json", trace)
+                self._write_proposal_records(preview_root, trace)
             self._atomic_json(
                 preview_root / "proposal-failure.json",
                 self.failure_audit(error=error, proposal_agent=self._proposal_agent),
@@ -153,6 +158,7 @@ class ProductionPreviewBuilder:
         self._write_proposal_context(preview_root)
         if trace:
             self._atomic_json(preview_root / "proposal-trace.json", trace)
+            self._write_proposal_records(preview_root, trace)
         try:
             candidate_set = CandidateSetValidator().validate(
                 scenario=self._package.scenario,
@@ -168,7 +174,7 @@ class ProductionPreviewBuilder:
                 candidates=candidates,
                 generation_context=context_value,
             )
-            self._quality_gate(
+            quality_report = self._quality_gate(
                 preview_root=preview_root,
                 baseline=self._package.baseline.strategy,
                 candidates=candidates,
@@ -188,6 +194,11 @@ class ProductionPreviewBuilder:
             baseline=self._package.baseline.strategy.to_dict(),
             candidates=tuple(candidate.to_dict() for candidate in candidates),
             source_proposal_operation_id=f"g{generation_index:03d}:strategy_proposal:r{preview_revision:03d}",
+            **self._frozen_identity(
+                snapshot=snapshot,
+                trace=trace,
+                quality_report=quality_report,
+            ),
         )
         diffs = [
             {
@@ -353,14 +364,14 @@ class ProductionPreviewBuilder:
         if not candidate_set.diversity_report.valid:
             raise ValueError("candidate_set_invalid")
         self._novelty.validate(baseline=self._package.baseline.strategy, candidates=candidates, generation_context=context_value)
-        self._quality_gate(
+        merged_trace = dict(trace)
+        quality_report = self._quality_gate(
             preview_root=preview_root,
             baseline=self._package.baseline.strategy,
             candidates=candidates,
             context_value=context_value,
             trace=merged_trace,
         )
-        merged_trace = dict(trace)
         merged_trace["parent_revision"] = source_revision
         merged_trace["targeted_repair"] = self._proposal_agent.last_audit
         self._atomic_json(preview_root / "proposal-trace.json", merged_trace)
@@ -370,6 +381,11 @@ class ProductionPreviewBuilder:
             preview_revision=preview_revision, baseline=self._package.baseline.strategy.to_dict(),
             candidates=tuple(item.to_dict() for item in candidates),
             source_proposal_operation_id=f"g{generation_index:03d}:strategy_candidate_repair:r{preview_revision:03d}",
+            **self._frozen_identity(
+                snapshot=snapshot,
+                trace=merged_trace,
+                quality_report=quality_report,
+            ),
         )
         diffs = [{"candidate_id": item.candidate_id, "changed_paths": list(item.intended_difference)} for item in candidates]
         self._atomic_json(preview_root / "frozen-candidate-set.json", frozen.to_dict())
@@ -458,7 +474,7 @@ class ProductionPreviewBuilder:
                 candidates=candidate_tuple,
                 generation_context=context_value,
             )
-            self._quality_gate(
+            quality_report = self._quality_gate(
                 preview_root=preview_root,
                 baseline=self._package.baseline.strategy,
                 candidates=candidate_tuple,
@@ -473,6 +489,11 @@ class ProductionPreviewBuilder:
             preview_revision=preview_revision, baseline=self._package.baseline.strategy.to_dict(),
             candidates=tuple(item.to_dict() for item in candidate_tuple),
             source_proposal_operation_id=f"g{generation_index:03d}:strategy_proposal_resume:r{preview_revision:03d}",
+            **self._frozen_identity(
+                snapshot=snapshot,
+                trace=merged_trace,
+                quality_report=quality_report,
+            ),
         )
         diffs = [{"candidate_id": item.candidate_id, "changed_paths": list(item.intended_difference)} for item in candidate_tuple]
         self._atomic_json(preview_root / "frozen-candidate-set.json", frozen.to_dict())
@@ -564,6 +585,27 @@ class ProductionPreviewBuilder:
         trace.update(updated_trace)
         self._atomic_json(preview_root / "proposal-trace.json", trace)
         report.require_passed()
+        return report
+
+    def _frozen_identity(self, *, snapshot, trace, quality_report) -> dict[str, object]:
+        manifest = getattr(self._package, "baseline_derivation_manifest", None)
+        if not isinstance(manifest, dict):
+            manifest = {}
+        return {
+            "scenario_ir_checksum": manifest.get(
+                "scenario_ir_checksum", getattr(self._package, "scenario_ir_checksum", None)
+            ),
+            "derived_baseline_checksum": manifest.get("baseline_strategy_checksum"),
+            "proposal_context_checksum": trace.get("proposal_context_checksum"),
+            "knowledge_snapshot_checksum": snapshot.get("checksum"),
+            "candidate_quality_report_checksum": quality_report.report_checksum,
+            "proposal_provider": self._proposal_provider,
+            "production_execution_eligible": self._production_execution_eligible,
+        }
+
+    def _write_proposal_records(self, preview_root: Path, trace: dict[str, object]) -> None:
+        self._atomic_json(preview_root / "candidate-intents.json", trace.get("intents", []))
+        self._atomic_json(preview_root / "candidate-patches.json", trace.get("patch_attempts", []))
 
 
 def _intent_from_trace(trace: dict[str, object], candidate_id: str) -> CandidateIntent:
