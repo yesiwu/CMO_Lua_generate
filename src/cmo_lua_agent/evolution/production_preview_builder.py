@@ -12,6 +12,10 @@ from cmo_lua_agent.evolution.production_models import (
     canonical_checksum,
 )
 from cmo_lua_agent.evolution.novelty import CandidateNoveltyError
+from cmo_lua_agent.optimization.candidate_quality import (
+    CandidateBatchQualityError,
+    CandidateQualityEvaluator,
+)
 from cmo_lua_agent.optimization.candidate_set_validator import CandidateSetValidator
 from cmo_lua_agent.optimization.candidate_intent_conformance import (
     CandidateIntentConformanceError,
@@ -23,6 +27,10 @@ from cmo_lua_agent.optimization.proposal_models import (
     CandidatePatch,
     ProposalContractError,
     StrategyPatchOperation,
+    candidate_role_specs,
+)
+from cmo_lua_agent.optimization.proposal_context_builder import (
+    ProposalTacticalContextBuilder,
 )
 from cmo_lua_agent.optimization.strategy_patch import (
     StrategyPatchAssembler,
@@ -160,6 +168,13 @@ class ProductionPreviewBuilder:
                 candidates=candidates,
                 generation_context=context_value,
             )
+            self._quality_gate(
+                preview_root=preview_root,
+                baseline=self._package.baseline.strategy,
+                candidates=candidates,
+                context_value=context_value,
+                trace=trace,
+            )
         except Exception as error:
             self._atomic_json(
                 preview_root / "proposal-failure.json",
@@ -225,7 +240,9 @@ class ProductionPreviewBuilder:
     @staticmethod
     def failure_audit(*, error: Exception, proposal_agent) -> dict[str, object]:
         error_code = getattr(error, "code", None) or str(error) or type(error).__name__
-        if error_code.startswith("novelty_"):
+        if isinstance(error, CandidateBatchQualityError):
+            stage = "candidate_quality_validation"
+        elif error_code.startswith("novelty_"):
             stage = "novelty_validation"
         elif error_code == "candidate_set_invalid":
             stage = "candidate_set_validation"
@@ -249,10 +266,19 @@ class ProductionPreviewBuilder:
             "required_dimensions": list(getattr(error, "required_dimensions", ())),
             "actual_dimensions": list(getattr(error, "actual_dimensions", ())),
             "related_changed_paths": list(getattr(error, "related_changed_paths", ())),
+            "failed_rules": list(getattr(error, "failed_rules", ())),
+            "covered_operation_ids": list(getattr(error, "covered_operation_ids", ())),
+            "covered_dimensions": list(getattr(error, "covered_dimensions", ())),
+            "covered_platform_types": list(getattr(error, "covered_platform_types", ())),
+            "candidate_quality_report_checksum": getattr(
+                getattr(error, "report", None), "report_checksum", None
+            ),
             "json_diagnostics": dict(getattr(error, "diagnostics", {})),
             "preview_status": (
                 "novelty_repair_required"
                 if error_code == "novelty_explore_dimension_missing"
+                else "awaiting_operator_action"
+                if error_code == "candidate_batch_quality_failed"
                 else "awaiting_operator_action"
                 if is_json_failure
                 else "terminal_failed"
@@ -327,6 +353,13 @@ class ProductionPreviewBuilder:
         if not candidate_set.diversity_report.valid:
             raise ValueError("candidate_set_invalid")
         self._novelty.validate(baseline=self._package.baseline.strategy, candidates=candidates, generation_context=context_value)
+        self._quality_gate(
+            preview_root=preview_root,
+            baseline=self._package.baseline.strategy,
+            candidates=candidates,
+            context_value=context_value,
+            trace=merged_trace,
+        )
         merged_trace = dict(trace)
         merged_trace["parent_revision"] = source_revision
         merged_trace["targeted_repair"] = self._proposal_agent.last_audit
@@ -425,6 +458,13 @@ class ProductionPreviewBuilder:
                 candidates=candidate_tuple,
                 generation_context=context_value,
             )
+            self._quality_gate(
+                preview_root=preview_root,
+                baseline=self._package.baseline.strategy,
+                candidates=candidate_tuple,
+                context_value=context_value,
+                trace=merged_trace,
+            )
         except Exception as error:
             self._atomic_json(preview_root / "proposal-failure.json", self.failure_audit(error=error, proposal_agent=self._proposal_agent))
             raise
@@ -469,6 +509,61 @@ class ProductionPreviewBuilder:
             if isinstance(checksum, str):
                 payload["context_checksum"] = checksum
             self._atomic_json(preview_root / "proposal-context.json", payload)
+
+    def _quality_gate(
+        self,
+        *,
+        preview_root: Path,
+        baseline,
+        candidates,
+        context_value: dict[str, object],
+        trace: dict[str, object],
+    ) -> None:
+        """Persist the pure C4 audit before permitting a FrozenCandidateSet."""
+        tactical = getattr(self._proposal_agent, "last_tactical_context", None)
+        if not isinstance(tactical, dict):
+            catalog = build_patchable_leaf_catalog(
+                baseline=baseline,
+                scenario=self._package.scenario,
+                allowed_paths=self._package.allowed_strategy_paths,
+            )
+            tactical = ProposalTacticalContextBuilder().build(
+                scenario=self._package.scenario,
+                baseline=baseline,
+                patch_catalog=catalog,
+                role_specs=candidate_role_specs(context_value),
+                accepted_candidates=(),
+            ).to_dict()
+        try:
+            intents = tuple(
+                _intent_from_trace(trace, candidate.candidate_id)
+                for candidate in candidates
+            )
+        except (KeyError, TypeError, ValueError):
+            # Fixture-safe proposal agents may not retain formal intent audits.
+            # Their system-owned role constraints remain deterministic.
+            intents = candidate_role_specs(context_value)
+        report = CandidateQualityEvaluator().evaluate(
+            baseline=baseline,
+            candidates=tuple(candidates),
+            intents=intents,
+            proposal_context=tactical,
+        )
+        self._atomic_json(preview_root / "candidate-quality-report.json", report.to_dict())
+        updated_trace = dict(trace)
+        updated_trace.update(
+            {
+                "candidate_quality_status": report.status,
+                "candidate_quality_report_checksum": report.report_checksum,
+                "batch_operation_count": len(report.batch_coverage["operation_ids"]),
+                "batch_dimension_count": len(report.batch_coverage["semantic_dimensions"]),
+                "batch_platform_type_count": len(report.batch_coverage["platform_types"]),
+            }
+        )
+        trace.clear()
+        trace.update(updated_trace)
+        self._atomic_json(preview_root / "proposal-trace.json", trace)
+        report.require_passed()
 
 
 def _intent_from_trace(trace: dict[str, object], candidate_id: str) -> CandidateIntent:

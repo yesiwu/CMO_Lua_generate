@@ -351,29 +351,44 @@ def test_test_factory_runs_frozen_preview_and_generation_without_second_proposal
             self.calls += 1
             self.context = _context
             edits = (
-                ("/attacks/0/fire_quantity", lambda value: value - 1),
-                ("/attacks/0/delay_seconds", lambda value: value + 3),
-                ("/attacks/1/target_ids/0", lambda _value: "blue_cvn70"),
-                ("/sorties/0/route/0/latitude", lambda value: value + 0.1),
+                (
+                    ("/attacks/0/fire_quantity", lambda value: value - 1),
+                    ("/attacks/0/delay_seconds", lambda value: value + 3),
+                    ("/attacks/1/delay_seconds", lambda value: value + 1),
+                ),
+                (
+                    ("/attacks/0/delay_seconds", lambda value: value + 4),
+                    ("/attacks/1/target_ids/0", lambda _value: "blue_cvn70"),
+                    ("/attacks/2/delay_seconds", lambda value: value + 2),
+                ),
+                (
+                    ("/attacks/0/delay_seconds", lambda value: value + 5),
+                    ("/attacks/0/fire_quantity", lambda value: value - 2),
+                    ("/attacks/1/target_ids/0", lambda _value: "blue_ddg113_1"),
+                    ("/sorties/0/route/0/latitude", lambda value: value + 0.1),
+                    ("/sorties/1/target_id", lambda _value: "blue_cg59"),
+                ),
+                (("/attacks/2/fire_quantity", lambda value: value - 1),),
             )
             rows = []
-            for index, (path, change) in enumerate(edits):
+            for index, candidate_edits in enumerate(edits):
                 value = deepcopy(source)
-                cursor = value
-                parts = path.strip("/").split("/")
-                for part in parts[:-1]:
-                    cursor = cursor[int(part)] if isinstance(cursor, list) else cursor[part]
-                key = parts[-1]
-                if isinstance(cursor, list):
-                    cursor[int(key)] = change(cursor[int(key)])
-                else:
-                    cursor[key] = change(cursor[key])
+                for path, change in candidate_edits:
+                    cursor = value
+                    parts = path.strip("/").split("/")
+                    for part in parts[:-1]:
+                        cursor = cursor[int(part)] if isinstance(cursor, list) else cursor[part]
+                    key = parts[-1]
+                    if isinstance(cursor, list):
+                        cursor[int(key)] = change(cursor[int(key)])
+                    else:
+                        cursor[key] = change(cursor[key])
                 rows.append(
                     StrategyCandidate(
                         f"candidate_{index:02d}",
                         strategy_spec_from_dict(value),
                         f"fixture candidate {index}",
-                        (path,),
+                        tuple(path for path, _change in candidate_edits),
                     )
                 )
             return tuple(rows)
@@ -405,6 +420,10 @@ def test_test_factory_runs_frozen_preview_and_generation_without_second_proposal
                     ("/attacks/0/delay_seconds", None),
                     ("/attacks/1/target_ids/0", None),
                     ("/sorties/0/route/0/latitude", None),
+                    ("/attacks/1/delay_seconds", None),
+                    ("/attacks/2/delay_seconds", None),
+                    ("/attacks/2/fire_quantity", None),
+                    ("/sorties/1/target_id", None),
                 )),
                 diversity_dimensions=(
                     "fire_quantity",
@@ -567,7 +586,25 @@ def test_test_factory_runs_frozen_preview_and_generation_without_second_proposal
             encoding="utf-8"
         )
     )
+    preview_root = (
+        tmp_path
+        / "runs"
+        / "evolution"
+        / "campaign_fixture"
+        / "previews"
+        / "generation_000"
+        / "revision_000"
+    )
+    quality = json.loads(
+        (preview_root / "candidate-quality-report.json").read_text(encoding="utf-8")
+    )
+    trace = json.loads(
+        (preview_root / "proposal-trace.json").read_text(encoding="utf-8")
+    )
     assert result["artifact_provenance"] == "test_fixture"
+    assert quality["status"] == "passed"
+    assert trace["candidate_quality_status"] == "passed"
+    assert trace["candidate_quality_report_checksum"] == quality["report_checksum"]
     outcome = json.loads(
         (
             generation_root

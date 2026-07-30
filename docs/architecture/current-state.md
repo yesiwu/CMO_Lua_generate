@@ -309,6 +309,26 @@ Pause/Stop、恢复规则和 Phase 6/7/8 调用边界的 Fake 工程验收，不
 - C3 does not modify C2 role thresholds, Patch validation, CMO execution,
   scoring, approvals, or Candidate Quality Report behavior.
 
+## Phase 9C Candidate Quality Gate
+
+- `CandidateQualityEvaluator` runs only after `CandidateSetValidator` and
+  `CandidateNoveltyValidator`, and before a `FrozenCandidateSet` is written.
+  It consumes assembled strategies, system-owned role constraints, actual
+  baseline diffs, and the frozen tactical context; it does not use an LLM
+  quality assertion or predict a CMO score.
+- `candidate-quality-report.json` is canonical and deterministic. It records
+  per-candidate leaf, operation, platform, dimension, surface/sortie, role,
+  and baseline-distance facts, plus all six pairwise Jaccard/value comparisons.
+- The batch gate requires unique strategy checksums, at least four operations,
+  three semantic dimensions, two platform types, one surface-plus-sortie
+  candidate, distinct operation sets across candidates 00/01/02, and the C2
+  conservative-control scope for candidate 03.
+- Same changed paths with different scalar values are reported in Pairwise
+  data and are not rejected solely for sharing a path. A failed quality gate
+  writes the report and trace checksum, sets Preview to
+  `awaiting_operator_action`, and never freezes candidates, calls an extra
+  LLM, creates an Approval, or starts CMO.
+
 ## Phase 9C Baseline Derivation
 
 - `json_data/6v4ScenarioIR.json` is the only production 6v4 Baseline input.
