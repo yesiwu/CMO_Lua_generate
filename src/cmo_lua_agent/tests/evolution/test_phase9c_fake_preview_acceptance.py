@@ -28,10 +28,11 @@ class FakeJsonClient:
     def __init__(self, responses: list[dict[str, object]]) -> None:
         self._responses = list(responses)
         self.calls: list[str] = []
+        self.prompts: list[str] = []
 
     def complete_json(self, *, system: str, prompt: str) -> object:
-        del prompt
         self.calls.append(system.split(".", 1)[0])
+        self.prompts.append(prompt)
         return self._responses.pop(0)
 
 
@@ -187,6 +188,80 @@ def test_complete_fake_preview_freezes_auditable_non_production_candidates(tmp_p
     assert replay.candidate_set_checksum == first.candidate_set_checksum == frozen.candidate_set_checksum
     assert json.loads((root / "candidate-quality-report.json").read_text(encoding="utf-8"))["report_checksum"] == quality["report_checksum"]
     assert replay.proposal_llm_calls == 0
+
+
+def test_candidate_02_repair_receives_count_diagnostics_and_replaces_the_whole_patch(
+    tmp_path: Path,
+) -> None:
+    responses = _valid_responses()
+    responses[3] = _patch("Too few coordinated changes.", [
+        ("/attacks/0/target_ids/0", "blue_cvn70"),
+        ("/attacks/0/delay_seconds", 35),
+        ("/attacks/1/fire_quantity", 7),
+        ("/sorties/0/route/0/latitude", 23.7),
+    ])
+    responses.insert(4, _patch("Complete coordinated replacement.", [
+        ("/attacks/0/target_ids/0", "blue_cvn70"),
+        ("/attacks/0/delay_seconds", 35),
+        ("/attacks/1/fire_quantity", 7),
+        ("/sorties/0/route/0/latitude", 23.7),
+        ("/sorties/1/target_id", "blue_cg59"),
+        ("/attacks/2/delay_seconds", 40),
+    ]))
+    _derived, client, builder = _builder(tmp_path, responses)
+
+    payload = builder.build(spec=_spec(), generation_index=0, preview_revision=0)
+
+    repair_prompt = next(
+        parsed
+        for prompt in client.prompts
+        if isinstance((parsed := json.loads(prompt)), dict)
+        and parsed.get("previous_error") is not None
+    )
+    previous_error = repair_prompt["previous_error"]
+    assert previous_error["code"] == "candidate_change_count_out_of_bounds"
+    assert previous_error["diagnostics"] == {
+        "actual_change_count": 4,
+        "proposed_paths": [
+            "/attacks/0/target_ids/0",
+            "/attacks/0/delay_seconds",
+            "/attacks/1/fire_quantity",
+            "/sorties/0/route/0/latitude",
+        ],
+        "required_max_changes": 8,
+        "required_min_changes": 5,
+    }
+    assert "complete replacement Patch" in repair_prompt["repair_instruction"]
+    assert "5 to 8 unique changes" in repair_prompt["candidate_instruction"]
+
+    trace = json.loads(
+        (Path(payload.frozen_candidate_set_ref).parent / "proposal-trace.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    initial_failure = next(
+        row
+        for row in trace["patch_attempts"]
+        if row["candidate_id"] == "candidate_02" and row["phase"] == "initial_failed"
+    )
+    assert initial_failure == {
+        "actual_change_count": 4,
+        "candidate_id": "candidate_02",
+        "error_code": "candidate_change_count_out_of_bounds",
+        "phase": "initial_failed",
+        "proposed_paths": [
+            "/attacks/0/target_ids/0",
+            "/attacks/0/delay_seconds",
+            "/attacks/1/fire_quantity",
+            "/sorties/0/route/0/latitude",
+        ],
+    }
+    repaired = next(
+        row
+        for row in trace["patch_attempts"]
+        if row["candidate_id"] == "candidate_02" and row["phase"] == "repair"
+    )
+    assert len(repaired["changes"]) == 6
 
 
 def test_fake_preview_rejects_role_failure_before_freezing(tmp_path: Path) -> None:

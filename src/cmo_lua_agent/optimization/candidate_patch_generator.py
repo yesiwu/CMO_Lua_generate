@@ -51,7 +51,13 @@ class CandidatePatchGenerator:
                 "failure_operation_ids": list(intent.failure_operation_ids),
                 "failure_semantic_dimensions": list(intent.failure_semantic_dimensions),
                 "candidate_instruction": (
-                    "Select leaves across the system-provided operation and semantic-dimension floors."
+                    _candidate_instruction(intent)
+                ),
+                "repair_instruction": (
+                    "Return one complete replacement Patch. changes must contain every "
+                    "corrected change, not only incremental additions to the initial Patch."
+                    if error is not None
+                    else None
                 ),
                 "patchable_leaves": [leaf.to_prompt_dict() for leaf in catalog],
                 "patchable_leaves_by_dimension": grouped_catalog,
@@ -80,7 +86,15 @@ class CandidatePatchGenerator:
         patch = CandidatePatch(intent.candidate_id, summary, tuple(operations))
         validate_patch_paths_executable(patch)
         if not intent.min_changes <= len(patch.changes) <= intent.max_changes:
-            raise ProposalContractError("candidate_change_count_out_of_bounds")
+            raise ProposalContractError(
+                "candidate_change_count_out_of_bounds",
+                diagnostics={
+                    "actual_change_count": len(patch.changes),
+                    "required_min_changes": intent.min_changes,
+                    "required_max_changes": intent.max_changes,
+                    "proposed_paths": [change.path for change in patch.changes],
+                },
+            )
         known = {leaf.path for leaf in catalog}
         if any(change.path not in known for change in patch.changes):
             raise ProposalContractError("patch_path_not_offered")
@@ -93,6 +107,7 @@ def _repair_error(error: ProposalContractError | None) -> dict[str, object] | No
     violations = getattr(error, "violations", ())
     return {
         "code": error.code,
+        "diagnostics": dict(error.diagnostics),
         "changed_paths": list(getattr(error, "changed_paths", ())),
         "violations": [
             {
@@ -107,9 +122,20 @@ def _repair_error(error: ProposalContractError | None) -> dict[str, object] | No
     }
 
 
+def _candidate_instruction(intent: CandidateIntent) -> str:
+    if intent.candidate_id == "candidate_02":
+        return (
+            "Return one complete patch containing 5 to 8 unique changes. "
+            "Cover at least 3 distinct operations and 3 semantic dimensions. "
+            "Include at least one surface attack operation and one sortie operation. "
+            "Select every path from patchable_leaves."
+        )
+    return "Select leaves across the system-provided operation and semantic-dimension floors."
+
+
 _SYSTEM = """You are CandidatePatchGenerator. Return exactly one JSON object with proposal_summary and changes.
 changes is a non-empty JSON array of {path, value}; replace only listed scalar leaves. Do not output a full strategy, Lua, CMO commands, scoring, IDs, markdown, or extra fields.
-Respect the exact candidate ID, change-count bounds, allowed leaf constraints, and any previous structured error."""
+Respect the exact candidate ID, change-count bounds, allowed leaf constraints, and any previous structured error. When repairing, return a complete replacement Patch whose changes array contains every corrected change, never only an incremental delta."""
 
 
 def _catalog_by_dimension(catalog: tuple[PatchableLeaf, ...]) -> dict[str, list[dict[str, object]]]:

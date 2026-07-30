@@ -134,6 +134,11 @@ class StrategyProposalAgent:
                     patch_calls += 1
                     if error.stage == "patch_repair":
                         repair_calls += 1
+                    failed_initial = error.diagnostics.get("initial_patch_failure")
+                    if isinstance(failed_initial, dict):
+                        cast_attempts = audit["patch_attempts"]
+                        assert isinstance(cast_attempts, list)
+                        cast_attempts.append(failed_initial)
                     raise
                 patch_calls += used_patch
                 repair_calls += used_repair
@@ -275,6 +280,10 @@ class StrategyProposalAgent:
             assembled = assembler.assemble(patch)
             self._validate_candidate(intent=intent, strategy=assembled.strategy, changed_paths=assembled.changed_paths, context=context, catalog=catalog, validator=validator)
         except ProposalContractError as initial_error:
+            initial_failure = _patch_failure_audit(
+                intent.candidate_id, "initial_failed", initial_error
+            )
+            attempts.append(initial_failure)
             if initial_error.code in {
                 "proposal_json_invalid",
                 "patch_path_not_executable",
@@ -292,7 +301,12 @@ class StrategyProposalAgent:
                 assembled = assembler.assemble(patch)
                 self._validate_candidate(intent=intent, strategy=assembled.strategy, changed_paths=assembled.changed_paths, context=context, catalog=catalog, validator=validator)
             except ProposalContractError as repair_error:
-                raise CandidateProposalError(candidate_id=intent.candidate_id, stage="patch_repair", cause=repair_error) from repair_error
+                repair_error.diagnostics["initial_patch_failure"] = initial_failure
+                raise CandidateProposalError(
+                    candidate_id=intent.candidate_id,
+                    stage="patch_repair",
+                    cause=repair_error,
+                ) from repair_error
             return StrategyCandidate(intent.candidate_id, assembled.strategy, patch.proposal_summary, assembled.changed_paths), 1, 1, attempts
         return StrategyCandidate(intent.candidate_id, assembled.strategy, patch.proposal_summary, assembled.changed_paths), 1, 0, attempts
 
@@ -321,6 +335,21 @@ def _patch_audit(candidate_id, phase, patch, prior_error=None) -> dict[str, obje
         "changes": [{"path": change.path, "value": change.value} for change in patch.changes],
         "proposal_summary": patch.proposal_summary,
         "prior_error_code": None if prior_error is None else prior_error.code,
+    }
+
+
+def _patch_failure_audit(
+    candidate_id: str,
+    phase: str,
+    error: ProposalContractError,
+) -> dict[str, object]:
+    diagnostics = error.diagnostics
+    return {
+        "candidate_id": candidate_id,
+        "phase": phase,
+        "error_code": error.code,
+        "actual_change_count": diagnostics.get("actual_change_count"),
+        "proposed_paths": list(diagnostics.get("proposed_paths", ())),
     }
 
 
