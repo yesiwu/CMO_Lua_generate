@@ -141,23 +141,35 @@ def _repair_instruction(
     return (
         "Return one complete replacement Patch. Preserve legal initial changes where possible, "
         "fix every hard validation error, and use the role-quality warnings as preferences. "
-        "changes must contain every corrected change, not only incremental additions."
+        "changes must contain every corrected change, not only incremental additions. "
+        "Every replacement value must differ from that path's current_value in patchable_leaves; "
+        "remove or replace any no-op change."
     )
 
 
 def _candidate_instruction(intent: CandidateIntent) -> str:
+    noops = (
+        " Select every path from patchable_leaves and set every selected path to a value "
+        "different from its current_value. Do not repeat a Baseline value."
+    )
     if intent.candidate_id == "candidate_02":
         return (
             "Prefer 5 to 8 unique changes across at least 3 operations and 3 semantic dimensions, "
             "including surface and sortie operations when useful. These are quality goals, not hard "
-            "schema requirements. Select every path from patchable_leaves."
+            "schema requirements."
+            + noops
         )
     if intent.candidate_id == "candidate_03":
         return (
             "Prefer one or two changes focused on one operation and one semantic dimension so the "
             "result remains easy to interpret. This is a quality preference, not a hard schema rule."
+            + noops
         )
-    return "Use role preferences to make the experiment useful, while keeping every change inside the offered executable leaves."
+    return (
+        "Use role preferences to make the experiment useful, while keeping every change inside "
+        "the offered executable leaves. Every change must set its path to a value different from "
+        "its current_value in patchable_leaves. Do not repeat a Baseline value."
+    )
 
 
 _SYSTEM = """You are CandidatePatchGenerator. Return exactly one JSON object with proposal_summary and changes.
