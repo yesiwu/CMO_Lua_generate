@@ -60,7 +60,10 @@ def test_production_package_derives_baseline_without_reading_legacy_asset(
     first = loader.load("red_blue_6v4_liaoning_v1")
     second = loader.load("red_blue_6v4_liaoning_v1")
 
-    assert first.baseline.source_lua == "json_data/6v4ScenarioIR.json"
+    # StrategySpec remains ScenarioIR-derived; the executable baseline is the
+    # checked-in active-strike template layered over that formal strategy.
+    assert first.baseline.source_lua == "baseline/6v4/manual-template/manual_baseline_template.lua"
+    assert first.manual_template_root == PROJECT_ROOT / "baseline/6v4/manual-template"
     assert first.checksums["baseline_strategy_derived"] == second.checksums[
         "baseline_strategy_derived"
     ]

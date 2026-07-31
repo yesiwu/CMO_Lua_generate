@@ -19,6 +19,7 @@ from cmo_lua_agent.evolution.production_models import (
     canonical_checksum,
 )
 from cmo_lua_agent.generation.runtime_models import LuaRuntimeProfile
+from cmo_lua_agent.generation.manual_lua_template import ManualLuaTemplatePackage
 from cmo_lua_agent.generation.scored_lua_assembly import SCORED_RENDERER_VERSION
 from cmo_lua_agent.optimization.bootstrap_skill_loader import BootstrapSkillLoader
 from cmo_lua_agent.scoring.baseline import compile_score_baseline
@@ -44,6 +45,7 @@ class ControlledCampaignInputPackage:
     package_checksum: str
     scenario_ir_checksum: str = ""
     baseline_derivation_manifest: Any | None = None
+    manual_template_root: Path | None = None
 
 
 class ControlledCampaignInputPackageLoader:
@@ -116,9 +118,19 @@ class ControlledCampaignInputPackageLoader:
         scenario_ir = self._load_json(paths["scenario_ir"])
         derived = BaselineStrategyBuilder().build(scenario_ir)
         scenario = derived.scenario
+        template_root = baseline_root / "manual-template"
+        manual_template = (
+            ManualLuaTemplatePackage.load(template_root)
+            if (template_root / "manual_baseline_template.json").is_file()
+            else None
+        )
         baseline = BaselineStrategy(
             strategy=derived.strategy,
-            source_lua="json_data/6v4ScenarioIR.json",
+            source_lua=(
+                "baseline/6v4/manual-template/manual_baseline_template.lua"
+                if manual_template is not None
+                else "json_data/6v4ScenarioIR.json"
+            ),
             verified=True,
         )
         # Score-rule unit names must come from the same ScenarioIR-derived
@@ -155,13 +167,25 @@ class ControlledCampaignInputPackageLoader:
             "bootstrap": bootstrap.checksum,
             "scenario_asset": asset.sha256,
         })
+        allowed_paths = self._ALLOWED_PATHS
+        if manual_template is not None:
+            mapped_paths = {
+                slot.strategy_path
+                for slot in manual_template.slots.values()
+                if slot.strategy_path is not None
+            }
+            allowed_paths = tuple(path for path in self._ALLOWED_PATHS if path in mapped_paths)
+            if not allowed_paths:
+                raise ValueError("manual_template_no_executable_strategy_paths")
+            checksums["manual_template"] = self._sha(template_root / "manual_baseline_template.lua")
+            checksums["manual_template_mapping"] = self._sha(template_root / "manual_baseline_template.json")
         identity = {
             "package_id": package_id,
             "checksums": checksums,
             "git_commit": commit,
             "working_tree_dirty": dirty,
             "diff_checksum": diff_checksum,
-            "allowed_strategy_paths": list(self._ALLOWED_PATHS),
+            "allowed_strategy_paths": list(allowed_paths),
         }
         return ControlledCampaignInputPackage(
             package_id=package_id,
@@ -173,7 +197,7 @@ class ControlledCampaignInputPackageLoader:
             bootstrap=bootstrap,
             scenario_asset=asset,
             baseline_failure_profile=failure_profile,
-            allowed_strategy_paths=self._ALLOWED_PATHS,
+            allowed_strategy_paths=allowed_paths,
             diversity_dimensions=(
                 "target_assignment",
                 "attack_timing",
@@ -187,6 +211,7 @@ class ControlledCampaignInputPackageLoader:
             package_checksum=canonical_checksum(identity),
             scenario_ir_checksum=derived.manifest.scenario_ir_checksum,
             baseline_derivation_manifest=derived.manifest.to_dict(),
+            manual_template_root=template_root if manual_template is not None else None,
         )
 
     def _git_state(self) -> tuple[str, bool, str | None]:

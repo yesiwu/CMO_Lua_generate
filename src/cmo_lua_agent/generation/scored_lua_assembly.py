@@ -45,6 +45,7 @@ class ScoredLuaAssemblyService:
         plan: ExecutionPlan,
         runtime: LuaRuntimeProfile,
         native_score_compilation: CmoNativeScoreCompilation,
+        candidate_id: str | None = None,
     ) -> ScoredLuaAssemblyResult:
         if not isinstance(native_score_compilation, CmoNativeScoreCompilation):
             raise ScoredLuaAssemblyError(

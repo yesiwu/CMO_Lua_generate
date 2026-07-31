@@ -13,6 +13,9 @@ from cmo_lua_agent.optimization.candidate_evaluation_workflow import (
     CandidateEvaluationWorkflow,
 )
 from cmo_lua_agent.optimization.candidate_models import CandidateRequest
+from cmo_lua_agent.generation.manual_template_assembly import (
+    ManualTemplateAssemblyService,
+)
 
 
 class FormalCandidateEvaluator:
@@ -58,10 +61,19 @@ class FormalCandidateEvaluator:
             cmo_executable_path=self._command_path,
             runner_factory=self._runner_factory,
         )
+        assembler = (
+            ManualTemplateAssemblyService(
+                template_root=package.manual_template_root,
+                baseline_strategy=package.baseline.strategy,
+            )
+            if getattr(package, "manual_template_root", None) is not None
+            else None
+        )
         workflow = CandidateEvaluationWorkflow(
             cmo_runner=runner,
             repair_agent=LuaRepairAgent(self._json_client),
             is_cancelled=lambda: context.control_action() in {"pause", "stop"},
+            assembler=assembler,
         )
         request = CandidateRequest(
             candidate_id=candidate_id,

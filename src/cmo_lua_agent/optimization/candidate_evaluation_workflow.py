@@ -58,6 +58,7 @@ class CandidateEvaluationWorkflow:
                  phase3_service: Phase3EvaluationService | None = None, # Phase3打分服务
                  is_cancelled: Callable[[], bool] | None = None, # 外部取消判断回调
                  scenario_reset_probe: ScenarioResetProbe | None = None,
+                 assembler=None,
                 ) -> None:
         self._runner = cmo_runner                  # CMO执行器
         self._repair_agent = repair_agent          # 修复代理
@@ -65,7 +66,7 @@ class CandidateEvaluationWorkflow:
         self._is_cancelled = is_cancelled or (lambda: False) # 取消判断空实现
         self._validator = StrategyValidator()       # Phase1策略校验器
         self._compiler = ExecutionPlanCompiler()    # Phase2 策略转执行计划编译器
-        self._assembler = ScoredLuaAssemblyService()# 带计分Lua组装服务
+        self._assembler = assembler or ScoredLuaAssemblyService()# 带计分Lua组装服务
         self._guard = StrategyChangeGuard()         # 策略补丁安全校验器
         self._router = RepairErrorRouter()          # 仿真错误分类路由
         self._runtime_patch_applier = RuntimePatchApplier()
@@ -129,7 +130,8 @@ class CandidateEvaluationWorkflow:
                 # 4. 组装带计分插桩的完整Lua脚本，生成全链路溯源清单manifest
                 assembled = self._assembler.render(
                     scenario=request.scenario, strategy=strategy, plan=plan, runtime=request.runtime,
-                    native_score_compilation=request.native_score_compilation
+                    native_score_compilation=request.native_score_compilation,
+                    candidate_id=request.candidate_id,
                 )
                 plan, manifest = assembled.plan, assembled.generation_manifest
                 if runtime_patch_entries:
