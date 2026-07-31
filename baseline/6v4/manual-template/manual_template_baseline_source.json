@@ -1,0 +1,68 @@
+{
+  "candidate_id": "baseline",
+  "hypothesis": "真实传感器与共享航迹能够使红方至少形成一次有效武器释放",
+  "mechanism": "J-15低空前出后跃升开雷达，红方舰艇利用共享contact实施超视距反舰打击",
+  "expected_observables": [
+    "至少一个红方真实contact",
+    "至少一个ScenEdit_AttackContact被接受",
+    "至少一艘红方舰艇的DBID 2868库存下降",
+    "蓝方目标出现毁伤或蓝方防御弹药消耗上升"
+  ],
+  "attacks": [
+    {
+      "id": "red_055_attack",
+      "attacker_id": "red_055_nanchang",
+      "target_id": "blue_ddg113_1",
+      "delay_seconds": 30,
+      "quantity": 8
+    },
+    {
+      "id": "red_052d_1_attack",
+      "attacker_id": "red_052d_1",
+      "target_id": "blue_cg59",
+      "delay_seconds": 45,
+      "quantity": 8
+    },
+    {
+      "id": "red_052d_2_attack",
+      "attacker_id": "red_052d_2",
+      "target_id": "blue_cg59",
+      "delay_seconds": 60,
+      "quantity": 5
+    },
+    {
+      "id": "red_j15_1_attack",
+      "attacker_id": "red_j15_1",
+      "target_id": "blue_cvn70",
+      "delay_seconds": 5,
+      "quantity": 4,
+      "route": {
+        "ingress_altitude_m": 200,
+        "popup_altitude_m": 9500,
+        "popup_range_nm": 95,
+        "mid_lat_offset": 1.5,
+        "mid_lon_offset": 0.0,
+        "approach_lat_offset": 0.7,
+        "approach_lon_offset": 0.0
+      },
+      "attack_range_nm": 80
+    },
+    {
+      "id": "red_j15_2_attack",
+      "attacker_id": "red_j15_2",
+      "target_id": "blue_ddg113_2",
+      "delay_seconds": 20,
+      "quantity": 4,
+      "route": {
+        "ingress_altitude_m": 200,
+        "popup_altitude_m": 9500,
+        "popup_range_nm": 95,
+        "mid_lat_offset": 1.5,
+        "mid_lon_offset": 0.05,
+        "approach_lat_offset": 0.7,
+        "approach_lon_offset": 0.05
+      },
+      "attack_range_nm": 80
+    }
+  ]
+}

@@ -1,0 +1,651 @@
+{
+  "version": "2.0",
+  "source": {
+    "luaFile": "candidate_baseline_fixed.lua",
+    "luaSha256": "61c8fe18bd6a8a430b68362b63d76bedab8fc7ccb13d00bb251e2d87b1259f37",
+    "runtime": "cmo_naval_air_anti_surface_instrumented@3.0.0",
+    "templateLua": "manual_baseline_template.lua",
+    "templateMapping": "manual_baseline_template.json",
+    "baselineStrategy": "baseline_strategy.json"
+  },
+  "scenario": {
+    "id": "red_blue_6v4_liaoning",
+    "name": "红蓝6V4辽宁舰真实探测协同反舰基线",
+    "description": "红方1艘055、2艘052D、1艘辽宁舰和2架J-15，在Normal态势感知下实施真实传感器探测、共享航迹和主动反舰打击。J-15低空静默前出，在95海里跃升开雷达；三艘水面舰等待红方共享contact后发射YJ-18。",
+    "purpose": "作为固定Lua骨架的可执行Baseline，供四个候选仅修改显式策略槽位，并通过官方分数与过程轨迹进行评价和经验积累。"
+  },
+  "sides": [
+    {
+      "id": "red",
+      "name": "red",
+      "displayName": "红方",
+      "aliasesToRemove": [
+        "红方"
+      ],
+      "enemySideId": "blue",
+      "awareness": "normal",
+      "fullAwareness": false,
+      "doctrine": {
+        "weaponControlStatusAir": 0,
+        "weaponControlStatusSurface": 0,
+        "weaponControlStatusSubsurface": 0
+      },
+      "expectedUnitCount": 6
+    },
+    {
+      "id": "blue",
+      "name": "blue",
+      "displayName": "蓝方",
+      "aliasesToRemove": [
+        "蓝方"
+      ],
+      "enemySideId": "red",
+      "awareness": "normal",
+      "fullAwareness": false,
+      "doctrine": {
+        "weaponControlStatusAir": 0,
+        "weaponControlStatusSurface": 0,
+        "weaponControlStatusSubsurface": 0
+      },
+      "expectedUnitCount": 4
+    }
+  ],
+  "units": [
+    {
+      "id": "red_055_nanchang",
+      "sideId": "red",
+      "name": "红方055南昌舰",
+      "type": "ship",
+      "platform": "055",
+      "dbid": 3883,
+      "latitude": 23.8,
+      "longitude": 128.5,
+      "heading": 135,
+      "speed": 25,
+      "proficiency": "veteran",
+      "radarMode": "active",
+      "autodetectable": false,
+      "holdPosition": false,
+      "course": [
+        {
+          "latitude": 22.35,
+          "longitude": 129.15
+        }
+      ]
+    },
+    {
+      "id": "red_052d_1",
+      "sideId": "red",
+      "name": "红方052D-1昆明舰",
+      "type": "ship",
+      "platform": "052D",
+      "dbid": 2296,
+      "latitude": 23.5,
+      "longitude": 128.1,
+      "heading": 115,
+      "speed": 25,
+      "proficiency": "veteran",
+      "radarMode": "active",
+      "autodetectable": false,
+      "holdPosition": false,
+      "course": [
+        {
+          "latitude": 22.45,
+          "longitude": 129.0
+        }
+      ]
+    },
+    {
+      "id": "red_052d_2",
+      "sideId": "red",
+      "name": "红方052D-2南京舰",
+      "type": "ship",
+      "platform": "052D",
+      "dbid": 3586,
+      "latitude": 23.2,
+      "longitude": 128.0,
+      "heading": 80,
+      "speed": 25,
+      "proficiency": "veteran",
+      "radarMode": "active",
+      "autodetectable": false,
+      "holdPosition": false,
+      "course": [
+        {
+          "latitude": 22.05,
+          "longitude": 129.05
+        }
+      ]
+    },
+    {
+      "id": "red_liaoning",
+      "sideId": "red",
+      "name": "红方辽宁舰",
+      "type": "ship",
+      "platform": "CV",
+      "dbid": 2007,
+      "latitude": 25.0,
+      "longitude": 130.0,
+      "heading": 180,
+      "speed": 20,
+      "proficiency": "veteran",
+      "radarMode": "active",
+      "autodetectable": false,
+      "holdPosition": false,
+      "course": [
+        {
+          "latitude": 24.0,
+          "longitude": 129.85
+        }
+      ]
+    },
+    {
+      "id": "red_j15_1",
+      "sideId": "red",
+      "name": "J-15-1",
+      "type": "aircraft",
+      "platform": "J-15",
+      "dbid": 2496,
+      "baseUnitId": "red_liaoning",
+      "loadoutId": 9682,
+      "proficiency": "veteran",
+      "initialRadarMode": "passive",
+      "autodetectable": false,
+      "timeToReadyMinutes": 0,
+      "ignoreMagazines": true
+    },
+    {
+      "id": "red_j15_2",
+      "sideId": "red",
+      "name": "J-15-2",
+      "type": "aircraft",
+      "platform": "J-15",
+      "dbid": 2496,
+      "baseUnitId": "red_liaoning",
+      "loadoutId": 9682,
+      "proficiency": "veteran",
+      "initialRadarMode": "passive",
+      "autodetectable": false,
+      "timeToReadyMinutes": 0,
+      "ignoreMagazines": true
+    },
+    {
+      "id": "blue_cvn70",
+      "sideId": "blue",
+      "name": "蓝方CVN-70卡尔文森",
+      "type": "ship",
+      "platform": "CVN-70",
+      "dbid": 3551,
+      "latitude": 21.5419,
+      "longitude": 129.9125,
+      "heading": 294,
+      "speed": 0,
+      "proficiency": "veteran",
+      "radarMode": "active",
+      "autodetectable": false,
+      "scoreValue": 200
+    },
+    {
+      "id": "blue_cg59",
+      "sideId": "blue",
+      "name": "蓝方CG-59普林斯顿",
+      "type": "ship",
+      "platform": "CG-59",
+      "dbid": 2862,
+      "latitude": 21.61,
+      "longitude": 130.1791,
+      "heading": 295,
+      "speed": 0,
+      "proficiency": "veteran",
+      "radarMode": "active",
+      "autodetectable": false,
+      "scoreValue": 100
+    },
+    {
+      "id": "blue_ddg113_1",
+      "sideId": "blue",
+      "name": "蓝方DDG-113-1约翰芬恩",
+      "type": "ship",
+      "platform": "DDG-113",
+      "dbid": 4299,
+      "latitude": 21.42,
+      "longitude": 130.1713,
+      "heading": 293,
+      "speed": 0,
+      "proficiency": "veteran",
+      "radarMode": "active",
+      "autodetectable": false,
+      "scoreValue": 75
+    },
+    {
+      "id": "blue_ddg113_2",
+      "sideId": "blue",
+      "name": "蓝方DDG-113-2约翰芬恩",
+      "type": "ship",
+      "platform": "DDG-113",
+      "dbid": 4299,
+      "latitude": 21.6,
+      "longitude": 130.2,
+      "heading": 293,
+      "speed": 0,
+      "proficiency": "veteran",
+      "radarMode": "active",
+      "autodetectable": false,
+      "scoreValue": 75
+    }
+  ],
+  "weapons": [
+    {
+      "unitId": "red_055_nanchang",
+      "weaponDbid": 2868,
+      "weaponName": "YJ-18 [3M54E Klub Copy]",
+      "quantity": 16
+    },
+    {
+      "unitId": "red_052d_1",
+      "weaponDbid": 2868,
+      "weaponName": "YJ-18 [3M54E Klub Copy]",
+      "quantity": 16
+    },
+    {
+      "unitId": "red_052d_2",
+      "weaponDbid": 2868,
+      "weaponName": "YJ-18 [3M54E Klub Copy]",
+      "quantity": 10
+    }
+  ],
+  "missions": [
+    {
+      "id": "red_055_attack",
+      "type": "ship_attack",
+      "unitId": "red_055_nanchang",
+      "targetId": "blue_ddg113_1",
+      "fireQuantity": 8,
+      "delaySeconds": 30,
+      "weaponDbid": 2868,
+      "weaponSelection": "manual",
+      "attackFunction": "ScenEdit_AttackContact",
+      "requiresRealContact": true,
+      "contactScope": "red_side_shared_contact",
+      "maxRangeNm": 285,
+      "attackPollIntervalSeconds": 15,
+      "attackMaxAttempts": 120,
+      "releaseConfirmation": {
+        "method": "attacker_weapon_inventory_decrease",
+        "weaponDbid": 2868,
+        "pollIntervalSeconds": 10,
+        "maxAttempts": 12
+      }
+    },
+    {
+      "id": "red_052d_1_attack",
+      "type": "ship_attack",
+      "unitId": "red_052d_1",
+      "targetId": "blue_cg59",
+      "fireQuantity": 8,
+      "delaySeconds": 45,
+      "weaponDbid": 2868,
+      "weaponSelection": "manual",
+      "attackFunction": "ScenEdit_AttackContact",
+      "requiresRealContact": true,
+      "contactScope": "red_side_shared_contact",
+      "maxRangeNm": 285,
+      "attackPollIntervalSeconds": 15,
+      "attackMaxAttempts": 120,
+      "releaseConfirmation": {
+        "method": "attacker_weapon_inventory_decrease",
+        "weaponDbid": 2868,
+        "pollIntervalSeconds": 10,
+        "maxAttempts": 12
+      }
+    },
+    {
+      "id": "red_052d_2_attack",
+      "type": "ship_attack",
+      "unitId": "red_052d_2",
+      "targetId": "blue_cg59",
+      "fireQuantity": 5,
+      "delaySeconds": 60,
+      "weaponDbid": 2868,
+      "weaponSelection": "manual",
+      "attackFunction": "ScenEdit_AttackContact",
+      "requiresRealContact": true,
+      "contactScope": "red_side_shared_contact",
+      "maxRangeNm": 285,
+      "attackPollIntervalSeconds": 15,
+      "attackMaxAttempts": 120,
+      "releaseConfirmation": {
+        "method": "attacker_weapon_inventory_decrease",
+        "weaponDbid": 2868,
+        "pollIntervalSeconds": 10,
+        "maxAttempts": 12
+      }
+    },
+    {
+      "id": "red_j15_1_attack",
+      "type": "aircraft_attack",
+      "unitId": "red_j15_1",
+      "targetId": "blue_cvn70",
+      "baseUnitId": "red_liaoning",
+      "weaponDbid": null,
+      "weaponSelection": "auto",
+      "fireQuantity": 4,
+      "delaySeconds": 5,
+      "timeToReadyMinutes": 0,
+      "launchPollIntervalSeconds": 15,
+      "launchMaxAttempts": 24,
+      "routeMode": "target_relative_at_runtime",
+      "routeOffsets": {
+        "midLatOffset": 1.5,
+        "midLonOffset": 0.0,
+        "approachLatOffset": 0.7,
+        "approachLonOffset": 0.0
+      },
+      "resolvedBaselineRoute": [
+        {
+          "latitude": 23.0419,
+          "longitude": 129.9125
+        },
+        {
+          "latitude": 22.2419,
+          "longitude": 129.9125
+        }
+      ],
+      "ingressAltitudeM": 200,
+      "ingressRadarMode": "passive",
+      "popupAltitudeM": 9500,
+      "popupRangeNm": 95,
+      "popupRadarMode": "active",
+      "throttle": "full",
+      "attackStartAfterAirborneSeconds": 10,
+      "attackPollIntervalSeconds": 10,
+      "attackMaxAttempts": 210,
+      "attackRangeNm": 80,
+      "attackFunction": "ScenEdit_AttackContact",
+      "requiresRealContact": true,
+      "contactScope": "red_side_shared_contact",
+      "returnAfterAttackSeconds": 120,
+      "returnAltitudeM": 200,
+      "returnRadarMode": "passive",
+      "returnOnTimeout": true
+    },
+    {
+      "id": "red_j15_2_attack",
+      "type": "aircraft_attack",
+      "unitId": "red_j15_2",
+      "targetId": "blue_ddg113_2",
+      "baseUnitId": "red_liaoning",
+      "weaponDbid": null,
+      "weaponSelection": "auto",
+      "fireQuantity": 4,
+      "delaySeconds": 20,
+      "timeToReadyMinutes": 0,
+      "launchPollIntervalSeconds": 15,
+      "launchMaxAttempts": 24,
+      "routeMode": "target_relative_at_runtime",
+      "routeOffsets": {
+        "midLatOffset": 1.5,
+        "midLonOffset": 0.05,
+        "approachLatOffset": 0.7,
+        "approachLonOffset": 0.05
+      },
+      "resolvedBaselineRoute": [
+        {
+          "latitude": 23.1,
+          "longitude": 130.25
+        },
+        {
+          "latitude": 22.3,
+          "longitude": 130.25
+        }
+      ],
+      "ingressAltitudeM": 200,
+      "ingressRadarMode": "passive",
+      "popupAltitudeM": 9500,
+      "popupRangeNm": 95,
+      "popupRadarMode": "active",
+      "throttle": "full",
+      "attackStartAfterAirborneSeconds": 10,
+      "attackPollIntervalSeconds": 10,
+      "attackMaxAttempts": 210,
+      "attackRangeNm": 80,
+      "attackFunction": "ScenEdit_AttackContact",
+      "requiresRealContact": true,
+      "contactScope": "red_side_shared_contact",
+      "returnAfterAttackSeconds": 120,
+      "returnAltitudeM": 200,
+      "returnRadarMode": "passive",
+      "returnOnTimeout": true
+    }
+  ],
+  "strategyBaseline": {
+    "candidateId": "baseline",
+    "hypothesis": "真实传感器与共享航迹能够使红方至少形成一次有效武器释放",
+    "mechanism": "J-15低空前出后跃升开雷达，红方舰艇利用共享contact实施超视距反舰打击",
+    "expectedObservables": [
+      "至少一个红方真实contact",
+      "至少一个ScenEdit_AttackContact被接受",
+      "至少一艘红方舰艇的DBID 2868库存下降",
+      "蓝方目标出现毁伤或蓝方防御弹药消耗上升"
+    ]
+  },
+  "candidateGeneration": {
+    "mode": "fixed_lua_skeleton_with_explicit_slots",
+    "patchTarget": "StrategySpec",
+    "renderer": "strict-token-replacement",
+    "mutableFieldSource": "manual_baseline_template.json#/slots",
+    "fixedLogicMustRemainByteIdentical": true,
+    "candidateCount": 4,
+    "validationRules": [
+      "candidate_id必须匹配^[A-Za-z0-9_-]+$",
+      "必须恰好包含5条攻击",
+      "攻击方和目标必须存在且目标属于blue",
+      "delay_seconds范围为0到600",
+      "quantity范围为1到16且不得超过舰艇库存",
+      "航空攻击popup_range_nm必须大于等于attack_range_nm",
+      "禁止出现awareness=OMNI",
+      "禁止出现autodetectable=true",
+      "航空目标、目标相对航路和攻击轮询必须由同一个target_id派生"
+    ]
+  },
+  "scenarioAssertions": {
+    "canonicalSideIds": [
+      "red",
+      "blue"
+    ],
+    "removeAliasSides": [
+      "红方",
+      "蓝方"
+    ],
+    "expectedRedUnitIds": [
+      "red_055_nanchang",
+      "red_052d_1",
+      "red_052d_2",
+      "red_liaoning",
+      "red_j15_1",
+      "red_j15_2"
+    ],
+    "expectedBlueUnitIds": [
+      "blue_cvn70",
+      "blue_cg59",
+      "blue_ddg113_1",
+      "blue_ddg113_2"
+    ],
+    "rejectUnknownOrDuplicateUnits": true,
+    "realSensorOnly": true
+  },
+  "scoreSpec": {
+    "scoreSideId": "red",
+    "officialScoreSemantics": "只记录单位被摧毁的任务结果，不对发射武器直接奖励",
+    "scoreSpecChecksum": "9a7f68a20cea722df7ae77c28a93199b1042258bd153973e25021b5e498762df",
+    "rules": [
+      {
+        "ruleId": "native_score/blue_cvn70",
+        "objectiveId": "destroy-blue-cvn70",
+        "targetUnitId": "blue_cvn70",
+        "trigger": "unit_destroyed",
+        "pointChange": 200
+      },
+      {
+        "ruleId": "native_score/blue_cg59",
+        "objectiveId": "destroy-blue-cg59",
+        "targetUnitId": "blue_cg59",
+        "trigger": "unit_destroyed",
+        "pointChange": 100
+      },
+      {
+        "ruleId": "native_score/blue_ddg113_1",
+        "objectiveId": "destroy-blue-ddg113-1",
+        "targetUnitId": "blue_ddg113_1",
+        "trigger": "unit_destroyed",
+        "pointChange": 75
+      },
+      {
+        "ruleId": "native_score/blue_ddg113_2",
+        "objectiveId": "destroy-blue-ddg113-2",
+        "targetUnitId": "blue_ddg113_2",
+        "trigger": "unit_destroyed",
+        "pointChange": 75
+      },
+      {
+        "ruleId": "native_score/red_liaoning",
+        "objectiveId": "preserve-red-liaoning",
+        "targetUnitId": "red_liaoning",
+        "trigger": "unit_destroyed",
+        "pointChange": -200
+      },
+      {
+        "ruleId": "native_score/red_055_nanchang",
+        "objectiveId": "preserve-red-055",
+        "targetUnitId": "red_055_nanchang",
+        "trigger": "unit_destroyed",
+        "pointChange": -100
+      },
+      {
+        "ruleId": "native_score/red_052d_1",
+        "objectiveId": "preserve-red-052d-1",
+        "targetUnitId": "red_052d_1",
+        "trigger": "unit_destroyed",
+        "pointChange": -75
+      },
+      {
+        "ruleId": "native_score/red_052d_2",
+        "objectiveId": "preserve-red-052d-2",
+        "targetUnitId": "red_052d_2",
+        "trigger": "unit_destroyed",
+        "pointChange": -75
+      },
+      {
+        "ruleId": "native_score/red_j15_1",
+        "objectiveId": "preserve-red-j15-1",
+        "targetUnitId": "red_j15_1",
+        "trigger": "unit_destroyed",
+        "pointChange": -20
+      },
+      {
+        "ruleId": "native_score/red_j15_2",
+        "objectiveId": "preserve-red-j15-2",
+        "targetUnitId": "red_j15_2",
+        "trigger": "unit_destroyed",
+        "pointChange": -20
+      }
+    ],
+    "partialDamageIncludedInOfficialScore": false
+  },
+  "executionTraceSpec": {
+    "logPrefix": "[ATTACK-TRACE]",
+    "oneTracePerPlannedAttack": true,
+    "fields": [
+      "candidate_id",
+      "attack_id",
+      "kind",
+      "attacker_id",
+      "target_id",
+      "stage",
+      "scheduled",
+      "triggered",
+      "attacker_found",
+      "target_found",
+      "contact_acquired",
+      "airborne",
+      "reached_attack_range",
+      "fire_called",
+      "fire_accepted",
+      "weapon_released",
+      "hit",
+      "damage_percent",
+      "failure_stage",
+      "attempt",
+      "range_nm",
+      "contact_guid",
+      "classification",
+      "detail"
+    ],
+    "importantStages": [
+      "validated",
+      "scheduled",
+      "launch_poll",
+      "airborne_route_set",
+      "sensor_popup",
+      "ship_poll",
+      "air_poll",
+      "fire_called",
+      "fire_accepted",
+      "fire_rejected",
+      "weapon_released",
+      "attack_order_no_release",
+      "not_reached",
+      "rtb_ordered"
+    ],
+    "failureStages": [
+      "attacker_not_found",
+      "target_not_found",
+      "launch_timeout",
+      "contact_not_acquired",
+      "attack_range_not_reached",
+      "attack_contact_rejected",
+      "attack_order_accepted_but_no_inventory_change",
+      "aircraft_lost_or_landed_before_attack"
+    ]
+  },
+  "processEvaluationSpec": {
+    "logPrefixes": [
+      "[PROCESS-VECTOR]",
+      "[TARGET-STATE]",
+      "[EXPENDITURE]",
+      "[STRATEGY-META]",
+      "[SCENARIO-ASSERT]"
+    ],
+    "snapshotSeconds": [
+      0,
+      300,
+      900,
+      1800,
+      2400
+    ],
+    "vectorFields": [
+      "official_score",
+      "enemy_damage_value",
+      "own_loss_value",
+      "planned_attacks",
+      "triggered_attacks",
+      "contacts_acquired",
+      "fire_calls",
+      "fire_accepted",
+      "confirmed_weapon_releases",
+      "aircraft_returned",
+      "max_aircraft_survival_seconds"
+    ],
+    "enemyDamageValueSemantics": "目标scoreValue乘以当前毁伤百分比，仅作为过程评价，不写入官方分数",
+    "weaponReleaseSemantics": "舰艇通过DBID 2868库存下降确认；航空武器释放由AAR武器事件补全",
+    "tieHandling": "官方分数相同时保留并列，过程向量用于解释差异而非强行产生正式胜者",
+    "experienceLabels": [
+      "SUPPORTED",
+      "PARTIALLY_SUPPORTED",
+      "NO_EFFECT",
+      "NOT_REACHED",
+      "CONTRADICTED",
+      "INCONCLUSIVE"
+    ]
+  }
+}

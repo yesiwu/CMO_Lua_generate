@@ -1,7 +1,7 @@
 {
   "baseline_strategy_source": "baseline/6v4/legacy/baseline_strategy.pre-scenario-ir.json",
   "compiler_version": "1.0.0",
-  "lua_checksum": "95288873bfab1bd4678087e17f6af0ea42b6cd11daae543d294bf723f0aae146",
+  "lua_checksum": "dfe08b255aad1ddfe6a1b9f0dd8fe0df4f85ce009860f55558e8a0e564964b6a",
   "plan_checksum": "aea29e40724d3bff30864e73f0212f0e954699053f3d079544e775addd18e6ac",
   "plan_schema_version": "1.0.0",
   "renderer_version": "1.0.0",

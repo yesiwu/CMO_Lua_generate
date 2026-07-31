@@ -240,10 +240,7 @@ class LuaRenderer:
         auto_weapon_selection: bool,
     ) -> None:
         fire_options = (
-            [
-                "    local opts = {mode='1', qty=tonumber(quantity)}",
-                "    if weapon_dbid ~= nil then opts.weapon = tonumber(weapon_dbid) end",
-            ]
+            ["    local opts = {mode='0'}"]
             if auto_weapon_selection
             else ["    local opts = {mode='1', weapon=tonumber(weapon_dbid), qty=tonumber(quantity)}"]
         )
@@ -353,7 +350,7 @@ class LuaRenderer:
                 "    return nil",
                 "end",
                 "",
-                "local function fire_at(attacker_side, target_side, attacker_name, target_name, weapon_dbid, quantity)",
+                "function fire_at(attacker_side, target_side, attacker_name, target_name, weapon_dbid, quantity)",
                 "    local attacker = lookup_unit(attacker_side, attacker_name)",
                 "    if not attacker or not attacker.guid then runtime_log('missing attacker ' .. tostring(attacker_name)); return false end",
                 "    local contact = contact_guid(attacker_side, target_side, target_name)",

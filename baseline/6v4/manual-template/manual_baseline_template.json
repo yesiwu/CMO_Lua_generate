@@ -1,0 +1,320 @@
+{
+  "template_lua": "manual_baseline_template.lua",
+  "rendered_baseline_lua": "candidate_baseline_fixed.lua",
+  "renderer": "literal_token_replace_v1",
+  "fixed_logic_policy": "Only tokens declared in slots may change; all other Lua text must remain byte-identical.",
+  "target_catalog": {
+    "blue_cvn70": {
+      "side": "blue",
+      "name": "蓝方CVN-70卡尔文森"
+    },
+    "blue_cg59": {
+      "side": "blue",
+      "name": "蓝方CG-59普林斯顿"
+    },
+    "blue_ddg113_1": {
+      "side": "blue",
+      "name": "蓝方DDG-113-1约翰芬恩"
+    },
+    "blue_ddg113_2": {
+      "side": "blue",
+      "name": "蓝方DDG-113-2约翰芬恩"
+    }
+  },
+  "slots": [
+    {
+      "name": "candidate_id",
+      "token": "{{candidate_id}}",
+      "type": "lua_string",
+      "baseline_value": "baseline",
+      "strategy_path": "/candidate_id"
+    },
+    {
+      "name": "hypothesis",
+      "token": "{{hypothesis}}",
+      "type": "lua_string",
+      "baseline_value": "真实传感器与共享航迹能够使红方至少形成一次有效武器释放",
+      "strategy_path": "/hypothesis"
+    },
+    {
+      "name": "mechanism",
+      "token": "{{mechanism}}",
+      "type": "lua_string",
+      "baseline_value": "J-15低空前出后跃升开雷达，红方舰艇利用共享contact实施超视距反舰打击",
+      "strategy_path": "/mechanism"
+    },
+    {
+      "name": "attack_055_target",
+      "token": "{{attack_055_target}}",
+      "type": "lua_string",
+      "baseline_value": "blue_ddg113_1",
+      "strategy_path": "/attacks/0/target_ids/0",
+      "semantic_dimension": "target_assignment",
+      "allowed_values": [
+        "blue_cvn70",
+        "blue_cg59",
+        "blue_ddg113_1",
+        "blue_ddg113_2"
+      ]
+    },
+    {
+      "name": "attack_055_delay_seconds",
+      "token": "{{attack_055_delay_seconds}}",
+      "type": "number",
+      "baseline_value": 30,
+      "strategy_path": "/attacks/0/delay_seconds",
+      "minimum": 0,
+      "maximum": 600
+    },
+    {
+      "name": "attack_055_fire_quantity",
+      "token": "{{attack_055_fire_quantity}}",
+      "type": "number",
+      "baseline_value": 8,
+      "strategy_path": "/attacks/0/fire_quantity",
+      "semantic_dimension": "fire_quantity",
+      "minimum": 1,
+      "maximum": 16
+    },
+    {
+      "name": "attack_052d_1_target",
+      "token": "{{attack_052d_1_target}}",
+      "type": "lua_string",
+      "baseline_value": "blue_cg59",
+      "strategy_path": "/attacks/1/target_ids/0",
+      "semantic_dimension": "target_assignment",
+      "allowed_values": [
+        "blue_cvn70",
+        "blue_cg59",
+        "blue_ddg113_1",
+        "blue_ddg113_2"
+      ]
+    },
+    {
+      "name": "attack_052d_1_delay_seconds",
+      "token": "{{attack_052d_1_delay_seconds}}",
+      "type": "number",
+      "baseline_value": 45,
+      "strategy_path": "/attacks/1/delay_seconds",
+      "minimum": 0,
+      "maximum": 600
+    },
+    {
+      "name": "attack_052d_1_fire_quantity",
+      "token": "{{attack_052d_1_fire_quantity}}",
+      "type": "number",
+      "baseline_value": 8,
+      "strategy_path": "/attacks/1/fire_quantity",
+      "semantic_dimension": "fire_quantity",
+      "minimum": 1,
+      "maximum": 16
+    },
+    {
+      "name": "attack_052d_2_target",
+      "token": "{{attack_052d_2_target}}",
+      "type": "lua_string",
+      "baseline_value": "blue_cg59",
+      "strategy_path": "/attacks/2/target_ids/0",
+      "semantic_dimension": "target_assignment",
+      "allowed_values": [
+        "blue_cvn70",
+        "blue_cg59",
+        "blue_ddg113_1",
+        "blue_ddg113_2"
+      ]
+    },
+    {
+      "name": "attack_052d_2_delay_seconds",
+      "token": "{{attack_052d_2_delay_seconds}}",
+      "type": "number",
+      "baseline_value": 60,
+      "strategy_path": "/attacks/2/delay_seconds",
+      "minimum": 0,
+      "maximum": 600
+    },
+    {
+      "name": "attack_052d_2_fire_quantity",
+      "token": "{{attack_052d_2_fire_quantity}}",
+      "type": "number",
+      "baseline_value": 5,
+      "strategy_path": "/attacks/2/fire_quantity",
+      "semantic_dimension": "fire_quantity",
+      "minimum": 1,
+      "maximum": 16
+    },
+    {
+      "name": "attack_j15_1_target",
+      "token": "{{attack_j15_1_target}}",
+      "type": "lua_string",
+      "baseline_value": "blue_cvn70",
+      "strategy_path": "/sorties/0/target_id",
+      "semantic_dimension": "target_assignment",
+      "allowed_values": [
+        "blue_cvn70",
+        "blue_cg59",
+        "blue_ddg113_1",
+        "blue_ddg113_2"
+      ]
+    },
+    {
+      "name": "attack_j15_1_delay_seconds",
+      "token": "{{attack_j15_1_delay_seconds}}",
+      "type": "number",
+      "baseline_value": 5,
+      "strategy_path": "/attacks/3/delay_seconds",
+      "minimum": 0,
+      "maximum": 600
+    },
+    {
+      "name": "j15_1_ingress_altitude_m",
+      "token": "{{j15_1_ingress_altitude_m}}",
+      "type": "number",
+      "baseline_value": 200,
+      "strategy_path": "/attacks/3/route/ingress_altitude_m"
+    },
+    {
+      "name": "j15_1_popup_altitude_m",
+      "token": "{{j15_1_popup_altitude_m}}",
+      "type": "number",
+      "baseline_value": 9500,
+      "strategy_path": "/attacks/3/route/popup_altitude_m"
+    },
+    {
+      "name": "j15_1_popup_range_nm",
+      "token": "{{j15_1_popup_range_nm}}",
+      "type": "number",
+      "baseline_value": 95,
+      "strategy_path": "/attacks/3/route/popup_range_nm"
+    },
+    {
+      "name": "j15_1_attack_range_nm",
+      "token": "{{j15_1_attack_range_nm}}",
+      "type": "number",
+      "baseline_value": 80,
+      "strategy_path": "/attacks/3/attack_range_nm"
+    },
+    {
+      "name": "j15_1_mid_lat_offset",
+      "token": "{{j15_1_mid_lat_offset}}",
+      "type": "number",
+      "baseline_value": 1.5,
+      "strategy_path": "/attacks/3/route/mid_lat_offset"
+    },
+    {
+      "name": "j15_1_mid_lon_offset",
+      "token": "{{j15_1_mid_lon_offset}}",
+      "type": "number",
+      "baseline_value": 0.0,
+      "strategy_path": "/attacks/3/route/mid_lon_offset"
+    },
+    {
+      "name": "j15_1_approach_lat_offset",
+      "token": "{{j15_1_approach_lat_offset}}",
+      "type": "number",
+      "baseline_value": 0.7,
+      "strategy_path": "/attacks/3/route/approach_lat_offset"
+    },
+    {
+      "name": "j15_1_approach_lon_offset",
+      "token": "{{j15_1_approach_lon_offset}}",
+      "type": "number",
+      "baseline_value": 0.0,
+      "strategy_path": "/attacks/3/route/approach_lon_offset"
+    },
+    {
+      "name": "attack_j15_2_target",
+      "token": "{{attack_j15_2_target}}",
+      "type": "lua_string",
+      "baseline_value": "blue_ddg113_2",
+      "strategy_path": "/sorties/1/target_id",
+      "semantic_dimension": "target_assignment",
+      "allowed_values": [
+        "blue_cvn70",
+        "blue_cg59",
+        "blue_ddg113_1",
+        "blue_ddg113_2"
+      ]
+    },
+    {
+      "name": "attack_j15_2_delay_seconds",
+      "token": "{{attack_j15_2_delay_seconds}}",
+      "type": "number",
+      "baseline_value": 20,
+      "strategy_path": "/attacks/4/delay_seconds",
+      "minimum": 0,
+      "maximum": 600
+    },
+    {
+      "name": "j15_2_ingress_altitude_m",
+      "token": "{{j15_2_ingress_altitude_m}}",
+      "type": "number",
+      "baseline_value": 200,
+      "strategy_path": "/attacks/4/route/ingress_altitude_m"
+    },
+    {
+      "name": "j15_2_popup_altitude_m",
+      "token": "{{j15_2_popup_altitude_m}}",
+      "type": "number",
+      "baseline_value": 9500,
+      "strategy_path": "/attacks/4/route/popup_altitude_m"
+    },
+    {
+      "name": "j15_2_popup_range_nm",
+      "token": "{{j15_2_popup_range_nm}}",
+      "type": "number",
+      "baseline_value": 95,
+      "strategy_path": "/attacks/4/route/popup_range_nm"
+    },
+    {
+      "name": "j15_2_attack_range_nm",
+      "token": "{{j15_2_attack_range_nm}}",
+      "type": "number",
+      "baseline_value": 80,
+      "strategy_path": "/attacks/4/attack_range_nm"
+    },
+    {
+      "name": "j15_2_mid_lat_offset",
+      "token": "{{j15_2_mid_lat_offset}}",
+      "type": "number",
+      "baseline_value": 1.5,
+      "strategy_path": "/attacks/4/route/mid_lat_offset"
+    },
+    {
+      "name": "j15_2_mid_lon_offset",
+      "token": "{{j15_2_mid_lon_offset}}",
+      "type": "number",
+      "baseline_value": 0.05,
+      "strategy_path": "/attacks/4/route/mid_lon_offset"
+    },
+    {
+      "name": "j15_2_approach_lat_offset",
+      "token": "{{j15_2_approach_lat_offset}}",
+      "type": "number",
+      "baseline_value": 0.7,
+      "strategy_path": "/attacks/4/route/approach_lat_offset"
+    },
+    {
+      "name": "j15_2_approach_lon_offset",
+      "token": "{{j15_2_approach_lon_offset}}",
+      "type": "number",
+      "baseline_value": 0.05,
+      "strategy_path": "/attacks/4/route/approach_lon_offset"
+    }
+  ],
+  "invariants": [
+    "Exactly five attack objects must remain.",
+    "Each air attack has one target_id; route waypoints are derived from that same target at runtime.",
+    "No awareness OMNI and no autodetectable=true may appear in rendered Lua.",
+    "All scheduled script entry points must begin with baseline_ and be global functions.",
+    "Official score rules remain unchanged; process signals are emitted only as logs."
+  ],
+  "required_log_prefixes": [
+    "[SCENARIO-ASSERT]",
+    "[STRATEGY-META]",
+    "[ATTACK-TRACE]",
+    "[PROCESS-VECTOR]",
+    "[TARGET-STATE]",
+    "[EXPENDITURE]",
+    "[CMO-NATIVE-SCORE]"
+  ]
+}

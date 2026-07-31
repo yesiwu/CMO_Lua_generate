@@ -46,7 +46,7 @@ def test_scenario_ir_derived_baseline_golden_is_deterministic_and_uses_auto_weap
     )
     assert "nil,4" in first.rendered.content
     assert "weapon=tonumber(weapon_dbid)" not in first.rendered.content
-    assert "if weapon_dbid ~= nil then opts.weapon = tonumber(weapon_dbid) end" in first.rendered.content
+    assert "local opts = {mode='0'}" in first.rendered.content
     assert first.derivation_manifest["defaulted_fields"]
     assert first.generation_manifest["score_spec_checksum"]
     assert first.generation_manifest["native_score_fragment_checksum"]

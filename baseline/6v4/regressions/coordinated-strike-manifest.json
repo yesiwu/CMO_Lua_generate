@@ -17,7 +17,7 @@
   "execution_plan_checksum": "5db46d86e4be1ff5b9c0198559236c8908c805b796207ec508f7655b971ea3ca",
   "fixture_purpose": "formal_chain_expression_regression",
   "formal_comparison_eligible": false,
-  "lua_checksum": "106156433b72fcbcdc0d48639c0a551538c6d50e78cfae10582c019d8167f037",
+  "lua_checksum": "1b69933213ba8eaa082681c2bdc76266c387554bd757ea9d06b6199f12ba2dba",
   "native_score_fragment_checksum": "96f2f2e8694520581922d57bc6650e434688e3bcfa90e6f2c99ec27ae3400b4b",
   "patch_checksum": "33bb33f66a9b0a7e27c7bd095e33c562af3ec60bc201fc6fc24e7fc2e3ceacec",
   "runtime_version": "2.0.0",

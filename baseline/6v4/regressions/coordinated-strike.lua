@@ -89,13 +89,12 @@ local function contact_guid(red_side, target_side, target_name)
     return nil
 end
 
-local function fire_at(attacker_side, target_side, attacker_name, target_name, weapon_dbid, quantity)
+function fire_at(attacker_side, target_side, attacker_name, target_name, weapon_dbid, quantity)
     local attacker = lookup_unit(attacker_side, attacker_name)
     if not attacker or not attacker.guid then runtime_log('missing attacker ' .. tostring(attacker_name)); return false end
     local contact = contact_guid(attacker_side, target_side, target_name)
     if not contact then runtime_log('missing contact ' .. tostring(target_name)); return false end
-    local opts = {mode='1', qty=tonumber(quantity)}
-    if weapon_dbid ~= nil then opts.weapon = tonumber(weapon_dbid) end
+    local opts = {mode='0'}
     _errnum_ = 0
     _errmsg_ = ''
     local ok, result = pcall(ScenEdit_AttackContact, attacker.guid, contact, opts)

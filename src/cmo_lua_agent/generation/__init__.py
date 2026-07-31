@@ -10,6 +10,7 @@ from cmo_lua_agent.generation.lua_generation_service import (
     LuaGenerationService,
 )
 from cmo_lua_agent.generation.scored_lua_assembly import ScoredLuaAssemblyService
+from cmo_lua_agent.generation.manual_lua_template import ManualLuaTemplatePackage
 
 __all__ = [
     "LuaGenerationRequest",
@@ -18,4 +19,5 @@ __all__ = [
     "LuaPreflightReport",
     "LuaPreflightValidator",
     "ScoredLuaAssemblyService",
+    "ManualLuaTemplatePackage",
 ]

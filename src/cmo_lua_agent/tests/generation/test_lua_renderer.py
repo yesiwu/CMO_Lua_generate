@@ -169,7 +169,10 @@ def test_renderer_omits_the_weapon_option_for_auto_weapon_selection() -> None:
 
     rendered = LuaRenderer().render(plan=plan, runtime=LuaRuntimeProfile("cmo_naval_air_anti_surface", "1.0.0"))
 
-    assert "if weapon_dbid ~= nil then opts.weapon = tonumber(weapon_dbid) end" in rendered.content
+    assert "function fire_at(attacker_side, target_side, attacker_name, target_name, weapon_dbid, quantity)" in rendered.content
+    assert "local function fire_at(" not in rendered.content
+    assert "local opts = {mode='0'}" in rendered.content
+    assert "if weapon_dbid ~= nil then opts.weapon" not in rendered.content
     attack_span = rendered.source_map["attack.red_ship.blue_target"]
     attack_source = "\n".join(rendered.content.splitlines()[attack_span.start_line - 1:attack_span.end_line])
     assert "nil,4)" in attack_source
