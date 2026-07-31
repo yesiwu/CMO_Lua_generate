@@ -67,6 +67,8 @@ class CandidateRequest:
     timeout_seconds: int                       # CMO仿真超时秒数
     candidate_dir: Path                        # 候选产物沙箱目录
     allowed_strategy_paths: tuple[str, ...]    # 允许补丁修改的策略字段白名单
+    reuse_existing_artifacts: bool = False
+    official_score_only: bool = False
 
     def __post_init__(self) -> None:
         """创建时自动强校验，非法入参直接拦截"""
@@ -94,6 +96,8 @@ class CandidateRequest:
             "max_repairs": self.max_repairs,
             "timeout_seconds": self.timeout_seconds,
             "allowed_strategy_paths": list(self.allowed_strategy_paths),
+            "reuse_existing_artifacts": self.reuse_existing_artifacts,
+            "official_score_only": self.official_score_only,
         }
 
 

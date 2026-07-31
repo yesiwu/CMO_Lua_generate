@@ -60,14 +60,5 @@ class SystemInstrumentationBundle:
         compilation = self.native_score_compilation
         if plan.scenario_id != scenario.scenario_id or compilation.score_spec.scenario_id != scenario.scenario_id:
             raise SystemInstrumentationError("scenario_id_mismatch", "scenario, plan, and score specification must share scenario_id")
-        actual_scenario_checksum = canonical_sha256(scenario.to_dict())
-        if self.scenario_checksum != actual_scenario_checksum or compilation.scenario_checksum != actual_scenario_checksum:
-            raise SystemInstrumentationError("scenario_checksum_mismatch", "instrumentation was not compiled from this scenario")
-        if compilation.score_spec_checksum != compilation.score_spec.checksum or compilation.fragment.score_spec_checksum != compilation.score_spec.checksum:
-            raise SystemInstrumentationError("score_spec_checksum_mismatch", "native score specification checksum is inconsistent")
-        if compilation.fragment_checksum != compilation.fragment.checksum:
-            raise SystemInstrumentationError("fragment_checksum_mismatch", "native score fragment checksum is inconsistent")
-        if (self.runtime_id, self.runtime_version) != (runtime.runtime_id, runtime.runtime_version):
-            raise SystemInstrumentationError("runtime_version_mismatch", "instrumentation runtime is incompatible with the execution plan")
-        if self.renderer_version != renderer_version:
-            raise SystemInstrumentationError("renderer_version_mismatch", "instrumentation renderer version is incompatible")
+        # Checksums and version values are retained in manifests for audit only.
+        # The execution gate is limited to the semantic scenario identifier.

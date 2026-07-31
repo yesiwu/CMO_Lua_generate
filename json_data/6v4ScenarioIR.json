@@ -1,0 +1,280 @@
+{
+  "version": "1.0",
+  "scenario": {
+    "id": "red_blue_6v4_liaoning",
+    "name": "红蓝6V4辽宁舰协同反舰场景",
+    "description": "红方1艘055、2艘052D、1艘辽宁舰和2架J-15，对蓝方4艘水面舰艇实施舰机协同反舰打击；舰艇主要攻击DDG-113-1和CG-59，J-15分别攻击CVN-70和DDG-113-2。"
+  },
+  "sides": [
+    {
+      "id": "red",
+      "name": "红方",
+      "enemySideId": "blue",
+      "fullAwareness": true
+    },
+    {
+      "id": "blue",
+      "name": "蓝方",
+      "enemySideId": "red",
+      "fullAwareness": false
+    }
+  ],
+  "units": [
+    {
+      "id": "red_055_nanchang",
+      "sideId": "red",
+      "name": "红方055南昌舰",
+      "type": "ship",
+      "platform": "055",
+      "dbid": 3883,
+      "latitude": 24.8324,
+      "longitude": 128.583,
+      "heading": 135,
+      "speed": 20,
+      "proficiency": "veteran",
+      "radarActive": true
+    },
+    {
+      "id": "red_052d_1",
+      "sideId": "red",
+      "name": "红方052D-1昆明舰",
+      "type": "ship",
+      "platform": "052D",
+      "dbid": 2296,
+      "latitude": 21.1437,
+      "longitude": 123.451,
+      "heading": 115,
+      "speed": 20,
+      "proficiency": "veteran",
+      "radarActive": true
+    },
+    {
+      "id": "red_052d_2",
+      "sideId": "red",
+      "name": "红方052D-2南京舰",
+      "type": "ship",
+      "platform": "052D",
+      "dbid": 3586,
+      "latitude": 18.2035,
+      "longitude": 123.988,
+      "heading": 50,
+      "speed": 20,
+      "proficiency": "veteran",
+      "radarActive": true
+    },
+    {
+      "id": "red_liaoning",
+      "sideId": "red",
+      "name": "红方辽宁舰",
+      "type": "ship",
+      "platform": "CV",
+      "dbid": 2007,
+      "latitude": 25.0,
+      "longitude": 130.0,
+      "heading": 90,
+      "speed": 20,
+      "proficiency": "veteran",
+      "radarActive": true
+    },
+    {
+      "id": "red_j15_1",
+      "sideId": "red",
+      "name": "J-15-1",
+      "type": "aircraft",
+      "platform": "J-15",
+      "dbid": 2496,
+      "baseUnitId": "red_liaoning",
+      "loadoutId": 9682,
+      "proficiency": "veteran"
+    },
+    {
+      "id": "red_j15_2",
+      "sideId": "red",
+      "name": "J-15-2",
+      "type": "aircraft",
+      "platform": "J-15",
+      "dbid": 2496,
+      "baseUnitId": "red_liaoning",
+      "loadoutId": 9682,
+      "proficiency": "veteran"
+    },
+    {
+      "id": "blue_cvn70",
+      "sideId": "blue",
+      "name": "蓝方CVN-70卡尔文森",
+      "type": "ship",
+      "platform": "CVN-70",
+      "dbid": 3551,
+      "latitude": 21.5419,
+      "longitude": 129.9125,
+      "heading": 294,
+      "speed": 0,
+      "proficiency": "veteran",
+      "radarActive": true,
+      "autodetectable": true
+    },
+    {
+      "id": "blue_cg59",
+      "sideId": "blue",
+      "name": "蓝方CG-59普林斯顿",
+      "type": "ship",
+      "platform": "CG-59",
+      "dbid": 2862,
+      "latitude": 21.61,
+      "longitude": 130.1791,
+      "heading": 295,
+      "speed": 0,
+      "proficiency": "veteran",
+      "radarActive": true,
+      "autodetectable": true
+    },
+    {
+      "id": "blue_ddg113_1",
+      "sideId": "blue",
+      "name": "蓝方DDG-113-1约翰芬恩",
+      "type": "ship",
+      "platform": "DDG-113",
+      "dbid": 4299,
+      "latitude": 21.42,
+      "longitude": 130.1713,
+      "heading": 293,
+      "speed": 0,
+      "proficiency": "veteran",
+      "radarActive": true,
+      "autodetectable": true
+    },
+    {
+      "id": "blue_ddg113_2",
+      "sideId": "blue",
+      "name": "蓝方DDG-113-2约翰芬恩",
+      "type": "ship",
+      "platform": "DDG-113",
+      "dbid": 4299,
+      "latitude": 21.6,
+      "longitude": 130.2,
+      "heading": 293,
+      "speed": 0,
+      "proficiency": "veteran",
+      "radarActive": true,
+      "autodetectable": true
+    }
+  ],
+  "weapons": [
+    {
+      "unitId": "red_055_nanchang",
+      "weaponDbid": 2868,
+      "weaponName": "YJ-18 [3M54E Klub Copy]",
+      "quantity": 16
+    },
+    {
+      "unitId": "red_052d_1",
+      "weaponDbid": 2868,
+      "weaponName": "YJ-18 [3M54E Klub Copy]",
+      "quantity": 16
+    },
+    {
+      "unitId": "red_052d_2",
+      "weaponDbid": 2868,
+      "weaponName": "YJ-18 [3M54E Klub Copy]",
+      "quantity": 10
+    }
+  ],
+  "missions": [
+    {
+      "id": "red_055_attack_ddg113_1",
+      "type": "ship_attack",
+      "unitId": "red_055_nanchang",
+      "targetId": "blue_ddg113_1",
+      "weaponDbid": null,
+      "weaponSelection": "auto",
+      "fireQuantity": 8,
+      "delaySeconds": 30
+    },
+    {
+      "id": "red_052d_1_attack_cg59",
+      "type": "ship_attack",
+      "unitId": "red_052d_1",
+      "targetId": "blue_cg59",
+      "weaponDbid": null,
+      "weaponSelection": "auto",
+      "fireQuantity": 8,
+      "delaySeconds": 30
+    },
+    {
+      "id": "red_052d_2_attack_cg59",
+      "type": "ship_attack",
+      "unitId": "red_052d_2",
+      "targetId": "blue_cg59",
+      "weaponDbid": null,
+      "weaponSelection": "auto",
+      "fireQuantity": 5,
+      "delaySeconds": 33
+    },
+    {
+      "id": "red_j15_1_attack_cvn70",
+      "type": "aircraft_attack",
+      "unitId": "red_j15_1",
+      "targetId": "blue_cvn70",
+      "baseUnitId": "red_liaoning",
+      "weaponDbid": null,
+      "weaponSelection": "auto",
+      "fireQuantity": 4,
+      "timeToReadyMinutes": 0,
+      "launchStartDelaySeconds": 5,
+      "launchPollIntervalSeconds": 15,
+      "launchMaxAttempts": 24,
+      "route": [
+        {
+          "latitude": 23.6,
+          "longitude": 129.98
+        },
+        {
+          "latitude": 22.3,
+          "longitude": 129.95
+        }
+      ],
+      "altitude": 8000,
+      "throttle": "cruise",
+      "attackStartAfterAirborneSeconds": 30,
+      "attackPollIntervalSeconds": 60,
+      "attackMaxAttempts": 35,
+      "attackRangeNm": 80,
+      "returnAfterAttackSeconds": 600,
+      "returnOnNoTargetSeconds": 5,
+      "returnOnTimeoutSeconds": 5
+    },
+    {
+      "id": "red_j15_2_attack_ddg113_2",
+      "type": "aircraft_attack",
+      "unitId": "red_j15_2",
+      "targetId": "blue_ddg113_2",
+      "baseUnitId": "red_liaoning",
+      "weaponDbid": null,
+      "weaponSelection": "auto",
+      "fireQuantity": 4,
+      "timeToReadyMinutes": 0,
+      "launchStartDelaySeconds": 5,
+      "launchPollIntervalSeconds": 15,
+      "launchMaxAttempts": 24,
+      "route": [
+        {
+          "latitude": 23.65,
+          "longitude": 130.1
+        },
+        {
+          "latitude": 22.45,
+          "longitude": 130.18
+        }
+      ],
+      "altitude": 8000,
+      "throttle": "cruise",
+      "attackStartAfterAirborneSeconds": 30,
+      "attackPollIntervalSeconds": 60,
+      "attackMaxAttempts": 35,
+      "attackRangeNm": 80,
+      "returnAfterAttackSeconds": 600,
+      "returnOnNoTargetSeconds": 5,
+      "returnOnTimeoutSeconds": 5
+    }
+  ]
+}

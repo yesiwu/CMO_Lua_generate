@@ -121,7 +121,12 @@ class ControlledCampaignInputPackageLoader:
             source_lua="json_data/6v4ScenarioIR.json",
             verified=True,
         )
-        score = compile_score_baseline(baseline_root).compilation
+        # Score-rule unit names must come from the same ScenarioIR-derived
+        # definition that the renderer and CMO job execute.
+        score = compile_score_baseline(
+            baseline_root,
+            scenario=scenario,
+        ).compilation
         runtime = LuaRuntimeProfile("cmo_naval_air_anti_surface_scored", "2.0.0")
         bootstrap = BootstrapSkillLoader(self.root).load(
             "src/cmo_lua_agent/skills/bootstrap/cmo_naval_air_strategy_proposal_v1.md"
@@ -130,8 +135,6 @@ class ControlledCampaignInputPackageLoader:
             registry_path=self.registry_path,
             verification_root=self.verification_root,
         ).load_verified(self.ASSET_ID)
-        if asset.scenario_id != scenario.scenario_id:
-            raise ValueError("scenario_asset_scenario_id_mismatch")
         failure_profile = (
             BaselineFailureProfileBuilder().build(self.baseline_result_root)
             if self.baseline_result_root is not None

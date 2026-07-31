@@ -1,0 +1,392 @@
+{
+  "scenario": {
+    "id": "red_blue_6v4_liaoning",
+    "name": "红蓝 6V4 辽宁舰协同反舰场景",
+    "time": null,
+    "timeZone": null,
+    "summary": "红方6个作战单元对蓝方4个水面目标实施舰机协同反舰打击。",
+    "source": "all_舰机协同.lua",
+    "schemaType": "scenario_plan",
+    "fieldSemantics": {
+      "loaded": "Lua脚本配置的装载数量。",
+      "fired": "Lua脚本计划或调度的发射数量，不等同于运行日志中确认的实际发射数量。"
+    }
+  },
+  "sides": {
+    "red": {
+      "name": "红方",
+      "unitCount": 6,
+      "awareness": "OMNI",
+      "postureToBlue": "Hostile",
+      "units": [
+        {
+          "id": "red_055_nanchang",
+          "name": "红方055南昌舰",
+          "dbid": 3883,
+          "type": "055",
+          "unitClass": "Ship",
+          "latitude": 24.8324,
+          "longitude": 128.583,
+          "heading": 135,
+          "speed": 20,
+          "proficiency": "Veteran",
+          "radar": "Active",
+          "weaponLoad": [
+            {
+              "weapon": "YJ-18 [3M54E Klub Copy]",
+              "weaponDbid": 2868,
+              "loaded": 16,
+              "fired": 13,
+              "targets": [
+                "blue_ddg113_1",
+                "blue_ddg113_2"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "red_052d_1",
+          "name": "红方052D-1昆明舰",
+          "dbid": 2296,
+          "type": "052D",
+          "unitClass": "Ship",
+          "latitude": 21.1437,
+          "longitude": 123.451,
+          "heading": 115,
+          "speed": 20,
+          "proficiency": "Veteran",
+          "radar": "Active",
+          "weaponLoad": [
+            {
+              "weapon": "YJ-18 [3M54E Klub Copy]",
+              "weaponDbid": 2868,
+              "loaded": 16,
+              "fired": 8,
+              "targets": [
+                "blue_cvn70"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "red_052d_2",
+          "name": "红方052D-2南京舰",
+          "dbid": 3586,
+          "type": "052D",
+          "unitClass": "Ship",
+          "latitude": 18.2035,
+          "longitude": 123.988,
+          "heading": 50,
+          "speed": 20,
+          "proficiency": "Veteran",
+          "radar": "Active",
+          "weaponLoad": [
+            {
+              "weapon": "YJ-18 [3M54E Klub Copy]",
+              "weaponDbid": 2868,
+              "loaded": 10,
+              "fired": 5,
+              "targets": [
+                "blue_cg59"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "red_liaoning",
+          "name": "红方辽宁舰",
+          "dbid": 2007,
+          "type": "CV",
+          "unitClass": "Ship",
+          "latitude": 25.0,
+          "longitude": 130.0,
+          "heading": 90,
+          "speed": 20,
+          "proficiency": "Veteran",
+          "radar": "Active",
+          "weaponLoad": [],
+          "aircraftCarried": [
+            "red_j15_1",
+            "red_j15_2"
+          ],
+          "note": "辽宁舰作为J-15母舰，Lua脚本未为其额外装载反舰导弹。"
+        },
+        {
+          "id": "red_j15_1",
+          "name": "J-15-1",
+          "dbid": 2496,
+          "type": "J-15",
+          "unitClass": "Aircraft",
+          "base": "red_liaoning",
+          "loadoutId": 9682,
+          "latitude": "随辽宁舰",
+          "longitude": "随辽宁舰",
+          "heading": "起飞后由航路决定",
+          "speed": "由Cruise油门控制",
+          "proficiency": "Veteran",
+          "weaponLoad": [
+            {
+              "weapon": "YJ-83K [C-802AK]",
+              "weaponDbid": 2137,
+              "loaded": 4,
+              "fired": 4,
+              "targets": [
+                "blue_ddg113_1"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "red_j15_2",
+          "name": "J-15-2",
+          "dbid": 2496,
+          "type": "J-15",
+          "unitClass": "Aircraft",
+          "base": "red_liaoning",
+          "loadoutId": 9682,
+          "latitude": "随辽宁舰",
+          "longitude": "随辽宁舰",
+          "heading": "起飞后由航路决定",
+          "speed": "由Cruise油门控制",
+          "proficiency": "Veteran",
+          "weaponLoad": [
+            {
+              "weapon": "YJ-83K [C-802AK]",
+              "weaponDbid": 2137,
+              "loaded": 4,
+              "fired": 4,
+              "targets": [
+                "blue_cg59"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "blue": {
+      "name": "蓝方",
+      "unitCount": 4,
+      "postureToRed": "Hostile",
+      "units": [
+        {
+          "id": "blue_cvn70",
+          "name": "蓝方CVN-70卡尔文森",
+          "dbid": 3551,
+          "type": "CVN-70",
+          "unitClass": "Ship",
+          "latitude": 21.5419,
+          "longitude": 129.9125,
+          "heading": 294,
+          "speed": 0,
+          "proficiency": "Veteran",
+          "radar": "Active",
+          "autodetectable": true
+        },
+        {
+          "id": "blue_cg59",
+          "name": "蓝方CG-59普林斯顿",
+          "dbid": 2862,
+          "type": "CG-59",
+          "unitClass": "Ship",
+          "latitude": 21.61,
+          "longitude": 130.1791,
+          "heading": 295,
+          "speed": 0,
+          "proficiency": "Veteran",
+          "radar": "Active",
+          "autodetectable": true
+        },
+        {
+          "id": "blue_ddg113_1",
+          "name": "蓝方DDG-113-1约翰芬恩",
+          "dbid": 4299,
+          "type": "DDG-113",
+          "unitClass": "Ship",
+          "latitude": 21.42,
+          "longitude": 130.1713,
+          "heading": 293,
+          "speed": 0,
+          "proficiency": "Veteran",
+          "radar": "Active",
+          "autodetectable": true
+        },
+        {
+          "id": "blue_ddg113_2",
+          "name": "蓝方DDG-113-2约翰芬恩",
+          "dbid": 4299,
+          "type": "DDG-113",
+          "unitClass": "Ship",
+          "latitude": 21.6,
+          "longitude": 130.2,
+          "heading": 293,
+          "speed": 0,
+          "proficiency": "Veteran",
+          "radar": "Active",
+          "autodetectable": true
+        }
+      ]
+    }
+  },
+  "strikePlan": [
+    {
+      "shooter": "red_055_nanchang",
+      "weapon": "YJ-18 [3M54E Klub Copy]",
+      "weaponDbid": 2868,
+      "loaded": 16,
+      "fired": 8,
+      "delaySeconds": 30,
+      "targets": [
+        "blue_ddg113_1"
+      ]
+    },
+    {
+      "shooter": "red_055_nanchang",
+      "weapon": "YJ-18 [3M54E Klub Copy]",
+      "weaponDbid": 2868,
+      "loaded": 16,
+      "fired": 5,
+      "delaySeconds": 33,
+      "targets": [
+        "blue_ddg113_2"
+      ],
+      "note": "loaded表示该舰总装载量，不应与上一条重复求和。"
+    },
+    {
+      "shooter": "red_052d_1",
+      "weapon": "YJ-18 [3M54E Klub Copy]",
+      "weaponDbid": 2868,
+      "loaded": 16,
+      "fired": 8,
+      "delaySeconds": 30,
+      "targets": [
+        "blue_cvn70"
+      ]
+    },
+    {
+      "shooter": "red_052d_2",
+      "weapon": "YJ-18 [3M54E Klub Copy]",
+      "weaponDbid": 2868,
+      "loaded": 10,
+      "fired": 5,
+      "delaySeconds": 30,
+      "targets": [
+        "blue_cg59"
+      ]
+    },
+    {
+      "shooter": "red_j15_1",
+      "weapon": "YJ-83K [C-802AK]",
+      "weaponDbid": 2137,
+      "loadoutId": 9682,
+      "loaded": 4,
+      "fired": 4,
+      "delaySeconds": 150,
+      "targets": [
+        "blue_ddg113_1"
+      ]
+    },
+    {
+      "shooter": "red_j15_2",
+      "weapon": "YJ-83K [C-802AK]",
+      "weaponDbid": 2137,
+      "loadoutId": 9682,
+      "loaded": 4,
+      "fired": 4,
+      "delaySeconds": 150,
+      "targets": [
+        "blue_cg59"
+      ]
+    }
+  ],
+  "sortiePlan": [
+    {
+      "aircraft": "red_j15_1",
+      "target": "blue_ddg113_1",
+      "base": "red_liaoning",
+      "launchPreparation": {
+        "timeToReadyMinutes": 0,
+        "launch": true
+      },
+      "route": [
+        {
+          "role": "mid",
+          "latitude": 23.568,
+          "longitude": 130.0685
+        },
+        {
+          "role": "approach",
+          "latitude": 22.315,
+          "longitude": 130.1285
+        }
+      ],
+      "altitudeMeters": 8000,
+      "throttle": "Cruise",
+      "fireDelaySeconds": 150,
+      "returnToBaseDelaySeconds": 270
+    },
+    {
+      "aircraft": "red_j15_2",
+      "target": "blue_cg59",
+      "base": "red_liaoning",
+      "launchPreparation": {
+        "timeToReadyMinutes": 0,
+        "launch": true
+      },
+      "route": [
+        {
+          "role": "mid",
+          "latitude": 23.644,
+          "longitude": 130.0716
+        },
+        {
+          "role": "approach",
+          "latitude": 22.4575,
+          "longitude": 130.1343
+        }
+      ],
+      "altitudeMeters": 8000,
+      "throttle": "Cruise",
+      "fireDelaySeconds": 150,
+      "returnToBaseDelaySeconds": 270
+    }
+  ],
+  "missileSummary": {
+    "YJ-18 [3M54E Klub Copy]": {
+      "weaponDbid": 2868,
+      "loaded": 42,
+      "fired": 26
+    },
+    "YJ-83K [C-802AK]": {
+      "weaponDbid": 2137,
+      "loaded": 8,
+      "fired": 8
+    },
+    "totalLoaded": 50,
+    "totalFired": 34
+  },
+  "scenarioRules": {
+    "redAwareness": "OMNI",
+    "redToBluePosture": "Hostile",
+    "blueToRedPosture": "Hostile",
+    "weaponControlStatus": {
+      "air": "0",
+      "surface": "0",
+      "subsurface": "0"
+    },
+    "blueUnitsAutodetectable": true,
+    "unitRadar": "Active",
+    "contactAcquisition": "VP_GetSide({Side='红方'}).contacts",
+    "weaponSelectionMode": "0",
+    "weaponSelectionDescription": "自动选择可用武器"
+  },
+  "notes": [
+    "Lua文件标题和打印文本标注为5V3，但MANIFEST实际定义红方6个单元、蓝方4个单元，因此JSON按6V4记录。",
+    "红方6个单元：055×1、052D×2、辽宁舰×1、J-15×2。",
+    "蓝方4个单元：CVN-70×1、CG-59×1、DDG-113×2。",
+    "052D-1与052D-2在Lua中使用不同DBID：2296与3586，JSON保留原值。",
+    "J-15使用loadoutId=9682；Lua另行调用weaponDbid=2137、每架数量4。",
+    "scenario.time与timeZone在Lua脚本中未定义，因此设为null。",
+    "strikePlan中的fired表示Lua调度的计划发射量，不表示所有武器都在仿真运行中完成实际发射。",
+    "J-15航路、8000米高度、Cruise油门、150秒攻击延迟和270秒返航延迟均按Lua原配置记录。"
+  ]
+}

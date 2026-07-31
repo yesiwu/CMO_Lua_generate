@@ -11,6 +11,7 @@ _TERMINAL_STATES = frozenset(
         "semantic_invalid",
         "unscorable",
         "execution_failed",
+        "failed",
         "runtime_defect",
         "repair_budget_exhausted",
         "cancelled_after_start",
@@ -53,7 +54,7 @@ class GenerationCompletionGate:
     def _state(outcome: Mapping[str, object]) -> str:
         state = outcome.get("final_state")
         if isinstance(state, str) and state:
-            return state
+            return state.lower()
         # Compatibility for pre-gate Phase 6 adapters.  A false or absent
         # success flag remains non-terminal and therefore blocks side effects.
         return "completed" if outcome.get("success") is True else "not_started"

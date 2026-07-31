@@ -14,6 +14,7 @@ import json
 import traceback
 from dataclasses import asdict
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Callable, Protocol
 
 # Phase4 修复相关请求/结果模型、错误分类路由、策略补丁安全校验器
@@ -74,12 +75,21 @@ class CandidateEvaluationWorkflow:
     def evaluate(self, request: CandidateRequest) -> CandidateOutcome:
         """单候选完整主流程入口，循环执行编译-仿真-修复直到成功/达到修复上限/不可修复"""
         # 初始化本候选隔离文件仓库，所有产物写入独立沙箱目录
-        store = CandidateArtifactStore(request.candidate_dir, request.candidate_id)
+        store = CandidateArtifactStore(
+            request.candidate_dir,
+            request.candidate_id,
+            allow_existing=request.reuse_existing_artifacts,
+        )
         machine = CandidateStateMachine() # 流程状态机，记录每一步流转
         strategy = request.strategy      # 当前待评估作战策略
         # 全局变量记录原始Lua、最终Lua、修复尝试计数、补丁应用计数
         original_lua = final_lua = None
-        attempts = invocations = applied = 0
+        attempts = (
+            self._next_attempt_index(store)
+            if request.reuse_existing_artifacts
+            else 0
+        )
+        invocations = applied = 0
         plan = manifest = None
         runtime_plan = None
         applied_runtime_keys: set[tuple[str, str]] = set()
@@ -146,7 +156,10 @@ class CandidateEvaluationWorkflow:
                 record = self._runner.run(
                     lua_path=lua_path,
                     timeout_seconds=request.timeout_seconds,
-                    round_number=attempts,
+                    # Each dynamic batch job owns a fresh RunArtifactStore run.
+                    # The attempt index belongs to the candidate directory and
+                    # CMO operation ID, while a fresh CmoRunner run starts at 0.
+                    round_number=0,
                     run_id=f"{request.candidate_id}_{attempts:02d}",
                     audit_profile=self._audit_profile(request),
                 )
@@ -160,17 +173,25 @@ class CandidateEvaluationWorkflow:
 
                 # 分支A：仿真执行完全成功，进入Phase3解析打分
                 if record.result.success:
-                    evaluation = self._phase3.evaluate(
-                        run_result=record.result,
-                        run_id=record.run_paths.run_id,
-                        scenario=request.scenario,
-                        plan=plan,
-                        score_compilation=request.native_score_compilation,
-                        generation_manifest=manifest,
-                        output_dir=store.path(f"{attempt_dir}/phase3"),
-                        candidate_id=request.candidate_id,
-                    )
+                    evaluation = (
+                        self._official_score_only_evaluation(
+                            record=record,
+                            store=store,
+                            attempt_dir=attempt_dir,
+                        )
+                        if request.official_score_only
+                        else self._phase3.evaluate(
+                            run_result=record.result,
+                            run_id=record.run_paths.run_id,
+                            scenario=request.scenario,
+                            plan=plan,
+                            score_compilation=request.native_score_compilation,
+                            generation_manifest=manifest,
+                            output_dir=store.path(f"{attempt_dir}/phase3"),
+                            candidate_id=request.candidate_id,
+                        )
                     # 校验1：仿真数据冲突（理论得分与CMO原生分数不一致）
+                    )
                     if evaluation.reconciliation.status == "result_integrity_failed":
                         return self._finish(store, machine, request, strategy, original_lua, final_lua, attempts, invocations, applied, CandidateFailureReason.RESULT_INTEGRITY_FAILED, evaluation=evaluation)
                     # 校验2：语义校验失败（攻击偏离策略、资源越权等）
@@ -206,7 +227,7 @@ class CandidateEvaluationWorkflow:
                     return self._finish(store, machine, request, strategy, original_lua, final_lua, attempts, invocations, applied, CandidateFailureReason.COMPLETED, evaluation=evaluation)
 
                 # 分支B：CMO仿真执行报错，进入修复分支判断
-                reason = self._execution_reason(record)
+                reason = self._execution_reason(record.result)
                 # 无报错对象 / 已达到最大修复次数，直接判定修复预算耗尽
                 if record.result.error is None or attempts > request.max_repairs:
                     final_fail = CandidateFailureReason.REPAIR_BUDGET_EXHAUSTED if attempts > request.max_repairs else reason
@@ -268,6 +289,77 @@ class CandidateEvaluationWorkflow:
             return CandidateFailureReason.LUA_SYNTAX_ERROR
         return CandidateFailureReason.LUA_RUNTIME_ERROR
 
+    @staticmethod
+    def _next_attempt_index(store: CandidateArtifactStore) -> int:
+        """Continue a resumed slot in a fresh attempt directory."""
+        attempts_root = store.path("attempts")
+        if not attempts_root.is_dir():
+            return 0
+        indices: list[int] = []
+        for path in attempts_root.iterdir():
+            if not path.is_dir() or not path.name.startswith("attempt_"):
+                continue
+            suffix = path.name.removeprefix("attempt_")
+            if suffix.isdecimal():
+                indices.append(int(suffix))
+        return max(indices, default=-1) + 1
+
+    @staticmethod
+    def _official_score_only_evaluation(*, record, store, attempt_dir: str):
+        """Read the sole execution score from the completed slot's summary."""
+        result_root = (
+            record.result.batch_result_dir
+            or record.result.process_result.batch_result_dir
+        )
+        summary_path = None
+        if result_root is not None and Path(result_root).is_dir():
+            summaries = sorted(Path(result_root).rglob("execution-summary.json"))
+            if summaries:
+                summary_path = summaries[0]
+
+        final = None
+        diagnostic: dict[str, object] = {
+            "cmo_started": True,
+            "cmo_success": bool(record.result.success),
+            "results_dir": str(result_root) if result_root is not None else None,
+            "summary_path": str(summary_path) if summary_path is not None else None,
+        }
+        if summary_path is not None:
+            try:
+                payload = json.loads(summary_path.read_text(encoding="utf-8"))
+                official = payload.get("official_score") if isinstance(payload, dict) else None
+                value = official.get("final") if isinstance(official, dict) else None
+                if isinstance(value, (int, float)) and not isinstance(value, bool):
+                    final = value
+                    store.write_json(f"{attempt_dir}/execution-summary.json", payload)
+            except (OSError, json.JSONDecodeError):
+                pass
+        diagnostic["official_score"] = final
+        diagnostic["scoreable"] = final is not None
+        store.write_json(f"{attempt_dir}/execution-diagnostic.json", diagnostic)
+        return SimpleNamespace(
+            reconciliation=SimpleNamespace(status="valid"),
+            semantic_validation=SimpleNamespace(
+                semantic_valid=True,
+                scoreable=final is not None,
+            ),
+            # Simplified official-score mode does not parse Phase 3 attack
+            # episodes, but downstream repair-signal handling still expects a
+            # structured collection.
+            attack_episodes=(),
+            metrics=SimpleNamespace(execution_success=True),
+            reward_breakdown=None,
+            native_snapshot=SimpleNamespace(
+                native_score_final=final,
+                score_source=(
+                    "execution-summary.json#/official_score/final"
+                    if final is not None
+                    else None
+                ),
+                execution_fidelity="unknown",
+            ),
+        )
+
     def _transition(self, store, machine, state, reason, attempt, refs=(), error=None):
         """状态机流转封装：更新状态并写入轨迹日志"""
         machine.transition(state, reason=reason, attempt=attempt, refs=refs, error=error)
@@ -293,6 +385,15 @@ class CandidateEvaluationWorkflow:
             "ScenarioId": request.scenario.scenario_id,
             "CandidateId": request.candidate_id,
             "ScoringSideId": request.native_score_compilation.score_spec.rules[0].score_side_id,
+            "Sides": [
+                {
+                    "SideId": side_id,
+                    "CmoSideId": side_id,
+                    "CmoSideName": side_id,
+                    "DisplayName": side_id,
+                }
+                for side_id in sorted({unit.side_id for unit in request.scenario.units})
+            ],
             "AttackWaveWindowSeconds": 60,
             "Units": [
                 {"StableId": unit.unit_id, "SideId": unit.side_id, "Name": unit.name, "PlatformDbid": unit.dbid}

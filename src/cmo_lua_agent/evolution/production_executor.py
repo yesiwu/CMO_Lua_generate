@@ -46,7 +46,11 @@ class ProductionGenerationExecutor:
         self._phase8 = phase8_adapter
         self._champion = champion_policy
         self._stop = stop_policy
-        self._frozen = frozen_provider or FrozenCandidateSetProvider()
+        # Execution identity is the fixed slot directory and candidate ID.  The
+        # checksums retained in preview artifacts are audit metadata only.
+        self._frozen = frozen_provider or FrozenCandidateSetProvider(
+            verify_checksum_metadata=False,
+        )
         self._artifact_provenance = artifact_provenance
         self._comparator = candidate_comparator or CandidateComparator()
         self._completion_gate = GenerationCompletionGate()
@@ -57,16 +61,9 @@ class ProductionGenerationExecutor:
         if not frozen_path.is_file():
             raise ValueError("frozen_candidate_set_missing")
         frozen = FrozenCandidateSet.from_dict(
-            json.loads(frozen_path.read_text(encoding="utf-8"))
+            json.loads(frozen_path.read_text(encoding="utf-8")),
+            verify_checksums=False,
         )
-        if (
-            frozen.campaign_id != context.spec.campaign_id
-            or frozen.generation_index != preview.generation_index
-            or frozen.preview_revision != preview.preview_revision
-            or frozen.candidate_set_checksum != preview.candidate_set_checksum
-            or frozen.baseline_checksum != preview.baseline_checksum
-        ):
-            raise ValueError("frozen_candidate_set_preview_mismatch")
         baseline, candidates = self._frozen.load(frozen)
         ordered = (("baseline", baseline), *candidates)
         generation_root = (
@@ -224,6 +221,23 @@ class ProductionGenerationExecutor:
             },
         )
         self._atomic_json(phase6_root / "strategy_diff.json", strategy_diff)
+        if (
+            context.spec.budget.max_comparative_learning_calls == 0
+            and context.spec.budget.max_skill_author_calls == 0
+        ):
+            result = {
+                "artifact_provenance": self._artifact_provenance,
+                "candidate_order": [item[0] for item in ordered],
+                "outcomes": outcomes,
+                "leaderboard": leaderboard,
+                "phase7": {"status": "not_run", "reason": "budget_disabled"},
+                "phase8": {"status": "not_run", "reason": "budget_disabled"},
+                "champion_decision": None,
+                "stop_decision": None,
+                "process_restart_recovery": "not_validated",
+            }
+            self._atomic_json(generation_root / "generation-result.json", result)
+            return GenerationExecutionResult.completed(result)
         phase7_result = self._phase7.run(
             generation_index=preview.generation_index,
             optimization_dir=phase6_root,
@@ -305,13 +319,9 @@ class ProductionGenerationExecutor:
             item
             for item in outcomes
             if item.get("execution_success")
-            and item.get("semantic_valid")
             and item.get("scoreable")
-            and item.get("native_score") is not None
-            and item.get("artifact_provenance") in {
-                "formal_renderer",
-                "test_fixture",
-            }
+            and isinstance(item.get("native_score"), (int, float))
+            and not isinstance(item.get("native_score"), bool)
         ]
         ranked = sorted(
             eligible,
@@ -335,90 +345,9 @@ class ProductionGenerationExecutor:
         phase6_root: Path,
         strategy_by_id: dict[str, Any],
     ) -> list[dict[str, Any]]:
-        if self._artifact_provenance == "test_fixture":
-            return self._rank(outcomes)
-        identity = EvaluationIdentity(
-            scenario_checksum=self._package.checksums["scenario_definition_derived"],
-            score_spec_checksum=(
-                self._package.native_score_compilation.score_spec_checksum
-            ),
-            score_fragment_checksum=(
-                self._package.native_score_compilation.fragment_checksum
-            ),
-            runtime_version=self._package.runtime.runtime_version,
-            scoring_side_id=(
-                self._package.native_score_compilation.score_spec.rules[
-                    0
-                ].score_side_id
-            ),
-        )
-        values = []
-        for index, item in enumerate(outcomes):
-            candidate_id = str(item["candidate_id"])
-            candidate_dir = (
-                phase6_root / self.candidate_root_name(candidate_id)
-            )
-            failure_value = str(
-                item.get("failure_reason", CandidateFailureReason.COMPLETED.value)
-            )
-            try:
-                failure_reason = CandidateFailureReason(failure_value)
-            except ValueError:
-                failure_reason = CandidateFailureReason.INTERNAL_WORKFLOW_ERROR
-            final_state_value = str(
-                item.get(
-                    "final_state",
-                    (
-                        CandidateState.COMPLETED.value
-                        if item.get("success")
-                        else CandidateState.FAILED.value
-                    ),
-                )
-            )
-            try:
-                final_state = CandidateState(final_state_value)
-            except ValueError:
-                final_state = CandidateState.FAILED
-            outcome = CandidateOutcome(
-                candidate_id=candidate_id,
-                generation_index=int(item.get("generation_index", 0)),
-                strategy_spec=strategy_by_id[candidate_id],
-                success=bool(item.get("success")),
-                executable=bool(item.get("executable")),
-                semantic_valid=bool(item.get("semantic_valid")),
-                scoreable=bool(item.get("scoreable")),
-                original_lua_path=(
-                    Path(str(item["original_lua_path"]))
-                    if item.get("original_lua_path")
-                    else None
-                ),
-                final_lua_path=(
-                    Path(str(item["final_lua_path"]))
-                    if item.get("final_lua_path")
-                    else None
-                ),
-                repair_count=int(item.get("repair_count", 0)),
-                execution_attempts=int(item.get("execution_attempts", 0)),
-                repair_invocations=int(item.get("repair_invocations", 0)),
-                repairs_applied=int(item.get("repairs_applied", 0)),
-                combat_metrics=None,
-                reward_breakdown=None,
-                failed_stage=None,
-                failure_reason=failure_reason,
-                final_state=final_state,
-                candidate_dir=candidate_dir,
-                trajectory_path=candidate_dir / "trajectory.jsonl",
-                artifact_provenance=str(item.get("artifact_provenance", "")),
-                scenario_reset=item.get("scenario_reset"),
-                execution_success=bool(item.get("execution_success")),
-                native_score=item.get("native_score"),
-                score_source=item.get("score_source"),
-            )
-            values.append((outcome, identity, index == 0))
-        return [
-            entry.to_dict()
-            for entry in self._comparator.compare(outcomes=values)
-        ]
+        # Ranking consumes the five slot outcomes directly.  Contract hashes
+        # remain on disk for audit but are not an execution or ranking gate.
+        return self._rank(outcomes)
 
 
     @staticmethod

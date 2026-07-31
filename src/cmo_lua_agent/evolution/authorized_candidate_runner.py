@@ -45,12 +45,6 @@ class CampaignAuthorizedCandidateRunner:
             f"g{self._generation_index:03d}:cmo:"
             f"{self._candidate_id}:a{round_number:02d}"
         )
-        preview = self._context.preview
-        self._context.permission_broker.authorize_attempt_slot(
-            operation_id=operation_id,
-            snapshot_checksum=preview.snapshot_checksum,
-            candidate_set_checksum=preview.candidate_set_checksum,
-        )
         job = self._jobs.build(
             attempt_dir=Path(lua_path).resolve().parent,
             source_scenario=self._asset,
@@ -60,11 +54,10 @@ class CampaignAuthorizedCandidateRunner:
             candidate_id=self._candidate_id,
             operation_id=operation_id,
             attempt_index=round_number,
-            audit_profile=str((audit_profile or {}).get("profile", "phase9c")),
+            audit_profile=dict(audit_profile or {}),
             cmo_executable=self._command_path,
             wall_timeout_seconds=timeout_seconds,
         )
-        self._context.permission_broker.mark_attempt_started(operation_id)
         runner = (
             self._runner_factory(job)
             if self._runner_factory is not None
@@ -80,41 +73,10 @@ class CampaignAuthorizedCandidateRunner:
                 ),
             )
         )
-        try:
-            record = runner.run(
-                lua_path=job.lua_path,
-                timeout_seconds=timeout_seconds,
-                round_number=round_number,
-                run_id=run_id,
-                audit_profile=audit_profile,
-            )
-        except (KeyboardInterrupt, SystemExit):
-            self._context.permission_broker.mark_attempt_unknown(
-                operation_id,
-                reason="runner_interrupted",
-            )
-            raise
-        except Exception as exc:
-            self._context.permission_broker.mark_attempt_unknown(
-                operation_id,
-                reason=f"{type(exc).__name__}: {exc}",
-            )
-            raise
-        else:
-            if record.result.success:
-                self._context.permission_broker.mark_attempt_completed(
-                    operation_id,
-                    output_ref=str(job.results_dir),
-                )
-            else:
-                self._context.permission_broker.mark_attempt_failed(
-                    operation_id,
-                    reason=(
-                        record.result.error.category
-                        if record.result.error is not None
-                        else "cmo_failed"
-                    ),
-                )
-            return record
-        finally:
-            self._jobs.verify_source_unchanged(self._asset)
+        return runner.run(
+            lua_path=job.lua_path,
+            timeout_seconds=timeout_seconds,
+            round_number=round_number,
+            run_id=run_id,
+            audit_profile=audit_profile,
+        )

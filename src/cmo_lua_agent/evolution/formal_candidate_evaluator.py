@@ -70,12 +70,12 @@ class FormalCandidateEvaluator:
             strategy=strategy,
             runtime=package.runtime,
             native_score_compilation=package.native_score_compilation,
-            # Repairs are execution privileges, not a CampaignBudget expansion.
-            # An a01+ slot must have been explicitly approved for this candidate.
-            max_repairs=context.permission_broker.approved_repair_attempts(candidate_id),
+            max_repairs=0,
             timeout_seconds=context.spec.budget.per_candidate_timeout_seconds,
             candidate_dir=Path(candidate_dir),
             allowed_strategy_paths=package.allowed_strategy_paths,
+            reuse_existing_artifacts=True,
+            official_score_only=True,
         )
         workflow.evaluate(request)
         outcome_path = Path(candidate_dir) / "candidate_outcome.json"

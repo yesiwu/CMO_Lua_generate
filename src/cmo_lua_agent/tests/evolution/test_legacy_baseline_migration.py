@@ -65,6 +65,14 @@ def test_production_package_derives_baseline_without_reading_legacy_asset(
         "baseline_strategy_derived"
     ]
     assert "baseline_strategy_legacy" not in first.checksums
+    names = {unit.unit_id: unit.name for unit in first.scenario.units}
+    assert {
+        rule.target_unit_name
+        for rule in first.native_score_compilation.score_spec.rules
+    } == {
+        names[rule.target_unit_id]
+        for rule in first.native_score_compilation.score_spec.rules
+    }
 
 
 def test_explicit_legacy_baseline_override_is_rejected() -> None:

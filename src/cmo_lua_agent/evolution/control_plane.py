@@ -298,18 +298,27 @@ class GenerationWorkerManager:
             return existing
         # 查询是否存在已经结束的历史Worker
         previous = next((item for item in store.list_workers() if item.campaign_id == spec.campaign_id and item.generation_index == preview.generation_index), None)
-        if previous is not None and previous.status in {"completed", "paused", "cancelled_incomplete", "reconciliation_required"}:
+        if previous is not None and previous.status in {"completed", "cancelled_incomplete"}:
             return previous
         # 创建世代顶层操作记录（PHASE6 = 世代整体执行操作）
+        # A paused or failed prior worker must not reuse its phase-level ledger
+        # operation.  Slot directories retain the actual execution provenance;
+        # this identifier only distinguishes a subsequent explicit resume.
         resume_epoch = sum(
             1
             for item in store.list_workers()
             if item.campaign_id == spec.campaign_id
             and item.generation_index == preview.generation_index
-            and item.status == "awaiting_approval"
         )
-        op_checksum = _checksum({"preview": preview.checksum, "contract": spec.contract_checksum, "resume_epoch": resume_epoch})
-        operation = store.prepare_operation(generation_index=preview.generation_index, kind=OperationKind.PHASE6, input_checksum=op_checksum)
+        # A resumed slot run receives a fresh ledger operation.  It is an audit
+        # identifier, not a checksum gate for the frozen strategies.
+        operation = store.prepare_operation(
+            generation_index=preview.generation_index,
+            kind=OperationKind.PHASE6,
+            input_checksum=(
+                f"slot-run-{resume_epoch:03d}:g{preview.generation_index:03d}"
+            ),
+        )
         # 操作处于启动/未知状态，代表进程崩溃遗留任务，需要外部对账
         if operation.status in (OperationStatus.STARTED, OperationStatus.UNKNOWN):
             return WorkerState(operation.operation_id, spec.campaign_id, preview.generation_index, "reconciliation_required", "recovered")
@@ -673,34 +682,8 @@ class EvolutionCampaignService:
         preview = store.get_preview(generation_index)
         if preview is None:
             raise ValueError("generation_preview_required")
-        if approval_id is not None:
-            control = store.load_control_state()
-            raw_grant = control.get("approvals", {}).get(approval_id)
-            if raw_grant is None or not raw_grant.get("valid", False):
-                raise ValueError("generation_approval_required")
-            grant = GenerationApprovalGrant.from_dict(raw_grant)
-            state = store.load_campaign_state()
-            if (
-                grant.campaign_id != campaign_id
-                or grant.generation_index != generation_index
-                or grant.preview_revision != preview.preview_revision
-                or grant.snapshot_checksum != preview.snapshot_checksum
-                or grant.candidate_set_checksum != preview.candidate_set_checksum
-                or grant.baseline_checksum != preview.baseline_checksum
-                or grant.contract_checksum != spec.contract_checksum
-                or grant.budget_revision != state.budget_revision
-            ):
-                raise ValueError("generation_approval_required")
-            return self._workers.start_or_get(
-                store=store,
-                spec=spec,
-                preview=preview,
-                executor=self._generation_executor,
-            )
-        approval = store.get_active_approval(campaign_id=campaign_id, generation_index=generation_index)
-        # 校验预览、审批单完整性与时效性
-        if preview is None or approval is None or not self._approval_is_current(store, spec, preview, approval):
-            raise ValueError("generation_approval_required")
+        # Approval records remain available for audit, but generation execution
+        # is no longer gated on them.  Slot directories own result provenance.
         return self._workers.start_or_get(store=store, spec=spec, preview=preview, executor=self._generation_executor)
 
     def persist_permission_grant(

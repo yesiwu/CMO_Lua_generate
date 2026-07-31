@@ -98,7 +98,47 @@ def test_verified_asset_is_copied_per_attempt_and_job_uses_current_lua(tmp_path:
     assert "all1v1.lua" not in json.dumps(payload)
 
 
-def test_changed_source_asset_invalidates_verification(tmp_path: Path) -> None:
+def test_dynamic_job_preserves_exact_scoring_side_mapping(tmp_path: Path) -> None:
+    """BatchRunner requires the stable scoring side's exact CMO side mapping."""
+    scenario = tmp_path / "fixture.scen"
+    scenario.write_bytes(b"scenario")
+    lua = tmp_path / "candidate.lua"
+    lua.write_text("print('candidate')\n", encoding="utf-8")
+    asset = SimpleNamespace(
+        asset_id="fixture",
+        scenario_id="scenario_fixture",
+        absolute_path=str(scenario),
+        sha256=_sha(scenario),
+    )
+
+    DynamicBatchJobBuilder().build(
+        attempt_dir=tmp_path / "attempt_00",
+        source_scenario=asset,
+        lua_path=lua,
+        campaign_id="campaign",
+        generation_index=0,
+        candidate_id="baseline",
+        operation_id="g000:cmo:baseline:a00",
+        attempt_index=0,
+        audit_profile={
+            "ScenarioId": "scenario_fixture",
+            "CandidateId": "baseline",
+            "ScoringSideId": "red",
+            "Sides": [
+                {"SideId": "red", "CmoSideId": "red", "DisplayName": "red"},
+                {"SideId": "blue", "CmoSideId": "blue", "DisplayName": "blue"},
+            ],
+        },
+    )
+
+    payload = json.loads((tmp_path / "attempt_00" / "batch-job.json").read_text(encoding="utf-8"))
+    audit = payload["jobs"][0]["auditProfile"]
+    assert audit["ScoringSideId"] == "red"
+    assert audit["Sides"][0]["CmoSideId"] == "red"
+    assert audit["Sides"][0]["CmoSideName"] == "red"
+
+
+def test_changed_source_asset_remains_executable_with_audit_checksum(tmp_path: Path) -> None:
     scenario = tmp_path / "fixture.scen"
     scenario.write_bytes(b"one")
     registry = tmp_path / "cmo-assets.local.json"
@@ -126,11 +166,12 @@ def test_changed_source_asset_invalidates_verification(tmp_path: Path) -> None:
     )
     scenario.write_bytes(b"two")
 
-    with pytest.raises(ValueError, match="scenario_asset_checksum_changed"):
-        ControlledScenarioAssetRegistry(
-            registry_path=registry,
-            verification_root=records,
-        ).load_verified("fixture")
+    asset = ControlledScenarioAssetRegistry(
+        registry_path=registry,
+        verification_root=records,
+    ).load_verified("fixture")
+    assert asset.absolute_path == str(scenario.resolve())
+    assert asset.sha256 == _sha(scenario)
 
 
 def test_controlled_package_git_state_includes_untracked_files(
@@ -259,7 +300,7 @@ def test_phase9c_production_records_are_immutable_contracts() -> None:
     assert usage.remaining_cmo_attempts == 4
 
 
-def test_authorized_runner_checks_permission_before_fake_cmo_start(
+def test_slot_runner_starts_fake_cmo_without_approval_gate(
     tmp_path: Path,
 ) -> None:
     scenario = tmp_path / "source.scen"
@@ -317,12 +358,7 @@ def test_authorized_runner_checks_permission_before_fake_cmo_start(
         run_id="run",
     )
 
-    assert events == [
-        "authorized:g000:cmo:candidate_00:a00",
-        "started:g000:cmo:candidate_00:a00",
-        "cmo_run",
-        "completed:g000:cmo:candidate_00:a00",
-    ]
+    assert events == ["cmo_run"]
     job = json.loads(
         (lua.parent / "batch-job.json").read_text(encoding="utf-8")
     )

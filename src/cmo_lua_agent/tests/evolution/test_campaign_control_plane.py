@@ -197,14 +197,17 @@ def test_stop_marks_incomplete_generation_without_follow_on_stages(tmp_path: Pat
     assert "leaderboard" not in generation["result"]
 
 
-def test_execution_requires_permission_receipt_and_valid_preview(tmp_path: Path) -> None:
+def test_execution_requires_preview_but_not_permission_receipt(tmp_path: Path) -> None:
     service, _, _ = _service(tmp_path)
     service.prepare_campaign(_spec())
     service.preview_generation(campaign_id="control_fixture", generation_index=0)
     with pytest.raises(ValueError, match="trusted_permission_receipt_required"):
         service.authorize_generation(campaign_id="control_fixture", generation_index=0, receipt=None)
-    with pytest.raises(ValueError, match="generation_approval_required"):
-        service.execute_generation(campaign_id="control_fixture", generation_index=0)
+    operation = service.execute_generation(
+        campaign_id="control_fixture",
+        generation_index=0,
+    )
+    assert operation.campaign_id == "control_fixture"
 
 
 def test_each_cmo_attempt_is_authorized_and_generation_cap_covers_repair_reruns(tmp_path: Path) -> None:

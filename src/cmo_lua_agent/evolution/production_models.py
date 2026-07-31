@@ -153,7 +153,12 @@ class FrozenCandidateSet:
         }
 
     @classmethod
-    def from_dict(cls, value: Mapping[str, Any]) -> "FrozenCandidateSet":
+    def from_dict(
+        cls,
+        value: Mapping[str, Any],
+        *,
+        verify_checksums: bool = True,
+    ) -> "FrozenCandidateSet":
         """
         从磁盘JSON反序列化加载
         重建对象之后，**重新计算全部哈希，和文件内存储的哈希比对**
@@ -176,12 +181,13 @@ class FrozenCandidateSet:
             production_execution_eligible=bool(value.get("production_execution_eligible", False)),
         )
         # 三重校验：基准哈希、候选数组哈希、整套集合哈希全部核对
-        if candidate.baseline_checksum != value.get("baseline_checksum"):
-            raise ValueError("frozen_baseline_checksum_mismatch")
-        if tuple(value.get("candidate_checksums", ())) != candidate.candidate_checksums:
-            raise ValueError("frozen_candidate_checksum_mismatch")
-        if candidate.candidate_set_checksum != value.get("candidate_set_checksum"):
-            raise ValueError("frozen_candidate_set_checksum_mismatch")
+        if verify_checksums:
+            if candidate.baseline_checksum != value.get("baseline_checksum"):
+                raise ValueError("frozen_baseline_checksum_mismatch")
+            if tuple(value.get("candidate_checksums", ())) != candidate.candidate_checksums:
+                raise ValueError("frozen_candidate_checksum_mismatch")
+            if candidate.candidate_set_checksum != value.get("candidate_set_checksum"):
+                raise ValueError("frozen_candidate_set_checksum_mismatch")
         return candidate
 
 

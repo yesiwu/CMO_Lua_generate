@@ -67,7 +67,7 @@ def test_scored_assembly_places_one_fragment_after_initialization_and_before_att
     assert "ScenEdit_SetTrigger" in content
 
 
-def test_scored_assembly_rejects_scenario_or_checksum_mismatch() -> None:
+def test_scored_assembly_rejects_scenario_id_but_records_checksum_metadata() -> None:
     scenario, _, runtime, plan, compilation = _inputs()
     wrong_plan = ExecutionPlanCompiler().compile(
         scenario=scenario,
@@ -87,14 +87,14 @@ def test_scored_assembly_rejects_scenario_or_checksum_mismatch() -> None:
         )
 
     object.__setattr__(compilation, "fragment_checksum", "0" * 64)
-    with pytest.raises(ScoredLuaAssemblyError, match="fragment_checksum_mismatch"):
-        ScoredLuaAssemblyService().render(
-            scenario=scenario,
-            strategy=load_baseline_strategy(BASELINE_ROOT / "legacy" / "baseline_strategy.pre-scenario-ir.json").strategy,
-            plan=plan,
-            runtime=runtime,
-            native_score_compilation=compilation,
-        )
+    result = ScoredLuaAssemblyService().render(
+        scenario=scenario,
+        strategy=load_baseline_strategy(BASELINE_ROOT / "legacy" / "baseline_strategy.pre-scenario-ir.json").strategy,
+        plan=plan,
+        runtime=runtime,
+        native_score_compilation=compilation,
+    )
+    assert result.generation_manifest["native_score_fragment_checksum"] == "0" * 64
 
 
 def test_scored_assembly_is_deterministic_and_records_score_checksums() -> None:
