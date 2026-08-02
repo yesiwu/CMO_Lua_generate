@@ -31,7 +31,7 @@ class _GenerationExperienceRetriever:
 
 
 class ProductionKnowledgeSnapshotProvider:
-    """Freeze production experience and exact-cohort curated skill visibility."""
+    """Freeze production experience and mission-scoped curated Skill visibility."""
 
     _SKILL_ID = "cmo_naval_air_strategy_patterns"
 

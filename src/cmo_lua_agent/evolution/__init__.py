@@ -7,6 +7,10 @@ from cmo_lua_agent.evolution.models import (
     EvolutionCampaignSpec,
 )
 from cmo_lua_agent.evolution.control_plane import EvolutionCampaignService
+from cmo_lua_agent.evolution.generation_experiment_profile import (
+    GenerationExperimentProfile,
+    GenerationExperimentProfileBuilder,
+)
 
 __all__ = [
     "CampaignBudget",
@@ -14,4 +18,6 @@ __all__ = [
     "CampaignState",
     "EvolutionCampaignSpec",
     "EvolutionCampaignService",
+    "GenerationExperimentProfile",
+    "GenerationExperimentProfileBuilder",
 ]

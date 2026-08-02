@@ -4,7 +4,7 @@ Phase 7 不可变契约模型。刻意剔除 Lua 代码与原始 CMO 日志，
 """
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from enum import StrEnum
 from typing import Any
 
@@ -41,6 +41,10 @@ class CandidateLearningView:
     evidence_integrity: dict[str, Any]     # 证据完整性校验结果
     environment: dict[str, str]            # 运行环境版本契约
     evidence_refs: tuple[str, ...]         # 依赖原始证据文件相对路径，用于审计溯源
+    scoring_evidence_status: str = "MISSING"  # COMPLETE/DERIVED/MISSING/CONFLICTING
+    candidate_quality: dict[str, Any] = field(default_factory=dict)
+    auxiliary_execution_analysis: dict[str, Any] = field(default_factory=dict)
+    auxiliary_execution_analysis: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         """序列化为字典，用于送入LLM"""
@@ -130,6 +134,8 @@ class ExperienceCandidate:
     model_confidence: float                  # LLM原始置信度
     strategy_dimensions: tuple[str, ...]     # 该经验影响的策略维度
     schema_version: str = "2"                # Experience Store 正式记录版本
+    scoring_evidence_status: str = "MISSING"
+    skill_promotion_eligible: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         """Return the stable persisted form consumed by ``ExperienceStore``."""

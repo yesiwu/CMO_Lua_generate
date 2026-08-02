@@ -405,7 +405,7 @@ class SkillEvolutionWorkflow:
             else (
                 "pending_review"
                 if pending_paths
-                else "no_eligible_experience"
+                else "NO_PROMOTABLE_EXPERIENCE"
             )
         )
 
@@ -431,11 +431,13 @@ class SkillEvolutionWorkflow:
         if not store.records.is_dir():
             return ()
         records: list[dict[str, Any]] = []
+        excluded_ids = store.excluded_ids()
         for path in sorted(store.records.glob("*.json")):
             value = _object(path)
             if "experience_id" not in value:
                 raise ValueError(f"非法的Phase7经验记录文件：{path}")
-            records.append(value)
+            if value["experience_id"] not in excluded_ids:
+                records.append(value)
         return tuple(records)
 
     def _write_initial_artifacts(

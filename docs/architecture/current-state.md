@@ -43,7 +43,7 @@ execute_cmo
 - Phase 7：只读 Learning View、Bundle、受控对比分析、
   `ExperienceCandidate`、幂等 Experience Store、Retriever 和
   Experience Card。
-- Phase 8：经验聚合、Cohort 隔离、确定性资格验证、晋升决策、
+- Phase 8：经验聚合、任务范围经验复用、确定性资格验证、晋升决策、
   Pending Skill 组装、三类静态回归、人工审批和 Active Skill 加载
   的工程链已经实现。
 - Phase 9：已新增受控 Campaign 的基础编排层：不可变 Campaign 契约、
@@ -319,10 +319,10 @@ Pause/Stop、恢复规则和 Phase 6/7/8 调用边界的 Fake 工程验收，不
 - `candidate-quality-report.json` is canonical and deterministic. It records
   per-candidate leaf, operation, platform, dimension, surface/sortie, role,
   and baseline-distance facts, plus all six pairwise Jaccard/value comparisons.
-- The batch gate requires unique strategy checksums, at least four operations,
-  three semantic dimensions, two platform types, one surface-plus-sortie
-  candidate, distinct operation sets across candidates 00/01/02, and the C2
-  conservative-control scope for candidate 03.
+- The batch gate keeps only executable correctness: four candidates, valid
+  StrategySpec values, executable Patch paths, effective changes, and no
+  identical strategy in the same batch. Role coverage, operation/dimension
+  breadth, platform coverage, and pairwise similarity are quality warnings.
 - Same changed paths with different scalar values are reported in Pairwise
   data and are not rejected solely for sharing a path. A failed quality gate
   writes the report and trace checksum, sets Preview to
@@ -358,6 +358,49 @@ Pause/Stop、恢复规则和 Phase 6/7/8 调用边界的 Fake 工程验收，不
   reject it rather than using a fallback.
 - A real Baseline CMO Golden still waits for deployment of the updated
   BatchRunner.
+
+## Generation 001 Planning Boundary
+
+- Phase 8 may finish with `NO_PROMOTABLE_EXPERIENCE`; this is a successful
+  aggregation outcome, not a failed Campaign. It does not invoke SkillAuthor,
+  create Pending/Curated Skills, or approve anything.
+- Legacy Phase 7 records remain immutable. Malformed condition arrays and
+  `unclassified` keys are kept in their original record files and excluded by
+  a separate local eligibility index.
+- `EvolutionCampaignWorkflow` owns rolling Baseline selection. Its
+  `GenerationExperimentProfileBuilder` only freezes bounded four-role
+  air-tactics constraints for the next Preview; it does not select a Strategy,
+  inspect scores, or create a parallel candidate-planning path.
+- `air_tactics` is registered only for the manual Lua template executor.
+  The generic LuaRenderer rejects a non-default air-tactics profile rather
+  than silently losing execution semantics.
+- `baseline/6v4/manual-template/manual_baseline_template.lua` is the only
+  formal Lua renderer for the active-strike Campaign package. Its fixed state
+  machine is immutable; StrategySpec/ExecutionPlan changes are projected only
+  through declared template slots. The former
+  `candidate_baseline_fixed.lua` lives under `manual-template/reference/` as
+  a read-only comparison artifact, never as a production renderer input.
+- BatchRunner `COMPLETE` evidence generation remains a separate follow-up;
+  no CMO effectiveness validation is claimed by this planning work.
+
+## Simplified Experience Reuse And Audit
+
+- Experience aggregation and retrieval use `experience_key` plus mission type
+  as their shared scope. Runtime, Renderer, ScoreSpec, and scenario metadata
+  remain attached to evidence and influence ranking, but no longer partition
+  otherwise related tactical hypotheses.
+- Curated Skills now use task-scoped storage below their Skill ID, with no
+  Cohort directory. Environment metadata is retained for operator review;
+  old Cohort-scoped packages remain readable only for migration compatibility.
+- Phase 8 promotion now requires a small body of evidence: two independent
+  optimization rounds, two support observations, support exceeding contradict
+  observations, usable official scoring, acceptable evidence quality, and no
+  semantic-invalid strategies. Scenario count and execution-fidelity metadata
+  are informative, not separate promotion gates.
+- Checksums, Git revision, dirty-worktree state, snapshots, candidate sets,
+  and approval metadata are retained in artifacts for audit. They do not block
+  normal CMO execution. Slot ownership, CMO budget, Strategy/Plan/Lua
+  compilation, Results parsing, and valid `official_score` remain hard checks.
 
 ## 健康检查
 

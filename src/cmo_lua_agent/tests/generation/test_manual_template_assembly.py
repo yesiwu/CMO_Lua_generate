@@ -46,7 +46,12 @@ def test_manual_template_assembly_renders_baseline_and_mapped_candidate() -> Non
     # RenderedLua normalizes the terminal newline. The Lua body is otherwise
     # byte-identical to the operator-provided tested baseline.
     assert baseline.rendered.content == (
-        ROOT / "baseline" / "6v4" / "manual-template" / "candidate_baseline_fixed.lua"
+        ROOT
+        / "baseline"
+        / "6v4"
+        / "manual-template"
+        / "reference"
+        / "candidate_baseline_fixed.reference.lua"
     ).read_text(encoding="utf-8").rstrip()
     assert baseline.generation_manifest["artifact_provenance"] == "manual_template"
 

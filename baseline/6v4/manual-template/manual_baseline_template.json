@@ -1,6 +1,7 @@
 {
   "template_lua": "manual_baseline_template.lua",
-  "rendered_baseline_lua": "candidate_baseline_fixed.lua",
+  "baseline_reference_lua": "reference/candidate_baseline_fixed.reference.lua",
+  "baseline_reference_policy": "read_only_reference_not_renderer_input",
   "renderer": "literal_token_replace_v1",
   "fixed_logic_policy": "Only tokens declared in slots may change; all other Lua text must remain byte-identical.",
   "target_catalog": {
@@ -161,37 +162,45 @@
       "token": "{{attack_j15_1_delay_seconds}}",
       "type": "number",
       "baseline_value": 5,
-      "strategy_path": "/attacks/3/delay_seconds",
+      "strategy_path": "/sorties/0/air_tactics/launch_delay_seconds",
       "minimum": 0,
-      "maximum": 600
+      "maximum": 120
     },
     {
       "name": "j15_1_ingress_altitude_m",
       "token": "{{j15_1_ingress_altitude_m}}",
       "type": "number",
       "baseline_value": 200,
-      "strategy_path": "/attacks/3/route/ingress_altitude_m"
+      "strategy_path": "/sorties/0/air_tactics/ingress_altitude_m",
+      "minimum": 100,
+      "maximum": 2000
     },
     {
       "name": "j15_1_popup_altitude_m",
       "token": "{{j15_1_popup_altitude_m}}",
       "type": "number",
       "baseline_value": 9500,
-      "strategy_path": "/attacks/3/route/popup_altitude_m"
+      "strategy_path": "/sorties/0/air_tactics/popup_altitude_m",
+      "minimum": 3000,
+      "maximum": 12000
     },
     {
       "name": "j15_1_popup_range_nm",
       "token": "{{j15_1_popup_range_nm}}",
       "type": "number",
       "baseline_value": 95,
-      "strategy_path": "/attacks/3/route/popup_range_nm"
+      "strategy_path": "/sorties/0/air_tactics/popup_range_nm",
+      "minimum": 30,
+      "maximum": 140
     },
     {
       "name": "j15_1_attack_range_nm",
       "token": "{{j15_1_attack_range_nm}}",
       "type": "number",
       "baseline_value": 80,
-      "strategy_path": "/attacks/3/attack_range_nm"
+      "strategy_path": "/sorties/0/air_tactics/attack_range_nm",
+      "minimum": 30,
+      "maximum": 140
     },
     {
       "name": "j15_1_mid_lat_offset",
@@ -240,37 +249,45 @@
       "token": "{{attack_j15_2_delay_seconds}}",
       "type": "number",
       "baseline_value": 20,
-      "strategy_path": "/attacks/4/delay_seconds",
+      "strategy_path": "/sorties/1/air_tactics/launch_delay_seconds",
       "minimum": 0,
-      "maximum": 600
+      "maximum": 120
     },
     {
       "name": "j15_2_ingress_altitude_m",
       "token": "{{j15_2_ingress_altitude_m}}",
       "type": "number",
       "baseline_value": 200,
-      "strategy_path": "/attacks/4/route/ingress_altitude_m"
+      "strategy_path": "/sorties/1/air_tactics/ingress_altitude_m",
+      "minimum": 100,
+      "maximum": 2000
     },
     {
       "name": "j15_2_popup_altitude_m",
       "token": "{{j15_2_popup_altitude_m}}",
       "type": "number",
       "baseline_value": 9500,
-      "strategy_path": "/attacks/4/route/popup_altitude_m"
+      "strategy_path": "/sorties/1/air_tactics/popup_altitude_m",
+      "minimum": 3000,
+      "maximum": 12000
     },
     {
       "name": "j15_2_popup_range_nm",
       "token": "{{j15_2_popup_range_nm}}",
       "type": "number",
       "baseline_value": 95,
-      "strategy_path": "/attacks/4/route/popup_range_nm"
+      "strategy_path": "/sorties/1/air_tactics/popup_range_nm",
+      "minimum": 30,
+      "maximum": 140
     },
     {
       "name": "j15_2_attack_range_nm",
       "token": "{{j15_2_attack_range_nm}}",
       "type": "number",
       "baseline_value": 80,
-      "strategy_path": "/attacks/4/attack_range_nm"
+      "strategy_path": "/sorties/1/air_tactics/attack_range_nm",
+      "minimum": 30,
+      "maximum": 140
     },
     {
       "name": "j15_2_mid_lat_offset",

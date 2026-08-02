@@ -18,7 +18,7 @@ def _read(path: Path) -> dict[str, Any]:
     :return: 解析后的字典
     :raises ValueError: JSON根不是Object（数组/基础类型）时报错
     """
-    value = json.loads(path.read_text(encoding="utf-8"))
+    value = json.loads(path.read_text(encoding="utf-8-sig"))
     if not isinstance(value, dict):
         raise ValueError(f"expected JSON object: {path}")
     return value
@@ -34,7 +34,8 @@ class CandidateLearningViewBuilder:
         *,
         candidate_dir: Path,
         is_baseline: bool,
-        strategy_diff: tuple[str, ...] = ()
+        strategy_diff: tuple[str, ...] = (),
+        candidate_quality: dict[str, Any] | None = None,
     ) -> CandidateLearningView:
         """
         加载单条候选方案所有仿真制品，组装标准化学习视图
@@ -49,7 +50,9 @@ class CandidateLearningViewBuilder:
         attempt = root / "attempts" / "attempt_00"
 
         # 查找执行摘要文件（全局搜索，取第一个匹配文件）
-        summary_path = next(iter(attempt.rglob("execution-summary.json")), None)
+        summary_path = attempt / "execution-summary.json"
+        if not summary_path.is_file():
+            summary_path = next(iter(attempt.rglob("execution-summary.json")), None)
         summary = _read(summary_path) if summary_path else {}
 
         # 提取官方得分区块，不存在则为空字典
@@ -69,6 +72,11 @@ class CandidateLearningViewBuilder:
             and isinstance(final_score, int)
         )
 
+        diagnostic_path = attempt / "execution-diagnostic.json"
+        diagnostic = _read(diagnostic_path) if diagnostic_path.is_file() else {}
+        analysis_path = next(iter(attempt.rglob("llm-analysis.json")), None)
+        auxiliary_execution_analysis = self._load_auxiliary_execution_analysis(analysis_path)
+
         # 计划vs实际执行状态初始值
         planned = {
             "attacker": "unknown",
@@ -83,12 +91,22 @@ class CandidateLearningViewBuilder:
         if timeline_usable:
             planned["attacker"] = planned["target"] = planned["fire_quantity"] = planned["sorties"] = "partial"
             fidelity = "partial"
-        # 证据结果不完整，标记保真度失败
-        if not integrity.get("results_complete", False):
+        # Execution fidelity is independent from score-event completeness.  A
+        # completed real CMO run with a result summary is verified even when
+        # score evidence is reconstructed later.
+        if outcome.get("execution_success") and diagnostic.get("cmo_started") and diagnostic.get("cmo_success") and summary_path:
+            fidelity = "verified"
+        elif outcome.get("execution_success") and summary_path:
+            fidelity = "partial"
+        elif not summary_path:
             fidelity = "failed"
 
         # 收集有效证据文件相对路径（用于溯源）
-        refs = tuple(str(p.relative_to(root)) for p in (summary_path, timeline) if p and p.is_file())
+        refs = tuple(
+            str(p.relative_to(root))
+            for p in (summary_path, timeline, diagnostic_path, analysis_path)
+            if p and p.is_file()
+        )
 
         # 加载最终策略文件，不存在则为空字典
         strategy = _read(root / "strategy" / "final_strategy.json") if (root / "strategy" / "final_strategy.json").is_file() else {}
@@ -120,7 +138,50 @@ class CandidateLearningViewBuilder:
             # 运行环境版本信息，缺失填充unknown
             environment={k: str(manifest.get(k, "unknown")) for k in ("runtime_version", "renderer_version", "score_spec_checksum")},
             evidence_refs=refs,
+            scoring_evidence_status=str(summary.get("scoring_evidence_status", "MISSING")),
+            candidate_quality=dict(candidate_quality or {}),
+            auxiliary_execution_analysis=auxiliary_execution_analysis,
         )
+
+    @staticmethod
+    def _load_auxiliary_execution_analysis(path: Path | None) -> dict[str, Any]:
+        """Project selected event facts from BatchRunner's auxiliary analysis.
+
+        This deliberately keeps official score, losses, and damage sourced from
+        ``execution-summary.json``.  The selected event/engagement aggregates
+        help the learning model compare execution behaviour without exposing a
+        full AAR, SQLite database, or raw timeline.
+        """
+        if path is None or not path.is_file():
+            return {"available": False}
+        try:
+            value = _read(path)
+        except (OSError, ValueError, json.JSONDecodeError):
+            return {"available": False, "status": "unreadable"}
+
+        def selected(items: object, fields: tuple[str, ...], limit: int) -> list[dict[str, Any]]:
+            if not isinstance(items, list):
+                return []
+            return [
+                {field: item.get(field) for field in fields if field in item}
+                for item in items[:limit]
+                if isinstance(item, dict)
+            ]
+
+        return {
+            "available": True,
+            "source": "llm-analysis.json",
+            "key_events": selected(
+                value.get("KeyEvents"),
+                ("SimTime", "Category", "SideId", "TargetId", "Target", "Result"),
+                20,
+            ),
+            "weapon_engagements": selected(
+                value.get("WeaponEngagements"),
+                ("SideId", "PlatformId", "WeaponId", "TargetId", "Fired", "Hits", "Kills", "Misses", "Unresolved"),
+                20,
+            ),
+        }
 
 
 class GenerationLearningBundleBuilder:
@@ -155,7 +216,9 @@ class GenerationLearningBundleBuilder:
         valid = tuple(
             item.candidate_id
             for item in candidates
-            if item.execution_success and item.scoreable and item.semantic_valid and item.execution_fidelity == "verified"
+            if item.execution_success and item.scoreable and item.semantic_valid
+            and item.execution_fidelity == "verified"
+            and item.scoring_evidence_status in {"COMPLETE", "DERIVED"}
         )
         # 无效候选 = 全部候选剔除有效候选
         invalid = tuple(item.candidate_id for item in candidates if item.candidate_id not in valid)

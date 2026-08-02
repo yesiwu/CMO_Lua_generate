@@ -54,7 +54,6 @@ def test_production_package_derives_baseline_without_reading_legacy_asset(
     )
     loader = ControlledCampaignInputPackageLoader(
         project_root=PROJECT_ROOT,
-        require_clean_worktree=False,
     )
 
     first = loader.load("red_blue_6v4_liaoning_v1")
@@ -76,6 +75,28 @@ def test_production_package_derives_baseline_without_reading_legacy_asset(
         names[rule.target_unit_id]
         for rule in first.native_score_compilation.score_spec.rules
     }
+
+
+def test_controlled_package_records_dirty_worktree_without_rejecting_it(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        ControlledScenarioAssetRegistry,
+        "load_verified",
+        lambda _self, _asset_id: _asset(),
+    )
+    monkeypatch.setattr(
+        ControlledCampaignInputPackageLoader,
+        "_git_state",
+        lambda _self: ("fixture-commit", True, "fixture-diff"),
+    )
+
+    package = ControlledCampaignInputPackageLoader(
+        project_root=PROJECT_ROOT,
+    ).load("red_blue_6v4_liaoning_v1")
+
+    assert package.working_tree_dirty is True
+    assert package.diff_checksum == "fixture-diff"
 
 
 def test_explicit_legacy_baseline_override_is_rejected() -> None:

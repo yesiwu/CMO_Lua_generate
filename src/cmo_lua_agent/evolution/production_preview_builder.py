@@ -21,6 +21,7 @@ from pathlib import Path
 
 # 预览载荷模型，预览完成后返回给执行器
 from cmo_lua_agent.evolution.control_plane import GenerationPreviewPayload
+from cmo_lua_agent.evolution.generation_experiment_profile import GenerationExperimentProfileBuilder
 # 演化模型：冻结候选集、全局哈希工具
 from cmo_lua_agent.evolution.production_models import (
     FrozenCandidateSet,
@@ -300,7 +301,7 @@ class ProductionPreviewBuilder:
         携带上一代失败特征、允许改动路径、单次最多改动叶子节点约束。
         """
         profile = getattr(self._package, "baseline_failure_profile", None)
-        return {
+        context = {
             "generation_index": generation_index,
             "candidate_roles": {
                 "candidate_00": "exploit",
@@ -317,6 +318,15 @@ class ProductionPreviewBuilder:
             "failure_profile_available": False,
             "conservative_max_changed_leaves": 1,
         }
+        # The profile is a frozen constraint input, not a second planner and
+        # never selects or rewrites the rolling baseline.
+        if generation_index > 0:
+            experiment_profile = GenerationExperimentProfileBuilder().build(
+                generation_index=generation_index
+            )
+            context["generation_experiment_profile"] = experiment_profile.to_dict()
+            context["generation_experiment_profile_checksum"] = experiment_profile.checksum
+        return context
 
     @staticmethod
     def _payload(frozen, snapshot, diffs, frozen_path, diff_path, calls):

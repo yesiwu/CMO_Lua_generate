@@ -367,7 +367,6 @@ class SkillPackageAssembler:
             self._store.root
             / "pending"
             / skill_id
-            / cohort_id
             / version
         )
 
@@ -638,7 +637,6 @@ class SkillAssetStore:
             self.root
             / "curated"
             / _safe(skill_id, "skill_id")
-            / _safe(cohort_id, "cohort_id")
         )
         version_path = curated / "versions" / _safe(version, "version")
         if version_path.exists():
@@ -676,7 +674,6 @@ class SkillAssetStore:
             self.root
             / "approvals"
             / skill_id
-            / cohort_id
             / version
             / "approval-record.json"
         )
@@ -787,7 +784,7 @@ class SkillAssetStore:
         actor = _required(actor, "actor")
         reason = _required(reason, "reason")
         pending = self._pending_path(skill_id, cohort_id, version)
-        rejected = self.root / "rejected" / skill_id / cohort_id / version
+        rejected = self.root / "rejected" / skill_id / version
         # 已经迁移至驳回目录的场景，直接校验记录一致性
         if not pending.exists() and rejected.is_dir():
             existing = self._metadata(rejected)
@@ -945,7 +942,6 @@ class SkillAssetStore:
             self.root
             / "pending"
             / _safe(skill_id, "skill_id")
-            / _safe(cohort_id, "cohort_id")
             / _safe(version, "version")
         )
 

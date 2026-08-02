@@ -4,13 +4,14 @@
   "scenario_ir": "6v4ScenarioIR_baseline_v3.json",
   "template_lua": "manual_baseline_template.lua",
   "template_mapping": "manual_baseline_template.json",
-  "baseline_golden_lua": "candidate_baseline_fixed.lua",
+  "baseline_reference_lua": "reference/candidate_baseline_fixed.reference.lua",
+  "baseline_reference_policy": "read_only_reference_not_renderer_input",
   "scoring_side_id": "red",
   "artifact_provenance": "manual_template",
   "formal_strategy_spec_compatible": false,
   "candidate_generation_contract": "declared_template_slots_only",
   "template_lua_sha256": "6cd56c7bc96bcf9badaee45c84cb4c827193de68236f0c85c43bd73b2c56b07b",
   "template_mapping_sha256": "1e567c686aa12227144ec85734ef1d231e4f977130c254b524744553de11d391",
-  "baseline_golden_lua_sha256": "61c8fe18bd6a8a430b68362b63d76bedab8fc7ccb13d00bb251e2d87b1259f37",
+  "baseline_reference_lua_sha256": "61c8fe18bd6a8a430b68362b63d76bedab8fc7ccb13d00bb251e2d87b1259f37",
   "source_scenario_ir_sha256": "4251e87c3a11a87086dc25da36a3e222aca8f0cdf1408f580f2f8c000b327b7c"
 }

@@ -46,7 +46,9 @@ class CandidateNoveltyValidator:
                 raise ValueError("novelty_duplicate_candidate")
             fingerprints.add(candidate.strategy_checksum)
             if candidate.strategy_checksum in history:
-                raise ValueError("novelty_repeated_history")
+                generation_context.setdefault("novelty_warnings", []).append(
+                    f"duplicate_experiment_warning:{candidate.candidate_id}"
+                )
 
             changed = strategy_leaf_diff(baseline, candidate.strategy_spec, allowed)
             if not changed:

@@ -18,9 +18,14 @@ class ExperienceKeyNormalizer:
     # 别名映射：简写key → 完整带命名空间标准key
     _aliases = {
         "target_deconfliction": "naval_air_anti_surface.target_deconfliction",
+        "target_concentration": "naval_air_anti_surface.target_concentration",
         "salvo_timing": "naval_air_anti_surface.salvo_timing",
-        "aircraft_early_loss": "naval_air_anti_surface.aircraft_early_loss"
+        "fire_quantity": "naval_air_anti_surface.fire_quantity",
+        "aircraft_route": "naval_air_anti_surface.aircraft_route",
+        "aircraft_early_loss": "naval_air_anti_surface.aircraft_early_loss",
+        "ammunition_reserve": "naval_air_anti_surface.ammunition_reserve",
     }
+    _allowed = frozenset(_aliases.values())
 
     def normalize(self, key: str) -> str:
         """
@@ -32,9 +37,7 @@ class ExperienceKeyNormalizer:
         raw = key.strip().lower()
         key = self._aliases.get(raw, raw)
         # 校验命名空间格式：naval_air_anti_surface.xxx，仅一个点，前后仅字母数字下划线
-        if (key.startswith("naval_air_anti_surface.")
-                and key.count(".") == 1
-                and all(part.replace("_", "").isalnum() for part in key.split("."))):
+        if key in self._allowed:
             return key
         return "unclassified"
 
@@ -46,8 +49,56 @@ class ExperienceStore:
     """
     def __init__(self, root: Path) -> None:
         self.root = Path(root)
+        self.exclusions = self.root / "exclusions.jsonl"
         self.records = self.root / "records"    # 单条经验独立JSON文件存放目录
         self.index = self.root / "index.jsonl"   # 全局轻量索引（加速检索，避免遍历全部json）
+
+    def excluded_ids(self) -> set[str]:
+        if not self.exclusions.is_file():
+            return set()
+        return {
+            str(row["experience_id"])
+            for line in self.exclusions.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+            for row in (json.loads(line),)
+            if isinstance(row, dict) and isinstance(row.get("experience_id"), str)
+        }
+
+    def record_exclusions(self, rows: tuple[dict[str, str], ...]) -> None:
+        """Persist eligibility exclusions without modifying immutable records."""
+        existing = {
+            json.dumps(json.loads(line), ensure_ascii=False, sort_keys=True)
+            for line in self.exclusions.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        } if self.exclusions.is_file() else set()
+        for row in rows:
+            if set(row) != {"experience_id", "reason"}:
+                raise ValueError("experience_exclusion_schema_invalid")
+            existing.add(json.dumps(row, ensure_ascii=False, sort_keys=True))
+        self._atomic(self.exclusions, "".join(item + "\n" for item in sorted(existing)))
+
+    def exclude_non_retrievable_records(self) -> tuple[dict[str, str], ...]:
+        """Classify legacy malformed records without changing their JSON bodies."""
+        rows: list[dict[str, str]] = []
+        if not self.records.is_dir():
+            return ()
+        for path in sorted(self.records.glob("*.json")):
+            value = json.loads(path.read_text(encoding="utf-8"))
+            reason = None
+            if value.get("experience_key") == "unclassified":
+                reason = "unclassified_experience_key"
+            for field in ("applicable_conditions", "counter_conditions"):
+                conditions = value.get(field)
+                if isinstance(conditions, list) and conditions and all(
+                    isinstance(item, str) and len(item) == 1 for item in conditions
+                ):
+                    reason = "malformed_condition_array"
+            if reason and isinstance(value.get("experience_id"), str):
+                rows.append({"experience_id": value["experience_id"], "reason": reason})
+        result = tuple(rows)
+        if result:
+            self.record_exclusions(result)
+        return result
 
     def save(self, candidates: tuple[ExperienceCandidate, ...]) -> None:
         """
@@ -130,7 +181,7 @@ class ExperienceRetriever:
         """
         检索可用历史经验，并按经验类型分组截断
         :param current_optimization_id: 当前正在执行的优化轮ID（排除本轮生成的经验，避免自引用）
-        :param environment: 当前运行环境契约，必须与经验环境完全匹配
+        :param environment: 当前运行环境上下文；任务类型用于筛选，其余字段用于排序
         :param allowed_dimensions: 当前优化关心的策略维度集合
         :return: (正向战术经验, 负向/反例经验, 诊断/证据局限类经验)
         """
@@ -143,22 +194,39 @@ class ExperienceRetriever:
         rows = [json.loads(line) for line in index_lines if line.strip()]
 
         matched_items = []
+        excluded_ids = self.store.excluded_ids()
         for row in rows:
+            if row["experience_id"] in excluded_ids:
+                continue
             # 过滤规则1：排除本轮自身产出经验
             if row["source_optimization_id"] == current_optimization_id:
                 continue
-            # 过滤规则2：环境契约必须完全一致，任意版本不匹配直接丢弃
-            env_match_ok = all(row["environment"].get(k) == v for k, v in environment.items())
-            if not env_match_ok:
+            # Environment is evidence context, not a retrieval partition.  A
+            # differently-versioned but same-mission observation is still a
+            # useful hypothesis for a later CMO experiment.
+            record_environment = row.get("environment", {})
+            requested_mission = environment.get("mission_type")
+            record_mission = record_environment.get("mission_type")
+            if (
+                requested_mission
+                and record_mission
+                and record_mission != requested_mission
+            ):
                 continue
 
             # 读取完整经验记录
             full_data = json.loads((self.store.root / row["record_path"]).read_text(encoding="utf-8"))
             # 计算策略维度重叠数量，作为排序首要依据
             overlap_count = len(set(full_data["strategy_dimensions"]) & set(allowed_dimensions))
+            metadata_matches = sum(
+                record_environment.get(key) == value
+                for key, value in environment.items()
+                if key != "mission_type"
+            )
             matched_items.append((
                 -overlap_count,
                 -float(full_data["evidence_quality"]),
+                -metadata_matches,
                 -float(full_data["model_confidence"]),
                 full_data
             ))
@@ -169,7 +237,7 @@ class ExperienceRetriever:
         # 转换为轻量化经验卡片 ExperienceCard
         all_cards = []
         for item_tuple in matched_items:
-            _, _, _, item = item_tuple
+            _, _, _, _, item = item_tuple
             card = ExperienceCard(
                 experience_key=item["experience_key"],
                 experience_type=item["experience_type"],

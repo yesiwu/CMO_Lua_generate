@@ -244,7 +244,9 @@ class GenerationApprovalGrant:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, value: Mapping[str, Any]) -> "GenerationApprovalGrant":
+    def from_dict(
+        cls, value: Mapping[str, Any], *, verify_checksum: bool = True
+    ) -> "GenerationApprovalGrant":
         """加载磁盘上的授权凭证，重新校验checksum，防止被篡改"""
         data = dict(value)
         data["approved_operation_ids"] = tuple(data["approved_operation_ids"])
@@ -254,7 +256,10 @@ class GenerationApprovalGrant:
         expected_checksum = body.pop("checksum")
         body.pop("valid", None)
         # 重新计算哈希和ID，与存储内容比对
-        if canonical_checksum(body) != expected_checksum or expected_id != f"approval_{expected_checksum[:24]}":
+        if verify_checksum and (
+            canonical_checksum(body) != expected_checksum
+            or expected_id != f"approval_{expected_checksum[:24]}"
+        ):
             raise ValueError("generation_approval_checksum_mismatch")
         return grant
 

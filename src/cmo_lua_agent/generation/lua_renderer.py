@@ -48,6 +48,19 @@ class LuaRenderer:
         runtime: LuaRuntimeProfile,
         instrumentation: SystemInstrumentationBundle | None = None,
     ) -> RenderedLua:
+        # The generic renderer has no air-tactics state machine.  Refuse a
+        # non-default profile instead of silently dropping a formal strategy
+        # change; manual-template assembly is the only executor for it.
+        for operation in plan.operations:
+            tactics = operation.parameters.get("air_tactics")
+            if tactics is not None and tactics != {
+                "launch_delay_seconds": 5,
+                "ingress_altitude_m": 200,
+                "popup_altitude_m": 9500,
+                "popup_range_nm": 95,
+                "attack_range_nm": 80,
+            }:
+                raise ValueError("air_tactics_requires_manual_template")
         context = _build_context(plan, execution_telemetry_enabled=runtime.execution_telemetry_enabled)
         lines: list[str] = []
         source_map: dict[str, LuaSourceSpan] = {}

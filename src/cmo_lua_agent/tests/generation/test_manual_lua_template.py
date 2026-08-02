@@ -97,7 +97,9 @@ def test_operator_authored_6v4_template_renders_its_checked_in_baseline_golden()
         )
     )
 
-    assert baseline.content == (root / "candidate_baseline_fixed.lua").read_text(encoding="utf-8")
+    assert baseline.content == (
+        root / "reference" / "candidate_baseline_fixed.reference.lua"
+    ).read_text(encoding="utf-8")
     assert all(slot.token not in candidate.content for slot in package.slots.values())
     assert "target_id='blue_cvn70', delay_seconds=60" in candidate.content
     assert candidate.changed_slots == ("attack_055_delay_seconds", "attack_055_target", "candidate_id")

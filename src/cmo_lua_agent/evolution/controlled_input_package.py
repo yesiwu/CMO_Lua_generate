@@ -69,6 +69,16 @@ class ControlledCampaignInputPackageLoader:
         "/sorties/1/route/0/latitude",
         "/sorties/1/route/0/longitude",
         "/sorties/1/target_id",
+        "/sorties/0/air_tactics/launch_delay_seconds",
+        "/sorties/0/air_tactics/ingress_altitude_m",
+        "/sorties/0/air_tactics/popup_altitude_m",
+        "/sorties/0/air_tactics/popup_range_nm",
+        "/sorties/0/air_tactics/attack_range_nm",
+        "/sorties/1/air_tactics/launch_delay_seconds",
+        "/sorties/1/air_tactics/ingress_altitude_m",
+        "/sorties/1/air_tactics/popup_altitude_m",
+        "/sorties/1/air_tactics/popup_range_nm",
+        "/sorties/1/air_tactics/attack_range_nm",
     )
 
     def __init__(
@@ -78,7 +88,6 @@ class ControlledCampaignInputPackageLoader:
         registry_path: Path | None = None,
         verification_root: Path | None = None,
         baseline_result_root: Path | None = None,
-        require_clean_worktree: bool = True,
     ) -> None:
         self.root = Path(project_root).resolve()
         self.registry_path = (
@@ -91,7 +100,6 @@ class ControlledCampaignInputPackageLoader:
             if verification_root is not None
             else self.root / "data" / "asset-verifications"
         )
-        self.require_clean_worktree = require_clean_worktree
         self.baseline_result_root = (
             Path(baseline_result_root).resolve()
             if baseline_result_root is not None
@@ -113,24 +121,16 @@ class ControlledCampaignInputPackageLoader:
         if not all(path.is_file() for path in paths.values()):
             raise ValueError("controlled_input_package_incomplete")
         commit, dirty, diff_checksum = self._git_state()
-        if self.require_clean_worktree and dirty:
-            raise ValueError("working_tree_dirty")
         scenario_ir = self._load_json(paths["scenario_ir"])
         derived = BaselineStrategyBuilder().build(scenario_ir)
         scenario = derived.scenario
         template_root = baseline_root / "manual-template"
-        manual_template = (
-            ManualLuaTemplatePackage.load(template_root)
-            if (template_root / "manual_baseline_template.json").is_file()
-            else None
-        )
+        if not (template_root / "manual_baseline_template.json").is_file():
+            raise ValueError("manual_template_renderer_required")
+        manual_template = ManualLuaTemplatePackage.load(template_root)
         baseline = BaselineStrategy(
             strategy=derived.strategy,
-            source_lua=(
-                "baseline/6v4/manual-template/manual_baseline_template.lua"
-                if manual_template is not None
-                else "json_data/6v4ScenarioIR.json"
-            ),
+            source_lua="baseline/6v4/manual-template/manual_baseline_template.lua",
             verified=True,
         )
         # Score-rule unit names must come from the same ScenarioIR-derived
@@ -168,17 +168,16 @@ class ControlledCampaignInputPackageLoader:
             "scenario_asset": asset.sha256,
         })
         allowed_paths = self._ALLOWED_PATHS
-        if manual_template is not None:
-            mapped_paths = {
-                slot.strategy_path
-                for slot in manual_template.slots.values()
-                if slot.strategy_path is not None
-            }
-            allowed_paths = tuple(path for path in self._ALLOWED_PATHS if path in mapped_paths)
-            if not allowed_paths:
-                raise ValueError("manual_template_no_executable_strategy_paths")
-            checksums["manual_template"] = self._sha(template_root / "manual_baseline_template.lua")
-            checksums["manual_template_mapping"] = self._sha(template_root / "manual_baseline_template.json")
+        mapped_paths = {
+            slot.strategy_path
+            for slot in manual_template.slots.values()
+            if slot.strategy_path is not None
+        }
+        allowed_paths = tuple(path for path in self._ALLOWED_PATHS if path in mapped_paths)
+        if not allowed_paths:
+            raise ValueError("manual_template_no_executable_strategy_paths")
+        checksums["manual_template"] = self._sha(template_root / "manual_baseline_template.lua")
+        checksums["manual_template_mapping"] = self._sha(template_root / "manual_baseline_template.json")
         identity = {
             "package_id": package_id,
             "checksums": checksums,
@@ -211,7 +210,7 @@ class ControlledCampaignInputPackageLoader:
             package_checksum=canonical_checksum(identity),
             scenario_ir_checksum=derived.manifest.scenario_ir_checksum,
             baseline_derivation_manifest=derived.manifest.to_dict(),
-            manual_template_root=template_root if manual_template is not None else None,
+            manual_template_root=template_root,
         )
 
     def _git_state(self) -> tuple[str, bool, str | None]:

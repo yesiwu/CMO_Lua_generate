@@ -276,6 +276,7 @@ class ExecutionPlanCompiler:
                             "sortie_id": sortie.sortie_id,
                             "aircraft_id": sortie.aircraft_id,
                             "base_unit_id": sortie.base_unit_id,
+                            "air_tactics": sortie.air_tactics.to_dict(),
                         },
                         depends_on=(configure_id,),
                         source_strategy_path=f"/strategy/sorties/{sortie_index}",
@@ -299,6 +300,7 @@ class ExecutionPlanCompiler:
                             "route": [point.to_dict() for point in sortie.route],
                             "altitude_meters": sortie.altitude_meters,
                             "throttle": sortie.throttle,
+                            "air_tactics": sortie.air_tactics.to_dict(),
                         },
                         depends_on=(airborne_id,),
                         source_strategy_path=f"/strategy/sorties/{sortie_index}",
@@ -310,6 +312,7 @@ class ExecutionPlanCompiler:
                             "sortie_id": sortie.sortie_id,
                             "aircraft_id": sortie.aircraft_id,
                             "target_id": sortie.target_id,
+                            "air_tactics": sortie.air_tactics.to_dict(),
                             "weapon_dbid": attack.weapon_dbid,
                             **(
                                 {"weapon_selection": "auto"}

@@ -12,6 +12,7 @@ from cmo_lua_agent.optimization.executable_patch_paths import (
     is_executable_patch_path,
     non_executable_patch_diagnostics,
 )
+from cmo_lua_agent.optimization.tactical_capability_registry import TacticalCapabilityRegistry
 from cmo_lua_agent.optimization.proposal_models import AssembledStrategyPatch, CandidatePatch, JsonScalar, ProposalContractError, MAX_EFFECTIVE_PATCH_LEAVES, MIN_EFFECTIVE_PATCH_LEAVES
 
 
@@ -123,6 +124,11 @@ def validate_patch_paths_executable(patch: CandidatePatch) -> None:
 
 
 def _leaf_constraint(path: str, value: JsonScalar, payload: dict[str, Any], units: dict[str, Any]) -> PatchableLeaf:
+    capability = TacticalCapabilityRegistry.default().capability_for_path(path)
+    if capability is not None:
+        return PatchableLeaf(
+            path, value, type(value).__name__, capability.minimum, capability.maximum
+        )
     tokens = _tokens(path)
     if tokens[-1] in {"latitude", "longitude"}:
         return PatchableLeaf(path, value, type(value).__name__, -90 if tokens[-1] == "latitude" else -180, 90 if tokens[-1] == "latitude" else 180)

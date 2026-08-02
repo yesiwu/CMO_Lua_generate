@@ -1,7 +1,7 @@
 {
   "version": "2.0",
   "source": {
-    "luaFile": "candidate_baseline_fixed.lua",
+    "luaFile": "reference/candidate_baseline_fixed.reference.lua",
     "luaSha256": "61c8fe18bd6a8a430b68362b63d76bedab8fc7ccb13d00bb251e2d87b1259f37",
     "runtime": "cmo_naval_air_anti_surface_instrumented@3.0.0",
     "templateLua": "manual_baseline_template.lua",

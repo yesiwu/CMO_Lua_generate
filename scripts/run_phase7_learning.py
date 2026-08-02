@@ -4,7 +4,14 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import sys
 from pathlib import Path
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+SRC_ROOT = PROJECT_ROOT / "src"
+if str(SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(SRC_ROOT))
 
 from cmo_lua_agent.agents.comparative_learning_agent import ComparativeLearningAgent
 from cmo_lua_agent.learning.store import ExperienceStore
@@ -12,9 +19,6 @@ from cmo_lua_agent.learning.workflow import GenerationLearningWorkflow
 from cmo_lua_agent.llm.client import ClaudeClient
 from cmo_lua_agent.llm.json_client import ClaudeJsonClient
 from cmo_lua_agent.llm_config import load_config
-
-
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 def _skill_snapshot() -> dict[str, str]:
@@ -29,7 +33,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "optimization_dir",
         type=Path,
-        help="existing runs/<optimization_id> directory to analyze",
+        help="existing formal Phase 6 artifact directory to analyze",
     )
     parser.add_argument(
         "--experiences-root",
@@ -43,9 +47,17 @@ def _parse_args() -> argparse.Namespace:
 def main() -> int:
     args = _parse_args()
     optimization_dir = args.optimization_dir.resolve()
-    runs_root = (PROJECT_ROOT / "runs").resolve()
-    if not optimization_dir.is_dir() or optimization_dir.parent != runs_root:
-        raise ValueError("optimization_dir must be an existing direct child of project runs/")
+    required_artifacts = (
+        "generation_result.json",
+        "leaderboard.json",
+        "strategy_diff.json",
+    )
+    if not optimization_dir.is_dir() or any(
+        not (optimization_dir / artifact).is_file() for artifact in required_artifacts
+    ):
+        raise ValueError(
+            "optimization_dir must contain formal generation_result, leaderboard, and strategy_diff artifacts"
+        )
 
     skills_before = _skill_snapshot()
     client = ClaudeJsonClient(ClaudeClient(load_config().llm))

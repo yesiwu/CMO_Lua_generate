@@ -197,7 +197,6 @@ def test_controlled_package_git_state_includes_untracked_files(
 
     _, dirty, diff_checksum = ControlledCampaignInputPackageLoader(
         project_root=tmp_path,
-        require_clean_worktree=False,
     )._git_state()
 
     assert dirty is True

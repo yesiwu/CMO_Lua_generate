@@ -4,6 +4,12 @@ from __future__ import annotations
 
 
 def semantic_dimension(path: str) -> str:
+    if "/air_tactics/launch_delay_seconds" in path:
+        return "air_launch_timing"
+    if "/air_tactics/ingress_altitude_m" in path:
+        return "air_ingress_altitude"
+    if "/air_tactics/popup_" in path or "/air_tactics/attack_range_nm" in path:
+        return "air_attack_range"
     if path.endswith("/target_id") or path.endswith("/target_ids") or "/target_ids/" in path:
         return "target_assignment"
     if path.endswith("/fire_quantity"):

@@ -116,6 +116,46 @@ def test_workflow_replay_reuses_saved_response_without_second_llm_call(tmp_path:
     assert (root / "learning" / "generation-learning-bundle.json").is_file()
     assert (root / "learning" / "comparative-analysis.json").is_file()
     assert (root / "learning" / "experience-candidates.json").is_file()
+    comparisons = json.loads((root / "learning" / "candidate-comparisons.json").read_text(encoding="utf-8"))
+    assert [row["candidate_id"] for row in comparisons] == ["candidate_00"]
+
+
+def test_workflow_calls_llm_once_per_candidate_against_the_baseline(tmp_path: Path) -> None:
+    root = _write_minimal_optimization(tmp_path / "optimization")
+    generation_result = json.loads((root / "generation_result.json").read_text(encoding="utf-8"))
+    candidate_paths = generation_result["candidate_outcome_paths"]
+    for index in range(1, 4):
+        candidate = root / "generation_00" / f"candidate_0{index}"
+        (candidate / "attempts" / "attempt_00").mkdir(parents=True)
+        (candidate / "strategy").mkdir()
+        (candidate / "candidate_outcome.json").write_text(
+            json.dumps({"candidate_id": f"candidate_0{index}", "scoreable": False, "semantic_valid": False}),
+            encoding="utf-8",
+        )
+        (candidate / "strategy" / "final_strategy.json").write_text("{}", encoding="utf-8")
+        candidate_paths.append(str(candidate / "candidate_outcome.json"))
+    (root / "generation_result.json").write_text(json.dumps(generation_result), encoding="utf-8")
+    diffs = {f"candidate_0{index}": [] for index in range(4)}
+    (root / "strategy_diff.json").write_text(json.dumps(diffs), encoding="utf-8")
+
+    response = {"analysis": {field: [] for field in (
+        "observed_strategy_differences", "observed_execution_differences", "observed_outcome_differences",
+        "evidence_limitations", "possible_random_factors", "next_testable_hypotheses",
+    )}, "proposals": []}
+    class _JsonClient:
+        calls = 0
+        def complete_json(self, **_: object) -> object:
+            self.calls += 1
+            return response
+
+    client = _JsonClient()
+    GenerationLearningWorkflow(
+        agent=ComparativeLearningAgent(client), store=ExperienceStore(tmp_path / "experiences"),
+    ).run(root)
+
+    comparisons = json.loads((root / "learning" / "candidate-comparisons.json").read_text(encoding="utf-8"))
+    assert client.calls == 4
+    assert [row["candidate_id"] for row in comparisons] == [f"candidate_0{index}" for index in range(4)]
 
 
 def test_phase7_offline_entrypoint_is_explicit_and_never_mentions_cmo_execution() -> None:

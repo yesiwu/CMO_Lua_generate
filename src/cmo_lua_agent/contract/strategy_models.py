@@ -6,7 +6,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
@@ -211,6 +211,39 @@ class RouteWaypoint:
 
 
 @dataclass(frozen=True, slots=True)
+class AirTactics:
+    """Typed, bounded controls consumed only by the manual Lua template path."""
+
+    launch_delay_seconds: int = 5
+    ingress_altitude_m: int = 200
+    popup_altitude_m: int = 9500
+    popup_range_nm: int = 95
+    attack_range_nm: int = 80
+
+    def __post_init__(self) -> None:
+        ranges = {
+            "launch_delay_seconds": (0, 120),
+            "ingress_altitude_m": (100, 2000),
+            "popup_altitude_m": (3000, 12000),
+            "popup_range_nm": (30, 140),
+            "attack_range_nm": (30, 140),
+        }
+        for field_name, (minimum, maximum) in ranges.items():
+            value = getattr(self, field_name)
+            if not isinstance(value, int) or isinstance(value, bool) or not minimum <= value <= maximum:
+                raise ValueError(f"{field_name} must be within {minimum}..{maximum}")
+
+    def to_dict(self) -> dict[str, int]:
+        return {
+            "launch_delay_seconds": self.launch_delay_seconds,
+            "ingress_altitude_m": self.ingress_altitude_m,
+            "popup_altitude_m": self.popup_altitude_m,
+            "popup_range_nm": self.popup_range_nm,
+            "attack_range_nm": self.attack_range_nm,
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class SortieDirective:
     sortie_id: str
     aircraft_id: str
@@ -221,6 +254,7 @@ class SortieDirective:
     throttle: str
     fire_delay_seconds: int
     return_delay_seconds: int
+    air_tactics: AirTactics = field(default_factory=AirTactics)
 
     def __post_init__(self) -> None:
         for field_name in (
@@ -239,6 +273,8 @@ class SortieDirective:
         if not route or not all(isinstance(point, RouteWaypoint) for point in route):
             raise ValueError("route 至少需要一个 RouteWaypoint")
         object.__setattr__(self, "route", route)
+        if not isinstance(self.air_tactics, AirTactics):
+            raise TypeError("air_tactics must be AirTactics")
         for field_name in (
             "altitude_meters",
             "fire_delay_seconds",
@@ -257,6 +293,7 @@ class SortieDirective:
             "throttle": self.throttle,
             "fire_delay_seconds": self.fire_delay_seconds,
             "return_delay_seconds": self.return_delay_seconds,
+            "air_tactics": self.air_tactics.to_dict(),
         }
 
 
@@ -396,6 +433,7 @@ def strategy_spec_from_dict(value: dict[str, Any]) -> StrategySpec:
             throttle=item["throttle"],
             fire_delay_seconds=item["fire_delay_seconds"],
             return_delay_seconds=item["return_delay_seconds"],
+            air_tactics=AirTactics(**item.get("air_tactics", {})),
         )
         for item in value.get("sorties", [])
     )

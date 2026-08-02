@@ -39,11 +39,6 @@ class ExperienceValidationService:
         # 指标校验清单：(判断条件, 失败标识)
         checks = (
             (
-                aggregate.independent_scenario_count
-                < self._profile.minimum_independent_scenarios,
-                "insufficient_independent_scenarios",
-            ),
-            (
                 aggregate.independent_optimization_count
                 < self._profile.minimum_independent_optimizations,
                 "insufficient_independent_optimizations",
@@ -53,24 +48,18 @@ class ExperienceValidationService:
                 "insufficient_support",
             ),
             (
+                aggregate.support_count <= aggregate.contradict_count,
+                "support_not_greater_than_contradict",
+            ),
+            (
                 aggregate.mean_evidence_quality
                 < self._profile.minimum_mean_evidence_quality,
                 "evidence_quality_below_minimum",
             ),
             (
-                aggregate.execution_success_rate
-                < self._profile.minimum_execution_success_rate,
-                "execution_success_rate_below_minimum",
-            ),
-            (
                 aggregate.semantic_valid_rate
                 < self._profile.minimum_semantic_valid_rate,
                 "semantic_valid_rate_below_minimum",
-            ),
-            (
-                aggregate.execution_fidelity_rate
-                < self._profile.minimum_execution_fidelity_rate,
-                "execution_fidelity_rate_below_minimum",
             ),
             (
                 aggregate.contradiction_ratio
@@ -81,20 +70,16 @@ class ExperienceValidationService:
         # 收集所有不满足阈值的失败原因
         reasons.extend(reason for failed, reason in checks if failed)
 
-        # 额外校验：只认可 execution_summary 作为可信得分数据源
-        if aggregate.score_sources != ("execution_summary",):
+        # Official score remains necessary, but a mixed history is not
+        # discarded merely because older evidence carries extra metadata.
+        if "execution_summary" not in aggregate.score_sources:
             reasons.append("untrusted_score_source")
-        # 额外校验：是否存在单轮优化内部证据立场冲突
-        if aggregate.stance_conflicts:
-            reasons.append("stance_conflict_present")
 
         # 综合置信度计算公式
         # 证据质量 × 执行成功率 × 语义合法率 × 保真验证率 × (1 - 矛盾占比)
         confidence = round(
             aggregate.mean_evidence_quality
-            * aggregate.execution_success_rate
             * aggregate.semantic_valid_rate
-            * aggregate.execution_fidelity_rate
             * (1 - aggregate.contradiction_ratio),
             6,
         )

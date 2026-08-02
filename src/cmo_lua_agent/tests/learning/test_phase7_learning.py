@@ -11,6 +11,7 @@ from cmo_lua_agent.learning.models import (
 )
 from cmo_lua_agent.learning.store import ExperienceKeyNormalizer, ExperienceRetriever, ExperienceStore
 from cmo_lua_agent.learning.workflow import ExperienceCandidateAssembler
+from cmo_lua_agent.learning.evidence_reconstruction import ResultEvidenceReconstructor
 
 
 def test_comparative_learning_agent_has_a_single_official_import_path():
@@ -23,7 +24,7 @@ def test_comparative_learning_agent_has_a_single_official_import_path():
         importlib.import_module("cmo_lua_agent.learning.agent")
 
 def _view(cid: str, baseline=False) -> CandidateLearningView:
-    return CandidateLearningView(cid, baseline, {}, (), {}, 0, "execution-summary.json#/official_score/final", True, True, True, {}, [], [], {}, "verified", {"results_complete":True}, {"runtime_version":"2","renderer_version":"2","score_spec_checksum":"s"}, ("summary",))
+    return CandidateLearningView(cid, baseline, {}, (), {}, 0, "execution-summary.json#/official_score/final", True, True, True, {}, [], [], {}, "verified", {"results_complete":True}, {"runtime_version":"2","renderer_version":"2","score_spec_checksum":"s"}, ("summary",), "COMPLETE")
 def _bundle() -> GenerationLearningBundle:
     return GenerationLearningBundle("o1",(),{"runtime_version":"2","renderer_version":"2","score_spec_checksum":"s"},_view("baseline",True),(_view("candidate_00"),),(),{},("candidate_00",),(),("summary",))
 class _Client:
@@ -60,6 +61,23 @@ def test_agent_allows_empty_proposals_once():
 def test_agent_rejects_facts_in_proposal():
     row={"experience_key":"salvo_timing","experience_type":"tactical_positive","evidence_stance":"support","hypothesis":"h","applicable_conditions":[],"recommended_pattern":{},"counter_conditions":[],"supporting_candidate_ids":[],"contradicting_candidate_ids":[],"model_confidence":.2,"status":"candidate"}
     with pytest.raises(ValueError): ComparativeLearningAgent(_Client(_response([row]))).analyze(_bundle())
+
+
+@pytest.mark.parametrize("field", [
+    "applicable_conditions", "counter_conditions", "supporting_candidate_ids",
+    "contradicting_candidate_ids",
+])
+def test_agent_rejects_scalar_where_string_array_is_required(field: str):
+    row = {
+        "experience_key": "salvo_timing", "experience_type": "tactical_positive",
+        "evidence_stance": "support", "hypothesis": "h",
+        "applicable_conditions": [], "recommended_pattern": {},
+        "counter_conditions": [], "supporting_candidate_ids": ["candidate_00"],
+        "contradicting_candidate_ids": [], "model_confidence": .2,
+    }
+    row[field] = "not-an-array"
+    with pytest.raises(ValueError, match="must be an array of strings"):
+        ComparativeLearningAgent(_Client(_response([row]))).analyze(_bundle())
 
 
 def _proposal(
@@ -137,3 +155,141 @@ def test_normalizer_and_idempotent_store(tmp_path: Path):
 def test_retriever_excludes_current_and_prefers_quality(tmp_path: Path):
     store=ExperienceStore(tmp_path); store.save((_candidate("exp_old_low","old",.2,.9),_candidate("exp_old_high","old2",.9,.1),_candidate("exp_self","now",1,1)))
     good, _, _=ExperienceRetriever(store).retrieve(current_optimization_id="now",environment={"runtime_version":"2","renderer_version":"2","score_spec_checksum":"s"},allowed_dimensions=("attacks",)); assert [x.source_optimization_id for x in good]==["old2","old"]
+
+
+def test_retriever_keeps_related_experience_when_environment_metadata_changes(tmp_path: Path):
+    """Runtime metadata ranks evidence; it must not hide a related tactic."""
+    store = ExperienceStore(tmp_path)
+    item = _candidate("exp_other_runtime", "older", .8, .4)
+    payload = item.to_dict()
+    payload["environment"] = {
+        "runtime_version": "3",
+        "renderer_version": "9",
+        "score_spec_checksum": "different-score-spec",
+        "mission_type": "naval_air_anti_surface",
+    }
+    store.records.mkdir(parents=True)
+    (store.records / "exp_other_runtime.json").write_text(
+        __import__("json").dumps(payload), encoding="utf-8"
+    )
+    store.save(())
+
+    positive, _, _ = ExperienceRetriever(store).retrieve(
+        current_optimization_id="now",
+        environment={
+            "runtime_version": "2",
+            "renderer_version": "2",
+            "score_spec_checksum": "s",
+            "mission_type": "naval_air_anti_surface",
+        },
+        allowed_dimensions=("attacks",),
+    )
+
+    assert [item.source_optimization_id for item in positive] == ["older"]
+
+
+def test_retriever_keeps_related_experience_when_environment_metadata_changes(tmp_path: Path):
+    """Runtime metadata ranks evidence; it must not hide a related tactic."""
+    store = ExperienceStore(tmp_path)
+    item = _candidate("exp_other_runtime", "older", .8, .4)
+    payload = item.to_dict()
+    payload["environment"] = {
+        "runtime_version": "3",
+        "renderer_version": "9",
+        "score_spec_checksum": "different-score-spec",
+        "mission_type": "naval_air_anti_surface",
+    }
+    store.records.mkdir(parents=True)
+    (store.records / "exp_other_runtime.json").write_text(
+        __import__("json").dumps(payload), encoding="utf-8"
+    )
+    store.save(())
+
+    positive, _, _ = ExperienceRetriever(store).retrieve(
+        current_optimization_id="now",
+        environment={
+            "runtime_version": "2",
+            "renderer_version": "2",
+            "score_spec_checksum": "s",
+            "mission_type": "naval_air_anti_surface",
+        },
+        allowed_dimensions=("attacks",),
+    )
+
+    assert [item.source_optimization_id for item in positive] == ["older"]
+
+
+def test_retriever_honors_immutable_record_exclusions(tmp_path: Path):
+    store = ExperienceStore(tmp_path)
+    item = _candidate("exp_excluded", "old", 1, 1)
+    store.save((item,))
+    store.record_exclusions(({"experience_id": item.experience_id, "reason": "malformed_condition_array"},))
+    positive, negative, diagnostic = ExperienceRetriever(store).retrieve(
+        current_optimization_id="now", environment={"runtime_version":"2","renderer_version":"2","score_spec_checksum":"s"}, allowed_dimensions=("attacks",)
+    )
+    assert (positive, negative, diagnostic) == ((), (), ())
+    assert (tmp_path / "records" / "exp_excluded.json").is_file()
+
+
+def test_legacy_unclassified_character_conditions_are_excluded_not_rewritten(tmp_path: Path):
+    store = ExperienceStore(tmp_path)
+    item = _candidate("exp_bad", "old")
+    payload = item.to_dict() | {"experience_key": "unclassified", "applicable_conditions": ["b", "a", "d"]}
+    store.records.mkdir(parents=True)
+    record = store.records / "exp_bad.json"
+    record.write_text(__import__("json").dumps(payload), encoding="utf-8")
+    exclusions = store.exclude_non_retrievable_records()
+    assert exclusions == ({"experience_id": "exp_bad", "reason": "malformed_condition_array"},)
+    assert __import__("json").loads(record.read_text(encoding="utf-8"))["experience_key"] == "unclassified"
+
+
+def test_result_evidence_reconstruction_uses_csv_without_reading_sqlite(tmp_path: Path):
+    result_dir = tmp_path / "results"
+    result_dir.mkdir()
+    summary = {
+        "official_score": {"initial": 0, "final": 160, "delta": 160, "status": "VALID"},
+        "score_events": [],
+        "losses": {"red": [], "blue": []},
+        "target_damage": [],
+        "evidence_integrity": {"status": "DEGRADED", "results_complete": False},
+    }
+    (result_dir / "execution-summary.json").write_text(__import__("json").dumps(summary), encoding="utf-8")
+    (result_dir / "combat-summary.csv").write_text(
+        "指标,阵营,武器或单位,结果,数量或损伤百分比\n"
+        "单位战损,red,J-15-1 [J-15],被毁,1\n"
+        "单位战损,red,J-15-2 [J-15],被毁,1\n"
+        "单位战损,blue,蓝方CVN-70卡尔文森 [CVN],被毁,1\n",
+        encoding="utf-8",
+    )
+    rules = (
+        {"rule_id": "native_score/red_j15_1", "target_unit_name": "J-15-1", "point_change": -20},
+        {"rule_id": "native_score/red_j15_2", "target_unit_name": "J-15-2", "point_change": -20},
+        {"rule_id": "native_score/blue_cvn70", "target_unit_name": "蓝方CVN-70卡尔文森", "point_change": 200},
+    )
+
+    rebuilt = ResultEvidenceReconstructor(score_rules=rules).reconstruct(result_dir)
+
+    assert [row["unit_name"] for row in rebuilt["losses"]["red"]] == ["J-15-1", "J-15-2"]
+    assert [row["point_delta"] for row in rebuilt["score_events"]] == [-20, -20, 200]
+    assert rebuilt["scoring_evidence_status"] == "DERIVED"
+    assert rebuilt["score_event_chain_status"] == "DERIVED_VALID"
+
+
+def test_result_evidence_reconstruction_preserves_original_summary_before_apply(tmp_path: Path):
+    result_dir = tmp_path / "results"
+    result_dir.mkdir()
+    original = {
+        "official_score": {"initial": 0, "final": -20, "delta": -20, "status": "VALID"},
+        "score_events": [], "losses": {"red": [], "blue": []}, "target_damage": [],
+    }
+    (result_dir / "execution-summary.json").write_text(__import__("json").dumps(original), encoding="utf-8")
+    (result_dir / "combat-summary.csv").write_text(
+        "指标,阵营,武器或单位,结果,数量或损伤百分比\n单位战损,red,J-15-1 [J-15],被毁,1\n",
+        encoding="utf-8",
+    )
+    updated = ResultEvidenceReconstructor(score_rules=(
+        {"rule_id": "native_score/red_j15_1", "target_unit_name": "J-15-1", "point_change": -20},
+    )).apply(result_dir)
+
+    assert (result_dir / "execution-summary.pre-phase7-reconstruction.json").is_file()
+    assert updated["scoring_evidence_status"] == "DERIVED"

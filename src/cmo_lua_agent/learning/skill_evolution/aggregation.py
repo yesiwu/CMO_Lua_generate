@@ -47,7 +47,7 @@ def _major(value: object) -> int:
 def _cohort(environment: Mapping[str, Any]) -> CompatibilityCohort:
     """
     根据环境字典构造兼容分组契约
-    提取评分规范、运行时、渲染器版本等信息，生成唯一cohort标识，隔离跨环境经验
+    保留评分规范、运行时、渲染器版本等证据上下文，并返回共享任务范围标识。
     """
     body = {
         "score_spec_major": _major(environment.get("score_spec_version")),
@@ -62,7 +62,9 @@ def _cohort(environment: Mapping[str, Any]) -> CompatibilityCohort:
         "score_source": str(environment.get("score_source", "")),
     }
     return CompatibilityCohort(
-        cohort_id=f"cohort_{canonical_sha256(body)[:16]}",
+        # Runtime and renderer metadata remains attached to every record, but
+        # must not split a single tactical hypothesis into isolated pools.
+        cohort_id="scope_naval_air_anti_surface",
         **body,
     )
 
@@ -113,8 +115,9 @@ class ExperienceAggregator:
         :param records: 多条原始经验候选记录
         :return: 多条经验聚合结果元组
         """
-        # 分组键：(归一化经验key, 任务类型, 兼容分组ID)
-        grouped: dict[tuple[str, str, str], list[Mapping[str, Any]]] = (
+        # Group by the actual reusable concept: tactical key plus mission.
+        # Cohort metadata is evidence context, not an aggregation boundary.
+        grouped: dict[tuple[str, str], list[Mapping[str, Any]]] = (
             defaultdict(list)
         )
         exclusions: list[AggregationExclusion] = []
@@ -152,13 +155,12 @@ class ExperienceAggregator:
             )
             if mission != "naval_air_anti_surface":
                 continue
-            cohort = _cohort(environment)
-            grouped[(key, mission, cohort.cohort_id)].append(record)
+            grouped[(key, mission)].append(record)
 
         # 按键排序，依次构建聚合实体
         aggregates = tuple(
             self._build(key, mission, rows)
-            for (key, mission, _), rows in sorted(grouped.items())
+            for (key, mission), rows in sorted(grouped.items())
         )
         return ExperienceAggregationResult(
             aggregates=aggregates,

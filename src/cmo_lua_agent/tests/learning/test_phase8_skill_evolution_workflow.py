@@ -166,7 +166,7 @@ def test_empty_real_store_finishes_without_llm_or_pending_skill(
         experience_store=store,
     )
 
-    assert result.status == "no_eligible_experience"
+    assert result.status == "NO_PROMOTABLE_EXPERIENCE"
     assert author.calls == 0
     assert not (tmp_path / "data" / "skills" / "pending").exists()
     assert (
@@ -220,6 +220,21 @@ def test_fixture_creates_pending_once_and_resumes_idempotently(
         "phase8-result.json",
     }
     assert expected <= {path.name for path in output.iterdir()}
+
+
+def test_aggregation_groups_similar_missions_across_environment_metadata() -> None:
+    records = [_record(index) for index in range(1, 3)]
+    records[1]["environment"] = {
+        **records[1]["environment"],
+        "runtime_version": "3.0.0",
+        "renderer_version": "4.0.0",
+        "score_spec_checksum": "new-score-rules",
+    }
+
+    result = ExperienceAggregator(ExperienceKeyCatalog.default()).aggregate(records)
+
+    assert len(result.aggregates) == 1
+    assert result.aggregates[0].independent_optimization_count == 2
 
 
 def test_rerun_reuses_author_checkpoint_after_post_llm_failure(
@@ -429,7 +444,8 @@ def test_fixture_evidence_safety_cases_are_isolated_and_structured() -> None:
     cohort_result = aggregator.aggregate(
         [*Phase8ExperienceFixtureFactory.promotable_records(), Phase8ExperienceFixtureFactory.different_cohort()]
     )
-    assert len(cohort_result.aggregates) == 2
+    assert len(cohort_result.aggregates) == 1
+    assert cohort_result.aggregates[0].independent_optimization_count == 7
 
     missing_stance = Phase8ExperienceFixtureFactory.record(index=8)
     del missing_stance["evidence_stance"]
@@ -459,7 +475,7 @@ def test_semantic_invalid_fixture_is_ineligible_and_never_authored(
         experience_store=store,
     )
 
-    assert result.status == "no_eligible_experience"
+    assert result.status == "NO_PROMOTABLE_EXPERIENCE"
     assert result.pending_packages == ()
     assert author.calls == 0
 
@@ -481,7 +497,7 @@ def test_fixture_pending_cannot_be_promoted_or_loaded_by_production(
     fake_project = tmp_path / "fake-production-project"
     production_config = SkillStorageConfig.production(fake_project)
     production_pending = (
-        production_config.root / "pending" / metadata["skill_id"] / cohort_id / metadata["version"]
+            production_config.root / "pending" / metadata["skill_id"] / metadata["version"]
     )
     production_pending.parent.mkdir(parents=True, exist_ok=True)
     shutil.copytree(package, production_pending)

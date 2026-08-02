@@ -269,9 +269,8 @@ class CampaignPermissionBroker:
             return False
         state = self._store.load_campaign_state()
         return (
-            approval.contract_checksum == self._spec.contract_checksum
-            and approval.snapshot_checksum == preview.snapshot_checksum
-            and approval.candidate_set_checksum == preview.candidate_set_checksum
+            approval.valid
+            and approval.preview_revision == preview.preview_revision
             and approval.budget_revision == state.budget_revision
             and datetime.fromisoformat(approval.expires_at) > _utc_now()
         )
@@ -863,9 +862,6 @@ class EvolutionCampaignService:
         return (
             approval.valid
             and approval.preview_revision == preview.preview_revision
-            and approval.snapshot_checksum == preview.snapshot_checksum
-            and approval.candidate_set_checksum == preview.candidate_set_checksum
-            and approval.contract_checksum == spec.contract_checksum
             and approval.budget_revision == state.budget_revision
             and datetime.fromisoformat(approval.expires_at) > _utc_now()
         )

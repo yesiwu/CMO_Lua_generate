@@ -89,17 +89,23 @@ class ActiveSkillLoader:
         :raises ValueError: 索引不匹配、路径越界、文件缺失、校验和不一致等异常
         """
         # 技能根路径：curated/技能ID/兼容分组ID
-        base = self._root / "curated" / skill_id / cohort.cohort_id
+        base = self._root / "curated" / skill_id
         current_path = base / "current.json"
+        # Legacy cohort-scoped assets are readable but no longer written.
+        if not current_path.is_file():
+            base = base / cohort.cohort_id
+            current_path = base / "current.json"
+        if not current_path.is_file():
+            legacy = sorted((self._root / "curated" / skill_id).glob("*/current.json"))
+            if legacy:
+                current_path = legacy[0]
+                base = current_path.parent
         # 不存在当前版本索引 → 无可用技能
         if not current_path.is_file():
             return None
         current = _object(current_path)
         # 校验索引文件中的skill_id、cohort_id和请求参数一致
-        if (
-            current.get("skill_id") != skill_id
-            or current.get("cohort_id") != cohort.cohort_id
-        ):
+        if current.get("skill_id") != skill_id:
             raise fail(
                 "active_skill_cohort_mismatch",
                 "已审核技能的当前索引与兼容分组不匹配",
@@ -120,8 +126,12 @@ class ActiveSkillLoader:
             )
         metadata = _object(version_path / "metadata.json")
         # 技能包声明的兼容分组与运行环境不匹配 → 不可加载
-        if metadata.get("compatibility_cohort") != cohort.to_dict():
-            return None
+        metadata_cohort = metadata.get("compatibility_cohort", {})
+        if not isinstance(metadata_cohort, dict):
+            raise fail(
+                "skill_package_metadata_invalid",
+                "Skill compatibility metadata must be an object",
+            )
         if metadata.get("provenance") != self._expected_provenance:
             raise fail(
                 "skill_provenance_mismatch",
@@ -212,7 +222,9 @@ def make_compatibility_cohort(
     }
     # 基于环境契约哈希生成分组ID，取前16字符缩短标识
     return CompatibilityCohort(
-        cohort_id=f"cohort_{canonical_sha256(body)[:16]}",
+        # Keep precise environment values as metadata, but expose one shared
+        # mission scope for retrieval and curated Skill storage.
+        cohort_id="scope_naval_air_anti_surface",
         **body,
     )
 

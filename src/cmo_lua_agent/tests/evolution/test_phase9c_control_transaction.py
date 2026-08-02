@@ -46,9 +46,10 @@ def test_attempt_authorization_and_start_are_transactionally_accounted(tmp_path:
     store.authorize_attempt_slot(
         approval_id=grant.approval_id,
         operation_id="g000:cmo:baseline:a00",
-        expected_contract_checksum="contract",
-        expected_snapshot_checksum="snapshot",
-        expected_candidate_set_checksum="candidates",
+        # Hashes remain audit metadata; the approved slot is the authority.
+        expected_contract_checksum="changed-contract",
+        expected_snapshot_checksum="changed-snapshot",
+        expected_candidate_set_checksum="changed-candidates",
     )
     authorized = store.load_control_state()
     assert authorized["attempt_slots"]["g000:cmo:baseline:a00"]["status"] == "authorized"

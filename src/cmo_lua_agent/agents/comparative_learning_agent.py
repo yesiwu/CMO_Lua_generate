@@ -5,6 +5,7 @@ Phase7 用于保守对比分析的唯一LLM边界组件。
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Mapping
 from typing import Protocol
 
@@ -95,35 +96,94 @@ class ComparativeLearningAgent:
         if not isinstance(value, Mapping) or set(value) != fields:
             raise ValueError("proposal contains forbidden or missing fields")
 
-        confidence = value["model_confidence"]
+        confidence = ComparativeLearningAgent._confidence(value["model_confidence"])
         # 置信度值域校验：必须是0~1之间数字
-        if not isinstance(confidence, (int, float)) or not 0 <= confidence <= 1:
+        if confidence is None:
             raise ValueError("model_confidence must be within 0..1")
         # 推荐策略模板必须为对象（字典）
-        if not isinstance(value["recommended_pattern"], Mapping):
-            raise ValueError("recommended_pattern must be an object")
+        pattern_value = value["recommended_pattern"]
+        if isinstance(pattern_value, str) and pattern_value.strip():
+            pattern = {"summary": pattern_value.strip()}
+        elif isinstance(pattern_value, Mapping):
+            pattern = dict(pattern_value)
+        else:
+            raise ValueError("recommended_pattern must be a non-empty object or string")
         try:
             stance = EvidenceStance(str(value["evidence_stance"]))
         except ValueError as exc:
             raise ValueError("evidence_stance is invalid") from exc
 
+        applicable_conditions = ComparativeLearningAgent._string_array(
+            value["applicable_conditions"], "applicable_conditions"
+        )
+        counter_conditions = ComparativeLearningAgent._string_array(
+            value["counter_conditions"], "counter_conditions"
+        )
+        supporting_candidate_ids = ComparativeLearningAgent._string_array(
+            value["supporting_candidate_ids"], "supporting_candidate_ids"
+        )
+        contradicting_candidate_ids = ComparativeLearningAgent._string_array(
+            value["contradicting_candidate_ids"], "contradicting_candidate_ids"
+        )
         return ExperienceProposal(
             str(value["experience_key"]), str(value["experience_type"]), stance,
             str(value["hypothesis"]),
-            tuple(map(str, value["applicable_conditions"])), dict(value["recommended_pattern"]),
-            tuple(map(str, value["counter_conditions"])), tuple(map(str, value["supporting_candidate_ids"])),
-            tuple(map(str, value["contradicting_candidate_ids"])), float(confidence),
+            applicable_conditions, pattern, counter_conditions,
+            supporting_candidate_ids, contradicting_candidate_ids, confidence,
         )
+
+    @staticmethod
+    def _string_array(value: object, field_name: str) -> tuple[str, ...]:
+        """Reject scalar strings rather than iterating them character by character."""
+        if not isinstance(value, list) or not all(
+            isinstance(item, str) and item.strip() for item in value
+        ):
+            raise ValueError(f"{field_name} must be an array of strings")
+        return tuple(item.strip() for item in value)
+
+    @staticmethod
+    def _confidence(value: object) -> float | None:
+        if isinstance(value, bool):
+            return None
+        if isinstance(value, (int, float)):
+            if 0 <= value <= 1:
+                return float(value)
+            if 1 < value <= 100:
+                return float(value) / 100
+        if not isinstance(value, str):
+            return None
+        text = value.strip()
+        if re.fullmatch(r"(?:0(?:\.\d+)?|1(?:\.0+)?)", text):
+            return float(text)
+        if re.fullmatch(r"(?:\d{1,2}|100)%", text):
+            return float(text[:-1]) / 100
+        return None
 
 
 # LLM系统提示词（中文正式约束版本）
 _SYSTEM = (
-    "只返回一个 JSON 对象；不得输出 Markdown、解释文字或代码围栏。"
-    "根对象只能包含 analysis 和 proposals。analysis 必须且只能包含 "
-    "observed_strategy_differences、observed_execution_differences、"
-    "observed_outcome_differences、evidence_limitations、possible_random_factors、"
-    "next_testable_hypotheses，且每个字段均为字符串数组。proposals 必须是 0 到 5 个对象的数组。"
-    "每条 proposal 必须显式包含 evidence_stance，且只能是 support、contradict 或 qualify。"
-    "基于输入事实开展保守分析。禁止返回实体ID、状态信息、证据引用、环境参数、得分、Lua脚本、"
-    "CMO作战指令以及排名变动相关内容。"
+    "Return exactly one JSON object, with no Markdown or surrounding text. "
+    "The root object must contain exactly analysis and proposals. analysis must contain exactly "
+    "observed_strategy_differences, observed_execution_differences, "
+    "observed_outcome_differences, evidence_limitations, possible_random_factors, and "
+    "next_testable_hypotheses; every analysis field must be an array of strings. "
+    "proposals must be an array of zero to five objects. Each proposal must contain exactly: "
+    "experience_key, experience_type, evidence_stance, hypothesis, applicable_conditions, "
+    "recommended_pattern, counter_conditions, supporting_candidate_ids, "
+    "contradicting_candidate_ids, model_confidence. applicable_conditions, counter_conditions, "
+    "supporting_candidate_ids, and contradicting_candidate_ids must each be JSON arrays of strings. "
+    "Allowed experience_key values are naval_air_anti_surface.target_deconfliction, "
+    "naval_air_anti_surface.target_concentration, naval_air_anti_surface.salvo_timing, "
+    "naval_air_anti_surface.fire_quantity, naval_air_anti_surface.aircraft_route, "
+    "naval_air_anti_surface.aircraft_early_loss, and naval_air_anti_surface.ammunition_reserve. "
+    "Allowed experience_type values are tactical_positive, tactical_negative, counterexample, "
+    "execution_failure, runtime_diagnostic, and evidence_limitation. recommended_pattern must be a JSON object, for example "
+    "{\"summary\": \"...\"}; it must never be a string. evidence_stance is support, contradict, or qualify. "
+    "For support, supporting_candidate_ids must be non-empty. For contradict, contradicting_candidate_ids must be non-empty. "
+    "For qualify, at least one candidate reference and at least one counter_condition are required. Otherwise return no proposal. "
+    "Do not output experience IDs, status, evidence references, environment details, scores, Lua, "
+    "CMO commands, or ranking changes. candidate_quality is a deterministic quality report and may be used "
+    "only to qualify the scope of a hypothesis. scoring_evidence_status controls admission: COMPLETE and "
+    "DERIVED may support a proposal, while MISSING or CONFLICTING must return an empty proposals array. "
+    "DERIVED evidence must be described as reconstructed and lower confidence."
 )

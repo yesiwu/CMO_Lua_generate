@@ -39,7 +39,8 @@ class ExperienceCandidateAssembler:
         self,
         *,
         bundle: GenerationLearningBundle,
-        proposals: tuple[ExperienceProposal, ...]
+        proposals: tuple[ExperienceProposal, ...],
+        id_prefix: str = "generation",
     ) -> tuple[ExperienceCandidate, ...]:
         """
         批量将LLM提案转换为标准化经验候选实体
@@ -136,7 +137,7 @@ class ExperienceCandidateAssembler:
             }))
 
             # 构造唯一经验ID：exp_优化轮ID_序号（001、002...）
-            exp_id = f"exp_{bundle.optimization_id}_{index:03d}"
+            exp_id = f"exp_{bundle.optimization_id}_{id_prefix}_{index:03d}"
             result.append(ExperienceCandidate(
                 experience_id=exp_id,
                 experience_key=key,
@@ -152,14 +153,27 @@ class ExperienceCandidateAssembler:
                 observed_effect={
                     "supporting_candidate_ids": list(supporting_ids),
                     "contradicting_candidate_ids": list(contradicting_ids),
-                    "scores": {x.candidate_id: x.official_score for x in support}
+                    "scores": {x.candidate_id: x.official_score for x in support},
+                    "baseline_score": bundle.baseline_view.official_score,
+                    "score_delta_vs_baseline": {
+                        x.candidate_id: (
+                            x.official_score - bundle.baseline_view.official_score
+                            if isinstance(x.official_score, int)
+                            and isinstance(bundle.baseline_view.official_score, int)
+                            else None
+                        )
+                        for x in relevant
+                        if not x.is_baseline
+                    },
                 },
                 environment={**bundle.comparison_contract},
                 evidence_refs=refs,
                 created_from=("generation-learning-bundle.json", "comparative-analysis.json"),
                 evidence_quality=quality,
                 model_confidence=p.model_confidence,
-                strategy_dimensions=dims
+                strategy_dimensions=dims,
+                scoring_evidence_status=self._scoring_status(relevant),
+                skill_promotion_eligible=self._scoring_status(relevant) == "COMPLETE",
             ))
         return tuple(result)
 
@@ -170,7 +184,17 @@ class ExperienceCandidateAssembler:
             and view.scoreable
             and view.semantic_valid
             and view.execution_fidelity == "verified"
+            and view.scoring_evidence_status in {"COMPLETE", "DERIVED"}
         )
+
+    @staticmethod
+    def _scoring_status(views: list[object]) -> str:
+        statuses = {view.scoring_evidence_status for view in views}
+        if statuses == {"COMPLETE"}:
+            return "COMPLETE"
+        if statuses and statuses <= {"COMPLETE", "DERIVED"}:
+            return "DERIVED"
+        return "MISSING"
 
 
 class GenerationLearningWorkflow:
@@ -213,7 +237,8 @@ class GenerationLearningWorkflow:
             self._views.build(
                 candidate_dir=p,
                 is_baseline=False,
-                strategy_diff=tuple(strategy_diffs.get(p.name, ()))
+                strategy_diff=tuple(strategy_diffs.get(p.name, ())),
+                candidate_quality=self._load_candidate_quality(root, p.name),
             )
             for p in candidate_dirs
         )
@@ -221,24 +246,161 @@ class GenerationLearningWorkflow:
         # 组装标准化学习数据包
         bundle = self._bundles.build(optimization_dir=root, views=views)
         learning_dir = root / "learning"
+        comparisons: list[dict[str, object]] = []
+        analyses: list[ComparativeAnalysis] = []
+        proposals: list[ExperienceProposal] = []
+        experiences: list[ExperienceCandidate] = []
         if reuse_saved_response:
-            analysis, proposals = self._load_saved_response(learning_dir)
+            comparisons = self._load_saved_comparisons(learning_dir)
+            for row in comparisons:
+                analysis, response_proposals = self._parse_response(row["analysis"], row["proposals"])
+                analyses.append(analysis)
+                proposals.extend(response_proposals)
+                candidate_id = str(row.get("candidate_id", ""))
+                candidate = next((item for item in bundle.candidate_views if item.candidate_id == candidate_id), None)
+                if candidate is None:
+                    raise ValueError("saved candidate comparison does not match current generation")
+                pair_bundle = GenerationLearningBundle(
+                    bundle.optimization_id, bundle.scenario_features, bundle.comparison_contract,
+                    bundle.baseline_view, (candidate,), (), {candidate.candidate_id: candidate.strategy_diff},
+                    (candidate.candidate_id,) if candidate.candidate_id in bundle.valid_tactical_candidates else (),
+                    (candidate.candidate_id,) if candidate.candidate_id in bundle.invalid_candidates else (),
+                    tuple([*bundle.baseline_view.evidence_refs, *candidate.evidence_refs]),
+                )
+                accepted, _ = self._assemble_individually(
+                    bundle=pair_bundle,
+                    proposals=response_proposals,
+                    id_prefix=candidate.candidate_id,
+                )
+                experiences.extend(accepted)
         else:
-            # 调用LLM执行对比分析，产出观测结论 + 原始经验提案
-            analysis, proposals = self._agent.analyze(bundle)
-        # 将提案加工为可持久化经验候选
-        experiences = self._assembler.assemble(bundle=bundle, proposals=proposals)
+            for candidate in bundle.candidate_views:
+                pair_bundle = GenerationLearningBundle(
+                    bundle.optimization_id, bundle.scenario_features, bundle.comparison_contract,
+                    bundle.baseline_view, (candidate,),
+                    tuple(item for item in bundle.leaderboard if item.get("candidate_id") in {"baseline", candidate.candidate_id}),
+                    {candidate.candidate_id: candidate.strategy_diff},
+                    (candidate.candidate_id,) if candidate.candidate_id in bundle.valid_tactical_candidates else (),
+                    (candidate.candidate_id,) if candidate.candidate_id in bundle.invalid_candidates else (),
+                    tuple([*bundle.baseline_view.evidence_refs, *candidate.evidence_refs]),
+                )
+                analysis, response_proposals = self._agent.analyze(pair_bundle)
+                analyses.append(analysis)
+                proposals.extend(response_proposals)
+                accepted, rejected = self._assemble_individually(
+                    bundle=pair_bundle,
+                    proposals=response_proposals,
+                    id_prefix=candidate.candidate_id,
+                )
+                comparisons.append({
+                    "candidate_id": candidate.candidate_id,
+                    "analysis": asdict(analysis),
+                    "proposals": [asdict(item) for item in response_proposals],
+                    "proposal_rejections": rejected,
+                    "candidate_quality": candidate.candidate_quality,
+                    "scoring_evidence_status": candidate.scoring_evidence_status,
+                })
+                experiences.extend(accepted)
+        analysis = self._merge_analyses(analyses)
+        experiences_tuple = tuple(experiences)
 
         # 将所有中间产物写入learning目录归档（审计用途）
         self._write(learning_dir / "candidate-learning-views.json", [x.to_dict() for x in views])
         self._write(learning_dir / "generation-learning-bundle.json", bundle.to_dict())
         self._write(learning_dir / "comparative-analysis.json", asdict(analysis))
         self._write(learning_dir / "experience-proposals.json", [asdict(x) for x in proposals])
-        self._write(learning_dir / "experience-candidates.json", [x.to_dict() for x in experiences])
+        self._write(learning_dir / "experience-candidates.json", [x.to_dict() for x in experiences_tuple])
+        self._write(learning_dir / "candidate-comparisons.json", comparisons)
 
         # 写入全局经验持久库
-        self._store.save(experiences)
-        return bundle, experiences
+        self._store.save(experiences_tuple)
+        return bundle, experiences_tuple
+
+    @staticmethod
+    def _load_candidate_quality(root: Path, candidate_id: str) -> dict[str, object]:
+        generation_dir = root.parent
+        campaign_root = generation_dir.parent.parent
+        path = campaign_root / "previews" / generation_dir.name / "revision_000" / "candidates" / candidate_id / "candidate-quality-report.json"
+        if not path.is_file():
+            return {}
+        value = json.loads(path.read_text(encoding="utf-8"))
+        return value if isinstance(value, dict) else {}
+
+    def _assemble_individually(
+        self,
+        *,
+        bundle: GenerationLearningBundle,
+        proposals: tuple[ExperienceProposal, ...],
+        id_prefix: str,
+    ) -> tuple[list[ExperienceCandidate], list[dict[str, str]]]:
+        """Keep an invalid model hypothesis from discarding a valid comparison.
+
+        The rejected proposal remains in the run-local audit artifact, while
+        only evidence-gated candidates are allowed into the immutable store.
+        """
+        accepted: list[ExperienceCandidate] = []
+        rejected: list[dict[str, str]] = []
+        for index, proposal in enumerate(proposals, 1):
+            try:
+                accepted.extend(self._assembler.assemble(
+                    bundle=bundle,
+                    proposals=(proposal,),
+                    id_prefix=f"{id_prefix}_{index:02d}",
+                ))
+            except ValueError as exc:
+                rejected.append({
+                    "proposal_index": str(index),
+                    "reason": str(exc),
+                })
+        return accepted, rejected
+
+    @staticmethod
+    def _merge_analyses(items: list[ComparativeAnalysis]) -> ComparativeAnalysis:
+        fields = (
+            "observed_strategy_differences", "observed_execution_differences",
+            "observed_outcome_differences", "evidence_limitations",
+            "possible_random_factors", "next_testable_hypotheses",
+        )
+        return ComparativeAnalysis(*(
+            tuple(dict.fromkeys(text for item in items for text in getattr(item, field)))
+            for field in fields
+        ))
+
+    @staticmethod
+    def _load_saved_comparisons(learning_dir: Path) -> list[dict[str, object]]:
+        path = learning_dir / "candidate-comparisons.json"
+        if not path.is_file():
+            raise ValueError("saved Phase 7 candidate comparisons are unavailable")
+        value = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(value, list) or not all(isinstance(item, dict) for item in value):
+            raise ValueError("saved Phase 7 candidate comparisons are invalid")
+        return [dict(item) for item in value]
+
+    @staticmethod
+    def _parse_response(
+        analysis_data: object, proposals_data: object,
+    ) -> tuple[ComparativeAnalysis, tuple[ExperienceProposal, ...]]:
+        fields = (
+            "observed_strategy_differences", "observed_execution_differences",
+            "observed_outcome_differences", "evidence_limitations",
+            "possible_random_factors", "next_testable_hypotheses",
+        )
+        if not isinstance(analysis_data, dict) or set(analysis_data) != set(fields) or not isinstance(proposals_data, list):
+            raise ValueError("saved candidate comparison is invalid")
+        analysis = ComparativeAnalysis(*(tuple(map(str, analysis_data[field])) for field in fields))
+        proposals: list[ExperienceProposal] = []
+        for item in proposals_data:
+            if not isinstance(item, dict):
+                raise ValueError("saved experience proposal is invalid")
+            proposals.append(ExperienceProposal(
+                experience_key=str(item["experience_key"]), experience_type=str(item["experience_type"]),
+                evidence_stance=EvidenceStance(str(item["evidence_stance"])), hypothesis=str(item["hypothesis"]),
+                applicable_conditions=tuple(map(str, item["applicable_conditions"])),
+                recommended_pattern=dict(item["recommended_pattern"]), counter_conditions=tuple(map(str, item["counter_conditions"])),
+                supporting_candidate_ids=tuple(map(str, item["supporting_candidate_ids"])),
+                contradicting_candidate_ids=tuple(map(str, item["contradicting_candidate_ids"])), model_confidence=float(item["model_confidence"]),
+            ))
+        return analysis, tuple(proposals)
 
     @staticmethod
     def _load_saved_response(

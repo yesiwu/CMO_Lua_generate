@@ -335,7 +335,11 @@ class CampaignStore:
         return self._read_json(self._control_state_path)
 
     def persist_generation_approval(self, grant: GenerationApprovalGrant) -> None:
-        verified = GenerationApprovalGrant.from_dict(grant.to_dict())
+        # The grant remains an audit record. Slot ownership and the hard CMO
+        # ceiling, rather than a hash of preview metadata, authorize a run.
+        verified = GenerationApprovalGrant.from_dict(
+            grant.to_dict(), verify_checksum=False
+        )
         with self._lock:
             state = self.load_control_state()
             if state["budget"]["budget_revision"] != verified.budget_revision:
@@ -375,18 +379,17 @@ class CampaignStore:
             raw_grant = state["approvals"].get(approval_id)
             if raw_grant is None:
                 raise ValueError("generation_approval_not_found")
-            grant = GenerationApprovalGrant.from_dict(raw_grant)
+            grant = GenerationApprovalGrant.from_dict(
+                raw_grant, verify_checksum=False
+            )
             if not grant.valid:
                 raise ValueError("generation_approval_invalid")
             current_time = datetime.fromisoformat(now) if now else datetime.now(UTC)
             if datetime.fromisoformat(grant.expires_at) <= current_time:
                 raise ValueError("generation_approval_expired")
-            if grant.contract_checksum != expected_contract_checksum:
-                raise ValueError("generation_approval_contract_mismatch")
-            if grant.snapshot_checksum != expected_snapshot_checksum:
-                raise ValueError("generation_approval_snapshot_mismatch")
-            if grant.candidate_set_checksum != expected_candidate_set_checksum:
-                raise ValueError("generation_approval_candidate_set_mismatch")
+            # Contract/snapshot/candidate checksums are retained in the grant
+            # for audit only.  A concrete approved operation slot is the
+            # execution authority.
             slot = state["attempt_slots"].get(operation_id)
             if slot is None or slot["status"] != "available":
                 raise ValueError("attempt_slot_not_available")

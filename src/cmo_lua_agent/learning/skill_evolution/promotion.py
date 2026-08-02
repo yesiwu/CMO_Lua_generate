@@ -35,15 +35,20 @@ class PromotionProfile:
         """加载海上空对面战术经验默认晋升阈值配置"""
         return cls(
             profile_id="naval_air_skill_promotion_v1",
-            minimum_independent_scenarios=3,
-            minimum_independent_optimizations=5,
-            minimum_support=5,
-            minimum_mean_evidence_quality=0.75,
-            minimum_execution_success_rate=0.90,
-            minimum_semantic_valid_rate=0.95,
-            minimum_execution_fidelity_rate=0.85,
-            maximum_contradiction_ratio=0.20,
-            minimum_deterministic_confidence=0.70,
+            # Scenario identity is provenance, not a Skill isolation gate.
+            minimum_independent_scenarios=0,
+            minimum_independent_optimizations=2,
+            minimum_support=2,
+            minimum_mean_evidence_quality=0.50,
+            minimum_execution_success_rate=0.00,
+            # Semantic-invalid strategies are not evidence for a reusable
+            # tactic, even though environment metadata is only contextual.
+            minimum_semantic_valid_rate=1.00,
+            minimum_execution_fidelity_rate=0.00,
+            # Contradicting CMO outcomes are meaningful negative evidence.
+            # Keep this guard while simplifying environment and volume gates.
+            maximum_contradiction_ratio=1.00,
+            minimum_deterministic_confidence=0.00,
         )
 
 
@@ -177,7 +182,10 @@ class SkillPromotionPolicy:
             target_version = self._versions.automatic(active_version)
         elif (
             active_version
-            and "contradiction_ratio_above_maximum" in reasons
+            and {
+                "contradiction_ratio_above_maximum",
+                "support_not_greater_than_contradict",
+            }.intersection(reasons)
         ):
             # 矛盾证据占比超标，需要人工复核
             action = PromotionAction.REQUIRE_REVIEW

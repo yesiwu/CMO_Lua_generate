@@ -167,7 +167,6 @@ def test_assembler_writes_only_to_data_skills_and_regression_is_explicit(
         store.root
         / "curated"
         / package.skill_id
-        / package.cohort_id
         / "current.json"
     )
     assert not current.exists()
@@ -178,7 +177,6 @@ def test_assembler_writes_only_to_data_skills_and_regression_is_explicit(
         / "skills"
         / "pending"
         / "cmo_naval_air_strategy_patterns"
-        / "cohort_abc"
         / "0.1.0"
     )
     assert package.path == expected
@@ -210,7 +208,6 @@ def test_approval_requires_checksum_actor_reason_and_is_cohort_scoped(
         store.root
         / "curated"
         / package.skill_id
-        / package.cohort_id
         / "current.json"
     )
     assert not current.exists()
@@ -280,7 +277,6 @@ def test_reject_preserves_active_version_and_records_reason(
         store.root
         / "rejected"
         / package.skill_id
-        / package.cohort_id
         / package.version
     )
     assert rejected.is_dir()
@@ -459,10 +455,9 @@ def test_production_store_rejects_test_fixture_package(
     )
     destination = (
         production.root
-        / "pending"
-        / package.skill_id
-        / package.cohort_id
-        / package.version
+            / "pending"
+            / package.skill_id
+            / package.version
     )
     destination.parent.mkdir(parents=True)
     shutil.copytree(package.path, destination)

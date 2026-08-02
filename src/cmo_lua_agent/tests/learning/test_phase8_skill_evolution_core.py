@@ -122,7 +122,7 @@ def test_conflicting_stances_in_one_optimization_use_conservative_precedence() -
 def test_validation_and_promotion_require_independent_evidence() -> None:
     records = tuple(
         _record(f"opt-{index}", f"scene-{index % 3}")
-        for index in range(1, 6)
+        for index in range(1, 4)
     )
     aggregate = ExperienceAggregator(
         ExperienceKeyCatalog.default()
@@ -197,8 +197,10 @@ def test_severe_contradiction_requires_review() -> None:
         _record(f"opt-{index}", f"scene-{index % 3}")
         for index in range(1, 6)
     ) + (
-        _record("opt-6", "scene-4", stance="contradict"),
-        _record("opt-7", "scene-5", stance="contradict"),
+            _record("opt-4", "scene-4", stance="contradict"),
+            _record("opt-5", "scene-5", stance="contradict"),
+            _record("opt-6", "scene-6", stance="contradict"),
+            _record("opt-7", "scene-7", stance="contradict"),
     )
     aggregate = ExperienceAggregator(
         ExperienceKeyCatalog.default()

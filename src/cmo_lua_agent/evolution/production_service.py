@@ -347,7 +347,6 @@ def create_production_evolution_campaign_service(
         package_loader=ControlledCampaignInputPackageLoader(
             project_root=project_root,
             # Phase 9C‑1：冻结当前版本与工作树指纹写入输入包，不再拒绝带修改的预览
-            require_clean_worktree=False,
         ),
         proposal_agent=StrategyProposalAgent(json_client),
         candidate_evaluator=FormalCandidateEvaluator(

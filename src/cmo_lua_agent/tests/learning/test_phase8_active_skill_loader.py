@@ -153,7 +153,7 @@ def _write_curated(root: Path, cohort: CompatibilityCohort) -> None:
     )
 
 
-def test_loader_selects_only_exact_compatibility_cohort(
+def test_loader_reuses_skill_across_environment_metadata(
     tmp_path: Path,
 ) -> None:
     _write_curated(tmp_path, _cohort())
@@ -166,7 +166,7 @@ def test_loader_selects_only_exact_compatibility_cohort(
         skill_id="cmo_naval_air_strategy_patterns",
         cohort=_cohort(),
     )
-    missing = loader.load(
+    reused = loader.load(
         skill_id="cmo_naval_air_strategy_patterns",
         cohort=_cohort("cohort-b"),
     )
@@ -194,7 +194,8 @@ def test_loader_selects_only_exact_compatibility_cohort(
         "counterexample",
         "tactical_positive",
     ]
-    assert missing is None
+    assert reused is not None
+    assert reused.checksum == active.checksum
 
 
 @pytest.mark.parametrize(
