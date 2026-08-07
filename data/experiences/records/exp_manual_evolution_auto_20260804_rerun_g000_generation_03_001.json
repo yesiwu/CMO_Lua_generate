@@ -1,0 +1,73 @@
+{
+  "applicable_conditions": [
+    "When testing sensitivity of attack timing.",
+    "When other parameters are fixed."
+  ],
+  "consumer": "StrategyProposalAgent",
+  "counter_conditions": [
+    "Timing might interact with target assignment and fire_quantity.",
+    "Random defensive behavior may obscure timing effects.",
+    "A single trial is insufficient."
+  ],
+  "created_from": [
+    "generation-learning-bundle.json",
+    "comparative-analysis.json"
+  ],
+  "environment": {
+    "renderer_version": "manual_template_v1",
+    "runtime_version": "2.0.0",
+    "score_spec_checksum": "9a7f68a20cea722df7ae77c28a93199b1042258bd153973e25021b5e498762df"
+  },
+  "evidence_quality": 0.4,
+  "evidence_refs": [
+    "attempts\\attempt_00\\batch-results\\20260804-150134\\001_g000_cmo_candidate_00_a00\\execution-timeline.jsonl",
+    "attempts\\attempt_00\\batch-results\\20260804-150356\\001_g000_cmo_candidate_02_a00\\execution-timeline.jsonl",
+    "attempts\\attempt_00\\execution-diagnostic.json",
+    "attempts\\attempt_00\\execution-summary.json"
+  ],
+  "evidence_stance": "contradict",
+  "experience_id": "exp_manual_evolution_auto_20260804_rerun_g000_generation_03_001",
+  "experience_key": "naval_air_anti_surface.salvo_timing",
+  "experience_type": "evidence_limitation",
+  "hypothesis": "A single change in delay_seconds (as in candidate_03) did not improve official score, suggesting timing alone may not be sufficient, but this is based on one trial with missing scoring evidence.",
+  "model_confidence": 0.4,
+  "observed_effect": {
+    "baseline_score": -40,
+    "black_box_outcome_only": true,
+    "contradicting_candidate_ids": [
+      "candidate_00",
+      "candidate_02"
+    ],
+    "score_delta_vs_baseline": {
+      "candidate_00": 200,
+      "candidate_02": 200
+    },
+    "scores": {
+      "candidate_03": -40
+    },
+    "supporting_candidate_ids": [
+      "candidate_03"
+    ]
+  },
+  "recommended_pattern": {
+    "controlled_changes": [
+      "Change only /attacks/1/delay_seconds",
+      "Keep all other attack parameters fixed"
+    ],
+    "monitored_metrics": [
+      "score",
+      "target_damage",
+      "weapon hit counts"
+    ],
+    "summary": "Run a timing sweep: vary delay_seconds across a range (e.g., 0 to 75) for a fixed attack configuration while keeping other parameters unchanged. Repeat each timing setting multiple times to account for randomness."
+  },
+  "schema_version": "2",
+  "scoring_evidence_status": "MISSING",
+  "skill_promotion_eligible": false,
+  "source_optimization_id": "manual_evolution_auto_20260804_rerun_g000",
+  "status": "candidate",
+  "strategy_dimensions": [
+    "attacks",
+    "sorties"
+  ]
+}

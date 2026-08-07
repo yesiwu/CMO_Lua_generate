@@ -64,6 +64,13 @@
   "scenario_id": "red_blue_6v4_liaoning",
   "sorties": [
     {
+      "air_tactics": {
+        "attack_range_nm": 80,
+        "ingress_altitude_m": 200,
+        "launch_delay_seconds": 5,
+        "popup_altitude_m": 9500,
+        "popup_range_nm": 95
+      },
       "aircraft_id": "red_j15_1",
       "altitude_meters": 8000,
       "base_unit_id": "red_liaoning",
@@ -84,6 +91,13 @@
       "throttle": "cruise"
     },
     {
+      "air_tactics": {
+        "attack_range_nm": 80,
+        "ingress_altitude_m": 200,
+        "launch_delay_seconds": 5,
+        "popup_altitude_m": 9500,
+        "popup_range_nm": 95
+      },
       "aircraft_id": "red_j15_2",
       "altitude_meters": 8000,
       "base_unit_id": "red_liaoning",

@@ -82,19 +82,47 @@ def test_learning_view_never_falls_back_to_outcome_native_score(tmp_path: Path) 
     assert view.execution_fidelity == "failed"
 
 
+def test_learning_view_prefers_direct_summary_process_evidence_and_bypasses_analysis(tmp_path: Path) -> None:
+    candidate_dir = tmp_path / "candidate_00"
+    attempt = candidate_dir / "attempts" / "attempt_00"
+    attempt.mkdir(parents=True)
+    (candidate_dir / "strategy").mkdir()
+    (candidate_dir / "candidate_outcome.json").write_text(json.dumps({
+        "candidate_id": "candidate_00", "scoreable": True, "semantic_valid": True, "execution_success": True,
+    }), encoding="utf-8")
+    (candidate_dir / "strategy" / "final_strategy.json").write_text(json.dumps({
+        "attacks": [{"unit_id": "red_ship", "target_ids": ["blue_target"]}],
+        "sorties": [{"aircraft_id": "red_j15", "target_id": "blue_target"}],
+    }), encoding="utf-8")
+    (attempt / "execution-summary.json").write_text(json.dumps({
+        "official_score": {"initial": 0, "final": 10, "delta": 10},
+        "attack_execution_trace": [{"operation_id": "op", "attacker_id": "red_ship", "target_id": "blue_target"}],
+        "air_outcomes": [{"aircraft_id": "red_j15", "destroyed": None}],
+        "engagement_summary": [
+            {"operation_id": "op", "source_platform_id": "red_ship", "target_id": "blue_target", "fired_count": 2},
+            {"source_platform_id": "blue_ship", "target_id": "red_ship", "fired_count": 2},
+        ],
+    }), encoding="utf-8")
+    (attempt / "llm-analysis.json").write_text("not json", encoding="utf-8")
+
+    view = CandidateLearningViewBuilder().build(candidate_dir=candidate_dir, is_baseline=False)
+
+    assert view.process_evidence_status == "DIRECT"
+    assert len(view.attack_execution_trace) == len(view.air_outcomes) == len(view.weapon_release) == 1
+    assert view.auxiliary_execution_analysis == {"available": False, "bypassed": True}
+
+
 def test_workflow_replay_reuses_saved_response_without_second_llm_call(tmp_path: Path) -> None:
     root = _write_minimal_optimization(tmp_path / "optimization")
-    response = {
-        "analysis": {
+    analysis = {
             "observed_strategy_differences": [],
             "observed_execution_differences": [],
             "observed_outcome_differences": [],
             "evidence_limitations": ["no official score summary"],
             "possible_random_factors": [],
             "next_testable_hypotheses": [],
-        },
-        "proposals": [],
     }
+    response = {"candidate_comparisons": [{"candidate_id": "candidate_00", "analysis": analysis}], "cross_candidate_analysis": analysis, "proposals": []}
     class _JsonClient:
         calls = 0
         def complete_json(self, **_: object) -> object:
@@ -120,7 +148,7 @@ def test_workflow_replay_reuses_saved_response_without_second_llm_call(tmp_path:
     assert [row["candidate_id"] for row in comparisons] == ["candidate_00"]
 
 
-def test_workflow_calls_llm_once_per_candidate_against_the_baseline(tmp_path: Path) -> None:
+def test_workflow_calls_llm_once_per_generation_against_the_baseline(tmp_path: Path) -> None:
     root = _write_minimal_optimization(tmp_path / "optimization")
     generation_result = json.loads((root / "generation_result.json").read_text(encoding="utf-8"))
     candidate_paths = generation_result["candidate_outcome_paths"]
@@ -138,10 +166,11 @@ def test_workflow_calls_llm_once_per_candidate_against_the_baseline(tmp_path: Pa
     diffs = {f"candidate_0{index}": [] for index in range(4)}
     (root / "strategy_diff.json").write_text(json.dumps(diffs), encoding="utf-8")
 
-    response = {"analysis": {field: [] for field in (
+    analysis = {field: [] for field in (
         "observed_strategy_differences", "observed_execution_differences", "observed_outcome_differences",
         "evidence_limitations", "possible_random_factors", "next_testable_hypotheses",
-    )}, "proposals": []}
+    )}
+    response = {"candidate_comparisons": [{"candidate_id": f"candidate_0{index}", "analysis": analysis} for index in range(4)], "cross_candidate_analysis": analysis, "proposals": []}
     class _JsonClient:
         calls = 0
         def complete_json(self, **_: object) -> object:
@@ -154,7 +183,7 @@ def test_workflow_calls_llm_once_per_candidate_against_the_baseline(tmp_path: Pa
     ).run(root)
 
     comparisons = json.loads((root / "learning" / "candidate-comparisons.json").read_text(encoding="utf-8"))
-    assert client.calls == 4
+    assert client.calls == 1
     assert [row["candidate_id"] for row in comparisons] == [f"candidate_0{index}" for index in range(4)]
 
 

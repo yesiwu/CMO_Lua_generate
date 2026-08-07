@@ -15,6 +15,7 @@ from cmo_lua_agent.optimization.phase6_models import BootstrapSkillSnapshot, Str
 from cmo_lua_agent.optimization.proposal_models import CandidateIntent, CandidatePatch, CandidateProposalError, ProposalContractError, StrategyPatchOperation
 from cmo_lua_agent.optimization.strategy_proposal_agent import StrategyProposalAgent
 from cmo_lua_agent.optimization.strategy_patch import StrategyPatchAssembler, build_patchable_leaf_catalog
+from cmo_lua_agent.optimization.candidate_patch_generator import _repair_alternatives
 
 
 def _scenario() -> ScenarioDefinition:
@@ -63,6 +64,61 @@ def test_assembler_rejects_stable_fields_wrong_types_and_noops(operation: Strate
     with pytest.raises(ProposalContractError) as raised:
         _assembler().assemble(CandidatePatch("candidate_00", "x", (operation,)))
     assert raised.value.code == code
+
+
+def test_assembler_noop_diagnostic_exposes_baseline_and_proposed_values() -> None:
+    with pytest.raises(ProposalContractError) as raised:
+        _assembler().assemble(CandidatePatch("candidate_00", "x", (
+            StrategyPatchOperation("/attacks/0/fire_quantity", 4),
+        )))
+
+    assert raised.value.code == "no_effective_change"
+    assert raised.value.diagnostics == {
+        "path": "/attacks/0/fire_quantity",
+        "baseline_value": 4,
+        "proposed_value": 4,
+        "no_effective_changes": [
+            {
+                "path": "/attacks/0/fire_quantity",
+                "baseline_value": 4,
+                "proposed_value": 4,
+            }
+        ],
+    }
+
+
+def test_assembler_reports_all_noop_changes_for_one_repair() -> None:
+    with pytest.raises(ProposalContractError) as raised:
+        _assembler().assemble(CandidatePatch("candidate_00", "x", (
+            StrategyPatchOperation("/attacks/0/fire_quantity", 4),
+            StrategyPatchOperation("/attacks/0/delay_seconds", 0),
+        )))
+
+    assert raised.value.code == "no_effective_change"
+    assert raised.value.diagnostics["no_effective_changes"] == [
+        {
+            "path": "/attacks/0/fire_quantity",
+            "baseline_value": 4,
+            "proposed_value": 4,
+        },
+        {
+            "path": "/attacks/0/delay_seconds",
+            "baseline_value": 0,
+            "proposed_value": 0,
+        },
+    ]
+    assert _repair_alternatives(_assembler().catalog, raised.value) == [
+        {
+            "path": "/attacks/0/fire_quantity",
+            "baseline_value": 4,
+            "allowed_alternatives": [3, 5],
+        },
+        {
+            "path": "/attacks/0/delay_seconds",
+            "baseline_value": 0,
+            "allowed_alternatives": [1, 86400],
+        },
+    ]
 
 
 def test_assembler_rejects_duplicate_patch_paths() -> None:

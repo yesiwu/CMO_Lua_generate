@@ -117,11 +117,16 @@ class ExperienceCandidateAssembler:
                 if p.evidence_stance is EvidenceStance.CONTRADICT
                 else [*support, *contradict]
             )
+            scoring_status = self._scoring_status(relevant)
+            if scoring_status in {"MISSING", "CONFLICTING"}:
+                kind = "evidence_limitation"
             valid_relevant_count = sum(1 for x in relevant if self._trusted(x))
             quality = round(
                 valid_relevant_count / max(1, len(relevant)),
                 2,
             )
+            if scoring_status in {"MISSING", "CONFLICTING"}:
+                quality = min(quality, 0.4)
 
             # 汇总所有支撑案例的证据文件路径，去重并排序
             refs = tuple(sorted({
@@ -165,15 +170,16 @@ class ExperienceCandidateAssembler:
                         for x in relevant
                         if not x.is_baseline
                     },
+                    "black_box_outcome_only": scoring_status in {"MISSING", "CONFLICTING"},
                 },
                 environment={**bundle.comparison_contract},
                 evidence_refs=refs,
                 created_from=("generation-learning-bundle.json", "comparative-analysis.json"),
                 evidence_quality=quality,
-                model_confidence=p.model_confidence,
+                model_confidence=(min(p.model_confidence, 0.4) if scoring_status in {"MISSING", "CONFLICTING"} else p.model_confidence),
                 strategy_dimensions=dims,
-                scoring_evidence_status=self._scoring_status(relevant),
-                skill_promotion_eligible=self._scoring_status(relevant) == "COMPLETE",
+                scoring_evidence_status=scoring_status,
+                skill_promotion_eligible=scoring_status == "COMPLETE",
             ))
         return tuple(result)
 
@@ -183,8 +189,6 @@ class ExperienceCandidateAssembler:
             view.execution_success
             and view.scoreable
             and view.semantic_valid
-            and view.execution_fidelity == "verified"
-            and view.scoring_evidence_status in {"COMPLETE", "DERIVED"}
         )
 
     @staticmethod
@@ -215,6 +219,7 @@ class GenerationLearningWorkflow:
         optimization_dir: Path,
         *,
         reuse_saved_response: bool = False,
+        experience_id_prefix: str = "generation",
     ) -> tuple[GenerationLearningBundle, tuple[ExperienceCandidate, ...]]:
         """
         执行单代优化任务完整离线学习流程
@@ -247,61 +252,38 @@ class GenerationLearningWorkflow:
         bundle = self._bundles.build(optimization_dir=root, views=views)
         learning_dir = root / "learning"
         comparisons: list[dict[str, object]] = []
-        analyses: list[ComparativeAnalysis] = []
         proposals: list[ExperienceProposal] = []
         experiences: list[ExperienceCandidate] = []
         if reuse_saved_response:
+            analysis, response_proposals = self._load_saved_response(learning_dir)
             comparisons = self._load_saved_comparisons(learning_dir)
-            for row in comparisons:
-                analysis, response_proposals = self._parse_response(row["analysis"], row["proposals"])
-                analyses.append(analysis)
-                proposals.extend(response_proposals)
-                candidate_id = str(row.get("candidate_id", ""))
-                candidate = next((item for item in bundle.candidate_views if item.candidate_id == candidate_id), None)
-                if candidate is None:
-                    raise ValueError("saved candidate comparison does not match current generation")
-                pair_bundle = GenerationLearningBundle(
-                    bundle.optimization_id, bundle.scenario_features, bundle.comparison_contract,
-                    bundle.baseline_view, (candidate,), (), {candidate.candidate_id: candidate.strategy_diff},
-                    (candidate.candidate_id,) if candidate.candidate_id in bundle.valid_tactical_candidates else (),
-                    (candidate.candidate_id,) if candidate.candidate_id in bundle.invalid_candidates else (),
-                    tuple([*bundle.baseline_view.evidence_refs, *candidate.evidence_refs]),
-                )
-                accepted, _ = self._assemble_individually(
-                    bundle=pair_bundle,
-                    proposals=response_proposals,
-                    id_prefix=candidate.candidate_id,
-                )
-                experiences.extend(accepted)
         else:
-            for candidate in bundle.candidate_views:
-                pair_bundle = GenerationLearningBundle(
-                    bundle.optimization_id, bundle.scenario_features, bundle.comparison_contract,
-                    bundle.baseline_view, (candidate,),
-                    tuple(item for item in bundle.leaderboard if item.get("candidate_id") in {"baseline", candidate.candidate_id}),
-                    {candidate.candidate_id: candidate.strategy_diff},
-                    (candidate.candidate_id,) if candidate.candidate_id in bundle.valid_tactical_candidates else (),
-                    (candidate.candidate_id,) if candidate.candidate_id in bundle.invalid_candidates else (),
-                    tuple([*bundle.baseline_view.evidence_refs, *candidate.evidence_refs]),
+            try:
+                response = self._agent.analyze(bundle)
+            except ValueError:
+                self._write(
+                    learning_dir / "comparative-response-repair-audit.json",
+                    list(self._agent.last_attempts),
                 )
-                analysis, response_proposals = self._agent.analyze(pair_bundle)
-                analyses.append(analysis)
-                proposals.extend(response_proposals)
-                accepted, rejected = self._assemble_individually(
-                    bundle=pair_bundle,
-                    proposals=response_proposals,
-                    id_prefix=candidate.candidate_id,
-                )
-                comparisons.append({
-                    "candidate_id": candidate.candidate_id,
-                    "analysis": asdict(analysis),
-                    "proposals": [asdict(item) for item in response_proposals],
-                    "proposal_rejections": rejected,
-                    "candidate_quality": candidate.candidate_quality,
-                    "scoring_evidence_status": candidate.scoring_evidence_status,
-                })
-                experiences.extend(accepted)
-        analysis = self._merge_analyses(analyses)
+                raise
+            self._write(
+                learning_dir / "comparative-response-repair-audit.json",
+                list(self._agent.last_attempts),
+            )
+            analysis = response.cross_candidate_analysis
+            response_proposals = response.proposals
+            comparisons = [{
+                "candidate_id": item.candidate_id,
+                "analysis": asdict(item.analysis),
+                "candidate_quality": next(candidate.candidate_quality for candidate in bundle.candidate_views if candidate.candidate_id == item.candidate_id),
+                "scoring_evidence_status": next(candidate.scoring_evidence_status for candidate in bundle.candidate_views if candidate.candidate_id == item.candidate_id),
+            } for item in response.candidate_comparisons]
+        proposals.extend(response_proposals)
+        accepted, rejected = self._assemble_individually(bundle=bundle, proposals=response_proposals, id_prefix=experience_id_prefix)
+        experiences.extend(accepted)
+        if rejected:
+            for row in comparisons:
+                row["proposal_rejections"] = rejected
         experiences_tuple = tuple(experiences)
 
         # 将所有中间产物写入learning目录归档（审计用途）

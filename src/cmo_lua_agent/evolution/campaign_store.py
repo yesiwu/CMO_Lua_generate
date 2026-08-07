@@ -156,7 +156,13 @@ class CampaignStore:
     def next_preview_revision(self, generation_index: int) -> int:
         """获取下一个预览版本号，用于迭代更新预览快照"""
         current = self.get_preview(generation_index)
-        return 0 if current is None else current.preview_revision + 1
+        persisted = -1 if current is None else current.preview_revision
+        directory = self.root / "previews" / f"generation_{generation_index:03d}"
+        for path in directory.glob("revision_*") if directory.is_dir() else ():
+            suffix = path.name.removeprefix("revision_")
+            if suffix.isdecimal():
+                persisted = max(persisted, int(suffix))
+        return persisted + 1
 
     # ===================== 世代审批记录 GenerationApproval =====================
     def save_approval(self, approval: GenerationApproval) -> None:

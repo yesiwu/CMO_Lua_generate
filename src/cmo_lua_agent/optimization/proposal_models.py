@@ -24,6 +24,9 @@ STRATEGY_DIMENSIONS = (
     "fire_quantity",
     "ammunition_reserve",
     "air_route",
+    "air_launch_timing",
+    "air_ingress_altitude",
+    "air_attack_range",
     "risk_policy",
 )
 # Candidate patches must always stay inside this executable, system-owned range.

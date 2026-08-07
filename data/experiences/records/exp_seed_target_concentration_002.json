@@ -1,0 +1,66 @@
+{
+  "schema_version": "2.0",
+  "experience_id": "exp_seed_target_concentration_002",
+  "experience_key": "naval_air_anti_surface.target_concentration",
+  "experience_type": "tactical_positive",
+  "evidence_stance": "support",
+  "status": "candidate",
+  "consumer": "StrategyProposalAgent",
+  "artifact_provenance": "synthetic_seed",
+  "scoring_evidence_status": "COMPLETE",
+  "skill_promotion_eligible": true,
+  "hypothesis": "将主齐射集中于航母并保留少量后续火力处理护航目标，结果支持该策略与更高得分相关，但仍需后续控制变量验证。",
+  "applicable_conditions": [
+    "航母是主要计分目标，同时护航舰也具有独立计分价值。",
+    "红方总弹量允许在主齐射后保留一部分弹药用于后续攻击。"
+  ],
+  "recommended_pattern": {
+    "summary": "在StrategySpec中把大部分攻击弹量分配给最高价值目标，同时为较晚的攻击任务保留少量弹量并指向一个护航目标。",
+    "strategy_dimensions": [
+      "attacks"
+    ]
+  },
+  "counter_conditions": [
+    "当主目标需要全部可用弹量才能达到可靠击杀概率时，不应过早保留过多弹药。"
+  ],
+  "strategy_dimensions": [
+    "attacks"
+  ],
+  "observed_effect": {
+    "supporting_candidate_ids": [
+      "candidate_01"
+    ],
+    "contradicting_candidate_ids": [],
+    "baseline_score": 170,
+    "scores": {
+      "candidate_01": 195
+    },
+    "score_delta_vs_baseline": 25,
+    "target_damage": {
+      "blue_cvn70": 100,
+      "blue_ddg113_1": 70
+    },
+    "losses_red": 0
+  },
+  "execution_success": true,
+  "scoreable": true,
+  "semantic_valid": true,
+  "execution_fidelity": "verified",
+  "evidence_quality": 0.78,
+  "model_confidence": 0.82,
+  "score_source": "execution_summary",
+  "environment": {
+    "mission_type": "naval_air_anti_surface",
+    "scenario_id": "red_blue_6v4_liaoning",
+    "runtime_version": "2.0.0",
+    "renderer_version": "manual_template_v1",
+    "score_spec_version": "2.0.0",
+    "score_spec_checksum": "9a7f68a20cea722df7ae77c28a93199b1042258bd153973e25021b5e498762df",
+    "scenario_schema_version": "1.0",
+    "score_source": "execution_summary"
+  },
+  "source_optimization_id": "seed_target_concentration_opt_002",
+  "evidence_refs": [
+    "runs/evolution/manual_evolution_auto_20260804_rerun/generations/generation_001/phase6/candidate_00/attempts/attempt_00/execution-summary.json"
+  ]
+}

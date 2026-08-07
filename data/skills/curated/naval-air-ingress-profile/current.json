@@ -1,0 +1,7 @@
+{
+  "skill_id": "naval-air-ingress-profile",
+  "version": "1.0.0",
+  "relative_path": "versions/1.0.0",
+  "status": "curated",
+  "description": "Use when choosing aircraft ingress altitude and approach profile for a naval-air anti-surface strike in contested air defense conditions."
+}

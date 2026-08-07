@@ -1,4 +1,5 @@
 from __future__ import annotations
+from dataclasses import replace
 from pathlib import Path
 import pytest
 from cmo_lua_agent.agents.comparative_learning_agent import ComparativeLearningAgent
@@ -30,7 +31,9 @@ def _bundle() -> GenerationLearningBundle:
 class _Client:
     def __init__(self, data): self.data=data; self.calls=0
     def complete_json(self, **_): self.calls+=1; return self.data
-def _response(proposals=[]): return {"analysis": {k: [] for k in ("observed_strategy_differences","observed_execution_differences","observed_outcome_differences","evidence_limitations","possible_random_factors","next_testable_hypotheses")}, "proposals": proposals}
+def _response(proposals=[]):
+    analysis = {k: [] for k in ("observed_strategy_differences","observed_execution_differences","observed_outcome_differences","evidence_limitations","possible_random_factors","next_testable_hypotheses")}
+    return {"candidate_comparisons": [{"candidate_id": "candidate_00", "analysis": analysis}], "cross_candidate_analysis": analysis, "proposals": proposals}
 def _candidate(i="exp_o1_001", source="o1", quality=.8, confidence=.2):
     return ExperienceCandidate(
         experience_id=i,
@@ -57,7 +60,51 @@ def _candidate(i="exp_o1_001", source="o1", quality=.8, confidence=.2):
         strategy_dimensions=("attacks",),
     )
 def test_agent_allows_empty_proposals_once():
-    c=_Client(_response()); analysis, proposals=ComparativeLearningAgent(c).analyze(_bundle()); assert proposals==() and c.calls==1
+    c=_Client(_response()); response=ComparativeLearningAgent(c).analyze(_bundle()); assert response.proposals==() and c.calls==1
+
+
+def test_agent_binds_ordered_comparisons_to_frozen_candidate_ids() -> None:
+    analysis = {k: [] for k in (
+        "observed_strategy_differences", "observed_execution_differences",
+        "observed_outcome_differences", "evidence_limitations",
+        "possible_random_factors", "next_testable_hypotheses",
+    )}
+    response = ComparativeLearningAgent(_Client({
+        "candidate_comparisons": [analysis],
+        "cross_candidate_analysis": analysis,
+        "proposals": [],
+    })).analyze(_bundle())
+
+    assert [item.candidate_id for item in response.candidate_comparisons] == ["candidate_00"]
+
+
+def test_agent_repairs_invalid_batch_response_up_to_three_times() -> None:
+    analysis = {k: [] for k in (
+        "observed_strategy_differences", "observed_execution_differences",
+        "observed_outcome_differences", "evidence_limitations",
+        "possible_random_factors", "next_testable_hypotheses",
+    )}
+
+    class RetryClient:
+        def __init__(self) -> None:
+            self.calls = 0
+            self.responses = [
+                {"candidate_comparisons": [], "proposals": []},
+                {"candidate_comparisons": [analysis], "cross_candidate_analysis": analysis, "proposals": []},
+            ]
+
+        def complete_json(self, **_: object) -> object:
+            value = self.responses[self.calls]
+            self.calls += 1
+            return value
+
+    client = RetryClient()
+    agent = ComparativeLearningAgent(client)
+    response = agent.analyze(_bundle())
+
+    assert response.proposals == ()
+    assert client.calls == 2
+    assert [item["status"] for item in agent.last_attempts] == ["invalid", "accepted"]
 def test_agent_rejects_facts_in_proposal():
     row={"experience_key":"salvo_timing","experience_type":"tactical_positive","evidence_stance":"support","hypothesis":"h","applicable_conditions":[],"recommended_pattern":{},"counter_conditions":[],"supporting_candidate_ids":[],"contradicting_candidate_ids":[],"model_confidence":.2,"status":"candidate"}
     with pytest.raises(ValueError): ComparativeLearningAgent(_Client(_response([row]))).analyze(_bundle())
@@ -148,6 +195,25 @@ def test_assembler_validates_candidate_references_and_stance_gates():
                 counter_conditions=(),
             ),),
         )
+
+
+def test_missing_score_chain_becomes_low_confidence_blackbox_diagnostic() -> None:
+    baseline = _view("baseline", True)
+    candidate = replace(_view("candidate_00"), scoring_evidence_status="MISSING")
+    bundle = GenerationLearningBundle(
+        "blackbox", (), {"runtime_version": "2"}, baseline, (candidate,),
+        (), {}, ("candidate_00",), (), ("summary",),
+    )
+    experience = ExperienceCandidateAssembler().assemble(
+        bundle=bundle,
+        proposals=(_proposal(),),
+    )[0]
+
+    assert experience.experience_type == "evidence_limitation"
+    assert experience.evidence_quality == 0.4
+    assert experience.model_confidence == 0.4
+    assert experience.skill_promotion_eligible is False
+    assert experience.observed_effect["black_box_outcome_only"] is True
 def test_normalizer_and_idempotent_store(tmp_path: Path):
     assert ExperienceKeyNormalizer().normalize("salvo_timing")=="naval_air_anti_surface.salvo_timing"; assert ExperienceKeyNormalizer().normalize("free form")=="unclassified"
     store=ExperienceStore(tmp_path); item=_candidate(); store.save((item,)); store.save((item,)); assert len(list((tmp_path/"records").glob("*.json")))==1
@@ -155,6 +221,19 @@ def test_normalizer_and_idempotent_store(tmp_path: Path):
 def test_retriever_excludes_current_and_prefers_quality(tmp_path: Path):
     store=ExperienceStore(tmp_path); store.save((_candidate("exp_old_low","old",.2,.9),_candidate("exp_old_high","old2",.9,.1),_candidate("exp_self","now",1,1)))
     good, _, _=ExperienceRetriever(store).retrieve(current_optimization_id="now",environment={"runtime_version":"2","renderer_version":"2","score_spec_checksum":"s"},allowed_dimensions=("attacks",)); assert [x.source_optimization_id for x in good]==["old2","old"]
+
+
+def test_retriever_uses_experience_id_tiebreaker_without_comparing_record_dicts(tmp_path: Path):
+    store = ExperienceStore(tmp_path)
+    store.save((_candidate("exp_b", "old_b", .8, .8), _candidate("exp_a", "old_a", .8, .8)))
+
+    positive, _, _ = ExperienceRetriever(store).retrieve(
+        current_optimization_id="now",
+        environment={"runtime_version":"2", "renderer_version":"2", "score_spec_checksum":"s"},
+        allowed_dimensions=("attacks",),
+    )
+
+    assert [card.source_optimization_id for card in positive] == ["old_a", "old_b"]
 
 
 def test_retriever_keeps_related_experience_when_environment_metadata_changes(tmp_path: Path):

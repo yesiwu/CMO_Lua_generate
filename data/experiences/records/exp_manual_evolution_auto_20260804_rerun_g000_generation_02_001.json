@@ -1,0 +1,75 @@
+{
+  "applicable_conditions": [
+    "When a target is identified as high-value.",
+    "When enemy air defense is expected to intercept many missiles."
+  ],
+  "consumer": "StrategyProposalAgent",
+  "counter_conditions": [
+    "If fire_quantity is too low, target may survive.",
+    "If defenses are too effective, even high quantity may fail.",
+    "Random distribution of intercepts may cause variance."
+  ],
+  "created_from": [
+    "generation-learning-bundle.json",
+    "comparative-analysis.json"
+  ],
+  "environment": {
+    "renderer_version": "manual_template_v1",
+    "runtime_version": "2.0.0",
+    "score_spec_checksum": "9a7f68a20cea722df7ae77c28a93199b1042258bd153973e25021b5e498762df"
+  },
+  "evidence_quality": 0.4,
+  "evidence_refs": [
+    "attempts\\attempt_00\\batch-results\\20260804-150134\\001_g000_cmo_candidate_00_a00\\execution-timeline.jsonl",
+    "attempts\\attempt_00\\batch-results\\20260804-150356\\001_g000_cmo_candidate_02_a00\\execution-timeline.jsonl",
+    "attempts\\attempt_00\\execution-diagnostic.json",
+    "attempts\\attempt_00\\execution-summary.json"
+  ],
+  "evidence_stance": "support",
+  "experience_id": "exp_manual_evolution_auto_20260804_rerun_g000_generation_02_001",
+  "experience_key": "naval_air_anti_surface.fire_quantity",
+  "experience_type": "evidence_limitation",
+  "hypothesis": "Increased fire_quantity on a single target may be associated with target destruction, but without scoring event evidence the exact threshold cannot be confirmed.",
+  "model_confidence": 0.4,
+  "observed_effect": {
+    "baseline_score": -40,
+    "black_box_outcome_only": true,
+    "contradicting_candidate_ids": [
+      "candidate_03"
+    ],
+    "score_delta_vs_baseline": {
+      "candidate_00": 200,
+      "candidate_02": 200
+    },
+    "scores": {
+      "candidate_00": 160,
+      "candidate_02": 160
+    },
+    "supporting_candidate_ids": [
+      "candidate_00",
+      "candidate_02"
+    ]
+  },
+  "recommended_pattern": {
+    "controlled_changes": [
+      "Vary fire_quantity for one attack operation",
+      "Fix target_ids to blue_cvn70",
+      "Keep delay_seconds constant"
+    ],
+    "monitored_metrics": [
+      "score",
+      "destroyed status",
+      "weapon expenditure vs hits"
+    ],
+    "summary": "Design a salvo-size sweep: starting from baseline fire_quantity, incrementally increase the number of missiles allocated to a single target (e.g., blue_cvn70) while keeping other parameters constant. Record score and damage for each level."
+  },
+  "schema_version": "2",
+  "scoring_evidence_status": "MISSING",
+  "skill_promotion_eligible": false,
+  "source_optimization_id": "manual_evolution_auto_20260804_rerun_g000",
+  "status": "candidate",
+  "strategy_dimensions": [
+    "attacks",
+    "sorties"
+  ]
+}

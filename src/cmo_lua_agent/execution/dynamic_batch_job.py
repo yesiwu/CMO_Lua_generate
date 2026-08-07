@@ -106,6 +106,20 @@ class DynamicBatchJobBuilder:
                 {
                     "name": operation_id,
                     "script": str(lua_copy),
+                    # BatchRunner uses this bounded list to capture formal
+                    # final damage for the opposing scored targets.  It is
+                    # sourced from the same audit unit mapping as the summary,
+                    # not reconstructed after CMO returns.
+                    "metrics": {
+                        "expectedDestructionTargets": [
+                            str(unit["Name"])
+                            for unit in audit_payload.get("Units", [])
+                            if isinstance(unit, dict)
+                            and unit.get("Name")
+                            and str(unit.get("SideId", "")).casefold()
+                            != str(audit_payload.get("ScoringSideId", "")).casefold()
+                        ]
+                    },
                     "auditProfile": audit_payload,
                 }
             ],

@@ -16,9 +16,11 @@ class _Client:
         self.response = response
         self.calls = 0
         self.prompts: list[str] = []
+        self.systems: list[str] = []
 
     def complete_json(self, *, system: str, prompt: str) -> object:
         self.calls += 1
+        self.systems.append(system)
         self.prompts.append(prompt)
         return self.response
 
@@ -77,6 +79,20 @@ def test_create_returns_strict_structured_draft_once() -> None:
     assert result.strategy_patterns[0].source_slots == ("support_01",)
     assert client.calls == 1
     assert "exp-1" not in client.prompts[0]
+
+
+def test_create_prompt_declares_exact_draft_and_rule_schemas() -> None:
+    client = _Client(_draft_response())
+    SkillAuthorAgent(client).create(_context())
+
+    assert '"title"' in client.systems[0]
+    assert '"verification_rules"' in client.systems[0]
+    assert '"rule_key"' in client.systems[0]
+    assert '"source_slots"' in client.systems[0]
+    context = __import__("json").loads(client.prompts[0])
+    assert context["response_contract"]["rule_fields"] == [
+        "rule_key", "statement", "source_slots"
+    ]
 
 
 def test_create_rejects_extra_fields() -> None:

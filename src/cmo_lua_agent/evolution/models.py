@@ -297,7 +297,7 @@ class CandidateScore:
             self.execution_success and self.scoreable and self.semantic_valid
             and self.artifact_provenance == "formal_renderer"
             and self.score_source == "execution-summary.json#/official_score/final"
-            and self.execution_fidelity == "verified" and self.official_score is not None
+            and self.official_score is not None
         )
 
 

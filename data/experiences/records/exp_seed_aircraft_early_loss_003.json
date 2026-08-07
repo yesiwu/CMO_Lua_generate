@@ -1,0 +1,65 @@
+{
+  "schema_version": "2.0",
+  "experience_id": "exp_seed_aircraft_early_loss_003",
+  "experience_key": "naval_air_anti_surface.aircraft_early_loss",
+  "experience_type": "tactical_positive",
+  "evidence_stance": "support",
+  "status": "candidate",
+  "consumer": "StrategyProposalAgent",
+  "artifact_provenance": "synthetic_seed",
+  "scoring_evidence_status": "COMPLETE",
+  "skill_promotion_eligible": true,
+  "hypothesis": "为两架航空兵设置错开的起飞延迟并避免同时进入同一防空扇区，结果支持该策略与更高得分相关，但仍需后续控制变量验证。",
+  "applicable_conditions": [
+    "两架飞机在基线中同时进入同一方向的防空区域并出现共同早期损失。",
+    "航空任务允许分别调整起飞延迟和航路方向。"
+  ],
+  "recommended_pattern": {
+    "summary": "在StrategySpec中为两架航空任务设置不同的起飞延迟，并结合分轴航路降低同时暴露概率。",
+    "strategy_dimensions": [
+      "sorties"
+    ]
+  },
+  "counter_conditions": [
+    "当任务需要严格同步到达以形成联合饱和时，过大的起飞间隔可能削弱整体突防效果。"
+  ],
+  "strategy_dimensions": [
+    "sorties"
+  ],
+  "observed_effect": {
+    "supporting_candidate_ids": [
+      "candidate_02"
+    ],
+    "contradicting_candidate_ids": [],
+    "baseline_score": 150,
+    "scores": {
+      "candidate_02": 185
+    },
+    "score_delta_vs_baseline": 35,
+    "target_damage": {
+      "blue_cg59": 100
+    },
+    "losses_red": 0
+  },
+  "execution_success": true,
+  "scoreable": true,
+  "semantic_valid": true,
+  "execution_fidelity": "verified",
+  "evidence_quality": 0.75,
+  "model_confidence": 0.79,
+  "score_source": "execution_summary",
+  "environment": {
+    "mission_type": "naval_air_anti_surface",
+    "scenario_id": "red_blue_6v4_liaoning",
+    "runtime_version": "2.0.0",
+    "renderer_version": "manual_template_v1",
+    "score_spec_version": "2.0.0",
+    "score_spec_checksum": "9a7f68a20cea722df7ae77c28a93199b1042258bd153973e25021b5e498762df",
+    "scenario_schema_version": "1.0",
+    "score_source": "execution_summary"
+  },
+  "source_optimization_id": "seed_aircraft_early_loss_opt_003",
+  "evidence_refs": [
+    "runs/evolution/manual_evolution_auto_20260804_rerun/generations/generation_002/phase6/candidate_00/attempts/attempt_00/execution-summary.json"
+  ]
+}

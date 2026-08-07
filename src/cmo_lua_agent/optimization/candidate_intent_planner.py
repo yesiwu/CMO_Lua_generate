@@ -31,6 +31,7 @@ _LEGACY_ROLE_SPECS = (
 class CandidateIntentPlanner:
     def __init__(self, client: IntentJsonClient) -> None:
         self._client = client
+        self.last_call_count = 0
 
     def plan(
         self,
@@ -73,6 +74,7 @@ class CandidateIntentPlanner:
                 ],
             }, ensure_ascii=False, sort_keys=True),
         )
+        self.last_call_count = int(getattr(self._client, "last_calls", 1))
         if not isinstance(response, Mapping) or set(response) != {"intents"}:
             raise ProposalContractError("invalid_intent_response_shape")
         rows = response["intents"]

@@ -43,7 +43,11 @@ class CandidateLearningView:
     evidence_refs: tuple[str, ...]         # 依赖原始证据文件相对路径，用于审计溯源
     scoring_evidence_status: str = "MISSING"  # COMPLETE/DERIVED/MISSING/CONFLICTING
     candidate_quality: dict[str, Any] = field(default_factory=dict)
-    auxiliary_execution_analysis: dict[str, Any] = field(default_factory=dict)
+    score_breakdown: dict[str, Any] = field(default_factory=dict)
+    attack_execution_trace: tuple[dict[str, Any], ...] = ()
+    air_outcomes: tuple[dict[str, Any], ...] = ()
+    weapon_release: tuple[dict[str, Any], ...] = ()
+    process_evidence_status: str = "MISSING"
     auxiliary_execution_analysis: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -107,6 +111,21 @@ class ComparativeAnalysis:
     evidence_limitations: tuple[str, ...]          # 当前证据存在的局限、数据缺口
     possible_random_factors: tuple[str, ...]       # 可能造成结果波动的随机因素
     next_testable_hypotheses: tuple[str, ...]      # 后续可设计试验验证的假说
+
+
+@dataclass(frozen=True, slots=True)
+class CandidateComparison:
+    """One bounded baseline-versus-candidate observation in a batch response."""
+    candidate_id: str
+    analysis: ComparativeAnalysis
+
+
+@dataclass(frozen=True, slots=True)
+class ComparativeLearningResponse:
+    """The only LLM response permitted for a complete generation."""
+    candidate_comparisons: tuple[CandidateComparison, ...]
+    cross_candidate_analysis: ComparativeAnalysis
+    proposals: tuple[ExperienceProposal, ...]
 
 
 @dataclass(frozen=True, slots=True)

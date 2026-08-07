@@ -29,25 +29,25 @@ local STRATEGY = {
     mechanism = 'J-15低空前出后跃升开雷达，红方舰艇利用共享contact实施超视距反舰打击',
     attacks = {
         {
-            id='red_055_attack', kind='ship', attacker_id='red_055_nanchang',
+            id='red_055_attack', operation_id='attack.red_055_attack', kind='ship', attacker_id='red_055_nanchang',
             target_id='blue_ddg113_1', delay_seconds=30,
             quantity=8, weapon_dbid=SHIP_WEAPON_DBID,
             max_range_nm=285, poll_seconds=15, max_attempts=120,
         },
         {
-            id='red_052d_1_attack', kind='ship', attacker_id='red_052d_1',
+            id='red_052d_1_attack', operation_id='attack.red_052d_1_attack', kind='ship', attacker_id='red_052d_1',
             target_id='blue_cg59', delay_seconds=45,
             quantity=8, weapon_dbid=SHIP_WEAPON_DBID,
             max_range_nm=285, poll_seconds=15, max_attempts=120,
         },
         {
-            id='red_052d_2_attack', kind='ship', attacker_id='red_052d_2',
+            id='red_052d_2_attack', operation_id='attack.red_052d_2_attack', kind='ship', attacker_id='red_052d_2',
             target_id='blue_cg59', delay_seconds=60,
             quantity=5, weapon_dbid=SHIP_WEAPON_DBID,
             max_range_nm=285, poll_seconds=15, max_attempts=120,
         },
         {
-            id='red_j15_1_attack', kind='air', attacker_id='red_j15_1',
+            id='red_j15_1_attack', operation_id='attack.red_j15_1_attack', sortie_id='sortie.red_j15_1', kind='air', attacker_id='red_j15_1',
             target_id='blue_cvn70', delay_seconds=5,
             quantity=4, weapon_dbid=nil, base_id='red_liaoning',
             ingress_altitude_m=200, popup_altitude_m=9500,
@@ -57,7 +57,7 @@ local STRATEGY = {
             poll_seconds=10, max_attempts=210, return_delay_seconds=120,
         },
         {
-            id='red_j15_2_attack', kind='air', attacker_id='red_j15_2',
+            id='red_j15_2_attack', operation_id='attack.red_j15_2_attack', sortie_id='sortie.red_j15_2', kind='air', attacker_id='red_j15_2',
             target_id='blue_ddg113_2', delay_seconds=20,
             quantity=4, weapon_dbid=nil, base_id='red_liaoning',
             ingress_altitude_m=200, popup_altitude_m=9500,
@@ -87,9 +87,47 @@ local EXPECTED_BLUE_IDS={'blue_cvn70','blue_cg59','blue_ddg113_1','blue_ddg113_2
 local ATTACK_BY_ID={}
 local ATTACK_RUNTIME={}
 local TRACE={}
+local AGENT_EVENT_EMITTED={}
 
 local function runtime_log(message)
     print('[BASELINE] ' .. tostring(message))
+end
+
+local function agent_event_escape(value)
+    if value == nil or value == JSON_NULL then return 'null' end
+    local s=tostring(value)
+    s=s:gsub('%%','%%25'):gsub('|','%%7C'):gsub('=','%%3D'):gsub('\r','%%0D'):gsub('\n','%%0A')
+    return s
+end
+
+local function emit_agent_event(category, fields, ordered_keys)
+    local parts={'[CMO_AGENT_EVENT]','v1',category}
+    for _,key in ipairs(ordered_keys) do
+        parts[#parts+1]=key..'='..agent_event_escape(fields[key])
+    end
+    print(table.concat(parts,'|'))
+end
+
+local function emit_attack_stage(attack,stage,success,reason)
+    if not attack then return end
+    local key='ATTACK_STAGE|'..tostring(attack.operation_id)..'|'..tostring(stage)..'|'..tostring(success)
+    if AGENT_EVENT_EMITTED[key] then return end
+    AGENT_EVENT_EMITTED[key]=true
+    emit_agent_event('ATTACK_STAGE',{
+        operation_id=attack.operation_id,sortie_id=attack.sortie_id,attacker_id=attack.attacker_id,
+        target_id=attack.target_id,weapon_dbid=attack.weapon_dbid,stage=stage,success=success,reason=reason,
+    },{'operation_id','sortie_id','attacker_id','target_id','weapon_dbid','stage','success','reason'})
+end
+
+local function emit_air_state(attack,state,success,reason)
+    if not attack or attack.kind~='air' then return end
+    local key='AIR_STATE|'..tostring(attack.operation_id)..'|'..tostring(state)..'|'..tostring(success)
+    if AGENT_EVENT_EMITTED[key] then return end
+    AGENT_EVENT_EMITTED[key]=true
+    emit_agent_event('AIR_STATE',{
+        operation_id=attack.operation_id,sortie_id=attack.sortie_id,aircraft_id=attack.attacker_id,
+        target_id=attack.target_id,state=state,success=success,reason=reason,
+    },{'operation_id','sortie_id','aircraft_id','target_id','state','success','reason'})
 end
 
 local function json_escape(value)
@@ -227,7 +265,7 @@ local function validate_strategy()
             local capacity=UNIT_CATALOG[attack.attacker_id].weapon_quantity or 0
             assert_or_error(attack.quantity<=capacity,'ship_quantity_capacity',attack.id..'/'..tostring(attack.quantity)..'<='..tostring(capacity))
         else
-            assert_or_error(attack.popup_range_nm>attack.attack_range_nm or attack.popup_range_nm==attack.attack_range_nm,'air_popup_before_attack',attack.id)
+            assert_or_error(attack.popup_range_nm>attack.attack_range_nm,'air_popup_before_attack',attack.id)
         end
         ATTACK_BY_ID[attack.id]=attack
         ATTACK_RUNTIME[attack.id]={popup=false,last_airborne_seconds=0,was_airborne=false,release_check_attempt=0}
@@ -382,11 +420,14 @@ local function call_attack_contact(attack_id,attacker,target,contact_guid)
         options={mode='0'}
     end
     trace_update(attack_id,{stage='fire_called',fire_called=true,contact_guid=contact_guid,damage_percent=damage_percent(target)})
+    emit_attack_stage(attack,'attack_command_called',JSON_NULL,'cmo_attack_contact_invoked')
     _errnum_=0
     _errmsg_=''
     local ok,result=pcall(ScenEdit_AttackContact,attacker.guid,contact_guid,options)
     local success=ok and result ~= nil and result ~= false and (tonumber(_errnum_) or 0)==0
     trace_update(attack_id,{stage=success and 'fire_accepted' or 'fire_rejected',fire_accepted=success,detail=tostring(_errmsg_ or ''),failure_stage=success and JSON_NULL or 'attack_contact_rejected'})
+    emit_attack_stage(attack,success and 'attack_command_succeeded' or 'attack_command_failed',success,success and 'cmo_command_accepted' or tostring(_errmsg_ or 'cmo_command_rejected'))
+    if success then emit_attack_stage(attack,'completed',true,'attack_command_accepted') end
     return success
 end
 
@@ -417,8 +458,11 @@ function baseline_ship_attack_poll(attack_id,attempt)
     local attack,attacker_spec,target_spec,attacker,target=attack_context(attack_id)
     if not attack then return end
     trace_update(attack_id,{stage='ship_poll',triggered=true,attempt=attempt,attacker_found=attacker~=nil,target_found=target~=nil})
-    if not attacker then trace_update(attack_id,{stage='failed',failure_stage='attacker_not_found'}); return end
-    if not target then trace_update(attack_id,{stage='target_gone',failure_stage=JSON_NULL,damage_percent=100}); return end
+    if attempt==1 then emit_attack_stage(attack,'triggered',true,'scheduled_callback_started') end
+    emit_attack_stage(attack,'attacker_found',attacker~=nil,attacker and 'attacker_resolved' or 'attacker_not_found')
+    emit_attack_stage(attack,'target_found',target~=nil,target and 'target_resolved' or 'target_not_found')
+    if not attacker then trace_update(attack_id,{stage='failed',failure_stage='attacker_not_found'}); emit_attack_stage(attack,'completed',false,'attacker_not_found'); return end
+    if not target then trace_update(attack_id,{stage='target_gone',failure_stage=JSON_NULL,damage_percent=100}); emit_attack_stage(attack,'completed',false,'target_not_found'); return end
     local ok_range,range_nm=pcall(Tool_Range,attacker.guid,target.guid)
     if not ok_range then range_nm=nil end
     local contact_guid,contact=contact_guid_for_target(SIDE_RED,target,target_spec.name)
@@ -430,6 +474,8 @@ function baseline_ship_attack_poll(attack_id,attempt)
         detail='ship_wait_contact_and_range',
     })
     if contact_guid and in_range then
+        emit_attack_stage(attack,'contact_acquired',true,'cmo_contact_resolved')
+        emit_attack_stage(attack,'attack_range_reached',true,'range_within_limit')
         local before=unit_weapon_count(attacker,attack.weapon_dbid)
         if call_attack_contact(attack_id,attacker,target,contact_guid) then
             schedule_lua('baseline_release_'..attack_id..'_1',string.format('baseline_confirm_ship_release(%q,%d,1)',attack_id,before),10)
@@ -438,7 +484,10 @@ function baseline_ship_attack_poll(attack_id,attempt)
     end
     if attempt>=attack.max_attempts then
         local failure=not contact_guid and 'contact_not_acquired' or (not in_range and 'attack_range_not_reached' or 'fire_not_accepted')
+        if not contact_guid then emit_attack_stage(attack,'contact_acquired',false,failure) end
+        if not in_range then emit_attack_stage(attack,'attack_range_reached',false,failure) end
         trace_update(attack_id,{stage='not_reached',failure_stage=failure,detail='ship_poll_timeout'})
+        emit_attack_stage(attack,'completed',false,failure)
         return
     end
     schedule_lua('baseline_ship_poll_'..attack_id..'_'..tostring(attempt+1),string.format('baseline_ship_attack_poll(%q,%d)',attack_id,attempt+1),attack.poll_seconds)
@@ -452,9 +501,22 @@ function baseline_air_rtb(attack_id)
     if unit then
         pcall(ScenEdit_SetEMCON,'Unit',unit.guid,'Radar=Passive')
         checked_cmo_call('AirDescend/'..attack_id,ScenEdit_SetUnit,{guid=unit.guid,altitude=attack.ingress_altitude_m,moveto=true,throttle='Full'})
-        checked_cmo_call('AirRTB/'..attack_id,ScenEdit_SetUnit,{guid=unit.guid,base=base and base.guid or UNIT_CATALOG[attack.base_id].name,rtb=true})
+        local rtb_ok=checked_cmo_call('AirRTB/'..attack_id,ScenEdit_SetUnit,{guid=unit.guid,base=base and base.guid or UNIT_CATALOG[attack.base_id].name,rtb=true})
+        emit_air_state(attack,'rtb_requested',rtb_ok,rtb_ok and 'cmo_rtb_accepted' or 'cmo_rtb_rejected')
         trace_update(attack_id,{stage='rtb_ordered',detail='radar_passive_low_altitude_rtb'})
+        if rtb_ok then schedule_lua('baseline_air_landed_'..attack_id..'_1',string.format('baseline_air_landing_poll(%q,%d)',attack_id,1),30) end
     end
+end
+
+function baseline_air_landing_poll(attack_id,attempt)
+    local attack=ATTACK_BY_ID[attack_id]
+    if not attack then return end
+    local unit=unit_by_id(attack.attacker_id)
+    if unit and ATTACK_RUNTIME[attack_id].was_airborne and not unit.isOperating then
+        emit_air_state(attack,'landed',true,'cmo_unit_hosted_after_airborne')
+        return
+    end
+    if attempt<40 then schedule_lua('baseline_air_landed_'..attack_id..'_'..tostring(attempt+1),string.format('baseline_air_landing_poll(%q,%d)',attack_id,attempt+1),30) end
 end
 
 function baseline_air_attack_poll(attack_id,attempt)
@@ -462,8 +524,10 @@ function baseline_air_attack_poll(attack_id,attempt)
     if not attack then return end
     local runtime=ATTACK_RUNTIME[attack_id]
     trace_update(attack_id,{stage='air_poll',triggered=true,attempt=attempt,attacker_found=aircraft~=nil,target_found=target~=nil,airborne=aircraft and aircraft.isOperating or false})
-    if not aircraft then trace_update(attack_id,{stage='failed',failure_stage='aircraft_missing_before_attack'}); return end
-    if not target then trace_update(attack_id,{stage='target_gone',damage_percent=100,failure_stage=JSON_NULL}); baseline_air_rtb(attack_id); return end
+    emit_attack_stage(attack,'attacker_found',aircraft~=nil,aircraft and 'attacker_resolved' or 'aircraft_missing_before_attack')
+    emit_attack_stage(attack,'target_found',target~=nil,target and 'target_resolved' or 'target_not_found')
+    if not aircraft then trace_update(attack_id,{stage='failed',failure_stage='aircraft_missing_before_attack'}); emit_attack_stage(attack,'completed',false,'aircraft_missing_before_attack'); return end
+    if not target then trace_update(attack_id,{stage='target_gone',damage_percent=100,failure_stage=JSON_NULL}); emit_attack_stage(attack,'completed',false,'target_not_found'); baseline_air_rtb(attack_id); return end
     if aircraft.isOperating then
         runtime.was_airborne=true
         runtime.last_airborne_seconds=math.max(runtime.last_airborne_seconds or 0,tonumber(aircraft.airbornetime_v or 0) or 0)
@@ -496,6 +560,8 @@ function baseline_air_attack_poll(attack_id,attempt)
         detail=runtime.popup and 'radar_active_search' or 'low_altitude_passive_ingress',
     })
     if contact_guid and in_range then
+        emit_attack_stage(attack,'contact_acquired',true,'cmo_contact_resolved')
+        emit_attack_stage(attack,'attack_range_reached',true,'range_within_limit')
         if call_attack_contact(attack_id,aircraft,target,contact_guid) then
             schedule_lua('baseline_air_rtb_'..attack_id,string.format('baseline_air_rtb(%q)',attack_id),attack.return_delay_seconds)
             return
@@ -503,7 +569,10 @@ function baseline_air_attack_poll(attack_id,attempt)
     end
     if attempt>=attack.max_attempts then
         local failure=not contact_guid and 'contact_not_acquired' or (not in_range and 'attack_range_not_reached' or 'fire_not_accepted')
+        if not contact_guid then emit_attack_stage(attack,'contact_acquired',false,failure) end
+        if not in_range then emit_attack_stage(attack,'attack_range_reached',false,failure) end
         trace_update(attack_id,{stage='not_reached',failure_stage=failure,detail='air_poll_timeout'})
+        emit_attack_stage(attack,'completed',false,failure)
         baseline_air_rtb(attack_id)
         return
     end
@@ -514,26 +583,32 @@ function baseline_air_launch_poll(attack_id,attempt)
     local attack,attacker_spec,target_spec,aircraft,target=attack_context(attack_id)
     if not attack then return end
     trace_update(attack_id,{stage='launch_poll',triggered=true,attempt=attempt,attacker_found=aircraft~=nil,target_found=target~=nil,airborne=aircraft and aircraft.isOperating or false})
-    if not aircraft then trace_update(attack_id,{stage='failed',failure_stage='aircraft_not_found'}); return end
-    if not target then trace_update(attack_id,{stage='failed',failure_stage='target_not_found'}); return end
+    if attempt==1 then emit_attack_stage(attack,'triggered',true,'scheduled_callback_started') end
+    emit_attack_stage(attack,'attacker_found',aircraft~=nil,aircraft and 'attacker_resolved' or 'aircraft_not_found')
+    emit_attack_stage(attack,'target_found',target~=nil,target and 'target_resolved' or 'target_not_found')
+    if not aircraft then trace_update(attack_id,{stage='failed',failure_stage='aircraft_not_found'}); emit_attack_stage(attack,'completed',false,'aircraft_not_found'); return end
+    if not target then trace_update(attack_id,{stage='failed',failure_stage='target_not_found'}); emit_attack_stage(attack,'completed',false,'target_not_found'); return end
     if aircraft.isOperating then
         ATTACK_RUNTIME[attack_id].was_airborne=true
+        emit_air_state(attack,'airborne',true,'cmo_unit_is_operating')
         pcall(ScenEdit_SetEMCON,'Unit',aircraft.guid,'Radar=Passive')
         local mid_lat=tonumber(target.latitude)+tonumber(attack.mid_lat_offset)
         local mid_lon=tonumber(target.longitude)+tonumber(attack.mid_lon_offset)
         local app_lat=tonumber(target.latitude)+tonumber(attack.approach_lat_offset)
         local app_lon=tonumber(target.longitude)+tonumber(attack.approach_lon_offset)
-        checked_cmo_call('AirRoute/'..attack_id,ScenEdit_SetUnit,{
+        local route_ok=checked_cmo_call('AirRoute/'..attack_id,ScenEdit_SetUnit,{
             guid=aircraft.guid,course={{latitude=mid_lat,longitude=mid_lon},{latitude=app_lat,longitude=app_lon}},
             altitude=attack.ingress_altitude_m,moveto=true,throttle='Full',
         })
+        emit_air_state(attack,'route_assigned',route_ok,route_ok and 'cmo_route_accepted' or 'cmo_route_rejected')
         trace_update(attack_id,{stage='airborne_route_set',airborne=true,detail=string.format('target_relative_route %.4f,%.4f -> %.4f,%.4f',mid_lat,mid_lon,app_lat,app_lon)})
         schedule_lua('baseline_air_poll_'..attack_id..'_1',string.format('baseline_air_attack_poll(%q,1)',attack_id),attack.poll_seconds)
         return
     end
-    if attempt>=24 then trace_update(attack_id,{stage='not_reached',failure_stage='launch_timeout'}); return end
+    if attempt>=24 then trace_update(attack_id,{stage='not_reached',failure_stage='launch_timeout'}); emit_air_state(attack,'airborne',false,'launch_timeout'); emit_attack_stage(attack,'completed',false,'launch_timeout'); return end
     checked_cmo_call('ReadyRetry/'..attack_id,ScenEdit_SetUnit,{guid=aircraft.guid,timetoready_minutes=0})
-    checked_cmo_call('Launch/'..attack_id,ScenEdit_SetUnit,{guid=aircraft.guid,launch=true})
+    local launch_ok=checked_cmo_call('Launch/'..attack_id,ScenEdit_SetUnit,{guid=aircraft.guid,launch=true})
+    emit_air_state(attack,'launch_requested',launch_ok,launch_ok and 'cmo_launch_accepted' or 'cmo_launch_rejected')
     schedule_lua('baseline_air_launch_'..attack_id..'_'..tostring(attempt+1),string.format('baseline_air_launch_poll(%q,%d)',attack_id,attempt+1),15)
 end
 
@@ -668,6 +743,7 @@ score_log('installed native score rules=' .. tostring(#SCORE_RULES))
 -- ============================================================
 for _,attack in ipairs(STRATEGY.attacks) do
     trace_update(attack.id,{stage='scheduled',scheduled=true,detail='delay_seconds='..tostring(attack.delay_seconds)})
+    emit_attack_stage(attack,'scheduled',true,'delay_seconds='..tostring(attack.delay_seconds))
     if attack.kind=='ship' then
         schedule_lua('baseline_ship_start_'..attack.id,string.format('baseline_ship_attack_poll(%q,1)',attack.id),attack.delay_seconds)
     else

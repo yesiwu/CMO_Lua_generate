@@ -1,0 +1,7 @@
+{
+  "skill_id": "naval-air-ammunition-reserve",
+  "version": "1.0.0",
+  "relative_path": "versions/1.0.0",
+  "status": "curated",
+  "description": "Use when planning anti-surface strike allocations where first-wave fire quantity competes with follow-up and re-attack reserve."
+}

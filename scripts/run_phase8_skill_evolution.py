@@ -69,52 +69,23 @@ class _NoCallAuthor:
 
 def main() -> int:
     args = _parse_args()
-    from cmo_lua_agent.agents.skill_author_agent import SkillAuthorAgent
-    from cmo_lua_agent.learning.skill_evolution.assets import SkillAssetStore
-    from cmo_lua_agent.learning.skill_evolution.config import (
-        SkillStorageConfig,
-    )
-    from cmo_lua_agent.learning.skill_evolution.regression import (
-        SkillRegressionService,
-    )
-    from cmo_lua_agent.learning.skill_evolution.workflow import (
-        SkillEvolutionWorkflow,
-    )
-    from cmo_lua_agent.learning.store import ExperienceStore
+    from cmo_lua_agent.learning.skill_evolution.markdown_author import MarkdownSkillAuthorAgent
+    from cmo_lua_agent.learning.skill_evolution.simple_workflow import run_simple_phase8
+    from cmo_lua_agent.llm.client import ClaudeClient
+    from cmo_lua_agent.llm.json_client import ClaudeJsonClient
+    from cmo_lua_agent.llm_config import load_config
 
-    experience_store = ExperienceStore(args.experiences_root.resolve())
-    has_records = (
-        experience_store.records.is_dir()
-        and any(experience_store.records.glob("*.json"))
-    )
-    if has_records:
-        from cmo_lua_agent.llm.client import ClaudeClient
-        from cmo_lua_agent.llm.json_client import ClaudeJsonClient
-        from cmo_lua_agent.llm_config import load_config
-
-        author = SkillAuthorAgent(
-            ClaudeJsonClient(ClaudeClient(load_config().llm))
-        )
-    else:
-        author = _NoCallAuthor()
-    workflow = SkillEvolutionWorkflow(
-        author_agent=author,
-        asset_store=SkillAssetStore(
-            SkillStorageConfig.production(PROJECT_ROOT)
-        ),
-        regression_service=SkillRegressionService(
-            proposal_validator=_proposal_validator(
-                args.proposal_regression_fixture
-            )
-        ),
-    )
-    result = workflow.run(
+    result = run_simple_phase8(
         phase8_run_id=args.phase8_run_id,
         runs_root=args.runs_root.resolve(),
-        experience_store=experience_store,
+        experience_root=args.experiences_root.resolve(),
+        skills_root=PROJECT_ROOT / "data" / "skills",
+        author=MarkdownSkillAuthorAgent(
+            ClaudeJsonClient(ClaudeClient(load_config().llm))
+        ),
     )
     print(json.dumps(
-        result.to_dict(),
+        result,
         ensure_ascii=False,
         sort_keys=True,
         indent=2,

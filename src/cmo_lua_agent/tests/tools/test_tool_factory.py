@@ -57,6 +57,8 @@ def test_factory_registers_cmolua_tools_when_services_are_provided(
     assert isinstance(registry.get("list_directory"), ListDirectoryTool)
     assert registry.get("list_skills") is not None
     assert registry.get("load_skill") is not None
+    assert registry.get("list_curated_skills") is not None
+    assert registry.get("view_curated_skill") is not None
     assert registry.get("search_cmo_skill") is None
     assert registry.get("read_cmo_skill") is None
     definition_names = {
@@ -65,6 +67,8 @@ def test_factory_registers_cmolua_tools_when_services_are_provided(
     assert {
         "list_skills",
         "load_skill",
+        "list_curated_skills",
+        "view_curated_skill",
         "generate_cmo_lua",
         "query_cmo_database",
         "edit_file",

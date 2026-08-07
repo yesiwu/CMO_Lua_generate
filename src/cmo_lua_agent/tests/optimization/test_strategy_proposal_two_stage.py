@@ -158,6 +158,14 @@ def test_invalid_patch_repair_json_is_bound_to_candidate_and_stage() -> None:
             self._responses[4] = JsonCompletionError(
                 {"response_type": "str", "response_length": 9, "response_checksum": "fixture"}
             )
+            self._responses.extend((
+                JsonCompletionError(
+                    {"response_type": "str", "response_length": 9, "response_checksum": "fixture"}
+                ),
+                JsonCompletionError(
+                    {"response_type": "str", "response_length": 9, "response_checksum": "fixture"}
+                ),
+            ))
 
         def complete_json(self, **_: object) -> object:
             response = self._responses[self.calls]
@@ -177,20 +185,24 @@ def test_invalid_patch_repair_json_is_bound_to_candidate_and_stage() -> None:
     assert raised.value.diagnostics["response_checksum"] == "fixture"
 
 
-def test_resumed_candidate_generation_skips_intent_and_is_bounded_to_one_repair() -> None:
+def test_resumed_candidate_generation_skips_intent_and_allows_three_repairs() -> None:
     class ResumeClient:
         calls = 0
 
         def complete_json(self, **_kwargs: object) -> object:
             self.calls += 1
-            if self.calls == 1:
-                return {"invalid": "shape"}
+            if self.calls <= 3:
+                return {
+                    "proposal_summary": "This value is unchanged.",
+                    "changes": [{"path": "/attacks/0/fire_quantity", "value": 4}],
+                }
             return {
                 "proposal_summary": "Use a constrained timing change.",
                 "changes": [{"path": "/attacks/0/delay_seconds", "value": 4}],
             }
 
-    agent = StrategyProposalAgent(ResumeClient())
+    client = ResumeClient()
+    agent = StrategyProposalAgent(client)
     intent = CandidateIntent(
         "candidate_03", "conservative", "Use a smaller delay.",
         ("attack_timing",), 1, 1,
@@ -201,7 +213,8 @@ def test_resumed_candidate_generation_skips_intent_and_is_bounded_to_one_repair(
     assert candidate.candidate_id == "candidate_03"
     assert agent.last_usage.intent_calls == 0
     assert agent.last_usage.patch_calls == 1
-    assert agent.last_usage.repair_calls == 1
+    assert agent.last_usage.repair_calls == 3
+    assert client.calls == 4
 
 
 def test_explore_intent_dimension_preference_does_not_block_hard_valid_patch() -> None:

@@ -55,6 +55,7 @@ class CandidatePatchGenerator:
                     _candidate_instruction(intent)
                 ),
                 "repair_instruction": _repair_instruction(intent, error),
+                "repair_alternatives": _repair_alternatives(catalog, error),
                 "patchable_leaves": [leaf.to_prompt_dict() for leaf in catalog],
                 "patchable_leaves_by_dimension": grouped_catalog,
                 "accepted_candidates": [
@@ -143,8 +144,48 @@ def _repair_instruction(
         "fix every hard validation error, and use the role-quality warnings as preferences. "
         "changes must contain every corrected change, not only incremental additions. "
         "Every replacement value must differ from that path's current_value in patchable_leaves; "
-        "remove or replace any no-op change."
+        "remove or replace any no-op change. For a no-op, select a value from repair_alternatives."
     )
+
+
+def _repair_alternatives(
+    catalog: tuple[PatchableLeaf, ...], error: ProposalContractError | None,
+) -> list[dict[str, object]]:
+    """Bounded deterministic alternatives for a no-op repair; never invent values."""
+    if error is None or error.code != "no_effective_change":
+        return []
+    noops = error.diagnostics.get("no_effective_changes")
+    paths = (
+        [item.get("path") for item in noops if isinstance(item, Mapping)]
+        if isinstance(noops, list)
+        else [error.diagnostics.get("path")]
+    )
+    alternatives: list[dict[str, object]] = []
+    for path in paths:
+        leaf = next((item for item in catalog if item.path == path), None)
+        if leaf is None:
+            continue
+        values: list[object] = []
+        if leaf.allowed_values:
+            values = [value for value in leaf.allowed_values if value != leaf.current_value][:2]
+        elif isinstance(leaf.current_value, (int, float)) and not isinstance(leaf.current_value, bool):
+            for value in (leaf.current_value - 1, leaf.current_value + 1, leaf.minimum, leaf.maximum):
+                if value is None or value == leaf.current_value:
+                    continue
+                if leaf.minimum is not None and value < leaf.minimum:
+                    continue
+                if leaf.maximum is not None and value > leaf.maximum:
+                    continue
+                if value not in values:
+                    values.append(value)
+                if len(values) == 2:
+                    break
+        alternatives.append({
+            "path": leaf.path,
+            "baseline_value": leaf.current_value,
+            "allowed_alternatives": values,
+        })
+    return alternatives
 
 
 def _candidate_instruction(intent: CandidateIntent) -> str:

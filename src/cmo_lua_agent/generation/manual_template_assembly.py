@@ -1,8 +1,8 @@
 """Assembly adapter for an operator-authored active-strike Lua template.
 
-The template already owns its CMO state machine and native score registration.
-This adapter deliberately does not append the normal renderer or score fragment:
-it only projects approved formal StrategySpec leaf changes into declared slots.
+The template owns the CMO state machine and its proven native CMO scoring
+rules. This adapter projects approved StrategySpec leaf changes into declared
+slots without replacing that score block.
 """
 
 from __future__ import annotations
@@ -80,15 +80,22 @@ class ManualTemplateAssemblyService:
                 raise ManualTemplateAssemblyError(str(exc)) from exc
 
         rendered_template = self._template.render(template_strategy)
-        line_count = max(1, rendered_template.content.count("\n") + 1)
+        # The operator template remains the only source of tactical behavior
+        # and native CMO Points scoring. The experimental Lua damage poller is
+        # intentionally not installed: Batch CMO does not expose reliable
+        # per-unit damage through that wrapper, while UnitDestroyed + Points is
+        # a verified scoring path.
+        rendered_content = rendered_template.content
+        line_count = max(1, rendered_content.count("\n") + 1)
         rendered = RenderedLua(
-            content=rendered_template.content,
+            content=rendered_content,
             metadata={
                 "artifact_provenance": "manual_template",
                 "template_id": self._template.template_id,
                 "template_fixed_logic_checksum": rendered_template.fixed_logic_checksum,
                 "template_changed_slots": list(rendered_template.changed_slots),
                 "native_score_fragment_checksum": native_score_compilation.fragment_checksum,
+                "score_spec_version": "destroyed_unit_native_points",
             },
             source_map={
                 operation.operation_id: LuaSourceSpan(1, line_count)

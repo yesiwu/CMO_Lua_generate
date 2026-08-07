@@ -1,0 +1,74 @@
+{
+  "applicable_conditions": [
+    "When the enemy has air superiority fighters or long-range SAMs that can engage before weapon release.",
+    "When the mission requires J-15s to deliver weapons on target, and they are launched late relative to surface attacks.",
+    "When J-15 flight time is short (~45s) giving minimal exposure but also minimal time to reach launch distance."
+  ],
+  "consumer": "StrategyProposalAgent",
+  "counter_conditions": [
+    "If the J-15s are escorted by fighters or fly a terrain-masking route that avoids detection until terminal.",
+    "If the enemy air defenses are degraded by preceding missile strikes.",
+    "If the J-15s are armed with standoff weapons that can be launched outside the interception range."
+  ],
+  "created_from": [
+    "generation-learning-bundle.json",
+    "comparative-analysis.json"
+  ],
+  "environment": {
+    "renderer_version": "manual_template_v1",
+    "runtime_version": "2.0.0",
+    "score_spec_checksum": "9a7f68a20cea722df7ae77c28a93199b1042258bd153973e25021b5e498762df"
+  },
+  "evidence_quality": 1.0,
+  "evidence_refs": [
+    "attempts\\attempt_00\\batch-results\\20260803-172241\\001_g001_cmo_candidate_00_a00\\execution-timeline.jsonl",
+    "attempts\\attempt_00\\batch-results\\20260803-172344\\001_g001_cmo_candidate_01_a00\\execution-timeline.jsonl",
+    "attempts\\attempt_00\\batch-results\\20260803-172447\\001_g001_cmo_candidate_03_a00\\execution-timeline.jsonl",
+    "attempts\\attempt_00\\execution-diagnostic.json",
+    "attempts\\attempt_00\\execution-summary.json"
+  ],
+  "evidence_stance": "support",
+  "experience_id": "exp_phase9_blackbox_generation_001_v2_rerun_20260803_generation_03_001",
+  "experience_key": "naval_air_anti_surface.aircraft_early_loss",
+  "experience_type": "execution_failure",
+  "hypothesis": "J-15 aircraft are highly vulnerable to interception before they can launch weapons, especially when launched with short delay and low-altitude ingress, leading to zero weapon effectiveness; thus, relying on J-15s for any critical damage is risky unless their survival is improved.",
+  "model_confidence": 0.8,
+  "observed_effect": {
+    "baseline_score": 0,
+    "contradicting_candidate_ids": [
+      "candidate_02"
+    ],
+    "score_delta_vs_baseline": {
+      "candidate_00": 0,
+      "candidate_01": 0,
+      "candidate_03": 0
+    },
+    "scores": {
+      "candidate_00": 0,
+      "candidate_01": 0,
+      "candidate_03": 0
+    },
+    "supporting_candidate_ids": [
+      "candidate_00",
+      "candidate_01",
+      "candidate_03"
+    ]
+  },
+  "recommended_pattern": {
+    "details": [
+      "Step 1: Launch surface missile strikes first to degrade enemy SAM and fighter patrols.",
+      "Step 2: Launch J-15s after a 1-2 minute delay when defenses are focused on inbound missiles.",
+      "Step 3: Use high-altitude flight (e.g., 15,000 ft) and launch anti-ship missiles at max range to reduce time in lethal envelope."
+    ],
+    "summary": "Delay J-15 launch until surface missiles have suppressed air defenses, and consider higher-altitude ingress with standoff launches to reduce interception likelihood."
+  },
+  "schema_version": "2",
+  "scoring_evidence_status": "MISSING",
+  "skill_promotion_eligible": false,
+  "source_optimization_id": "phase9_blackbox_generation_001_v2_rerun_20260803",
+  "status": "candidate",
+  "strategy_dimensions": [
+    "attacks",
+    "sorties"
+  ]
+}

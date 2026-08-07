@@ -1,0 +1,17 @@
+﻿{
+  "max_generations": 3,
+  "max_cmo_runs": 15,
+  "max_cmo_attempts_per_candidate": 1,
+  "max_cmo_attempts_for_baseline": 1,
+  "max_repair_attempts_per_candidate": 0,
+  "max_failed_runs": 5,
+  "max_llm_total_calls": 63,
+  "max_strategy_proposal_calls": 50,
+  "max_lua_generation_calls": 0,
+  "max_lua_repair_calls": 0,
+  "max_comparative_learning_calls": 3,
+  "max_skill_author_calls": 0,
+  "max_wall_clock_seconds": 28800,
+  "per_generation_timeout_seconds": 7200,
+  "per_candidate_timeout_seconds": 1200
+}

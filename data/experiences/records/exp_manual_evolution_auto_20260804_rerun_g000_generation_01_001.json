@@ -1,0 +1,77 @@
+{
+  "applicable_conditions": [
+    "When high-value target (CVN) is present.",
+    "When sufficient firepower is available to overwhelm defenses."
+  ],
+  "consumer": "StrategyProposalAgent",
+  "counter_conditions": [
+    "If defenses are too strong to saturate.",
+    "If other targets offer higher scoring value per missile.",
+    "If random defensive variance yields different outcomes."
+  ],
+  "created_from": [
+    "generation-learning-bundle.json",
+    "comparative-analysis.json"
+  ],
+  "environment": {
+    "renderer_version": "manual_template_v1",
+    "runtime_version": "2.0.0",
+    "score_spec_checksum": "9a7f68a20cea722df7ae77c28a93199b1042258bd153973e25021b5e498762df"
+  },
+  "evidence_quality": 0.4,
+  "evidence_refs": [
+    "attempts\\attempt_00\\batch-results\\20260804-150134\\001_g000_cmo_candidate_00_a00\\execution-timeline.jsonl",
+    "attempts\\attempt_00\\batch-results\\20260804-150356\\001_g000_cmo_candidate_02_a00\\execution-timeline.jsonl",
+    "attempts\\attempt_00\\execution-diagnostic.json",
+    "attempts\\attempt_00\\execution-summary.json"
+  ],
+  "evidence_stance": "support",
+  "experience_id": "exp_manual_evolution_auto_20260804_rerun_g000_generation_01_001",
+  "experience_key": "naval_air_anti_surface.target_concentration",
+  "experience_type": "evidence_limitation",
+  "hypothesis": "Changing StrategySpec fields related to target concentration (e.g., concentrating all surface attacks on blue_cvn70) may be associated with achieving a higher official score, but missing scoring evidence prevents causal confirmation.",
+  "model_confidence": 0.4,
+  "observed_effect": {
+    "baseline_score": -40,
+    "black_box_outcome_only": true,
+    "contradicting_candidate_ids": [
+      "candidate_01",
+      "candidate_03"
+    ],
+    "score_delta_vs_baseline": {
+      "candidate_00": 200,
+      "candidate_02": 200
+    },
+    "scores": {
+      "candidate_00": 160,
+      "candidate_02": 160
+    },
+    "supporting_candidate_ids": [
+      "candidate_00",
+      "candidate_02"
+    ]
+  },
+  "recommended_pattern": {
+    "controlled_changes": [
+      "Set /attacks/0/target_ids/0 to blue_cvn70",
+      "Set /attacks/1/target_ids/0 to blue_cvn70",
+      "Set /attacks/2/target_ids/0 to blue_cvn70",
+      "Increase fire_quantity for these attacks"
+    ],
+    "monitored_metrics": [
+      "score",
+      "target_damage on blue_cvn70",
+      "weapon_release hit/kill counts"
+    ],
+    "summary": "Conduct a controlled experiment with a single change: set all surface attacks to target blue_cvn70 with increased fire_quantity, keeping all other parameters baseline. Run multiple replicas to assess outcome variance."
+  },
+  "schema_version": "2",
+  "scoring_evidence_status": "MISSING",
+  "skill_promotion_eligible": false,
+  "source_optimization_id": "manual_evolution_auto_20260804_rerun_g000",
+  "status": "candidate",
+  "strategy_dimensions": [
+    "attacks",
+    "sorties"
+  ]
+}

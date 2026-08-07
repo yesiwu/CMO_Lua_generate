@@ -1,0 +1,21 @@
+{
+  "created_by": "SkillAuthorAgent",
+  "mission_type": "naval_air_anti_surface",
+  "skill_id": "anti_surface_strike.tactical_patterns",
+  "source_experience_ids": [
+    "exp_seed_aircraft_early_loss_001",
+    "exp_seed_aircraft_early_loss_002",
+    "exp_seed_aircraft_early_loss_003",
+    "exp_seed_aircraft_route_001",
+    "exp_seed_aircraft_route_002",
+    "exp_seed_aircraft_route_003",
+    "exp_seed_ammunition_reserve_001",
+    "exp_seed_ammunition_reserve_002",
+    "exp_seed_ammunition_reserve_003",
+    "exp_seed_target_deconfliction_001",
+    "exp_seed_target_deconfliction_002",
+    "exp_seed_target_deconfliction_003"
+  ],
+  "status": "pending",
+  "version": "0.1.0"
+}

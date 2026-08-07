@@ -41,6 +41,11 @@ def _parse_args() -> argparse.Namespace:
         default=PROJECT_ROOT / "data" / "experiences",
         help="Phase 7 ExperienceStore root",
     )
+    parser.add_argument(
+        "--experience-id-prefix",
+        default="generation",
+        help="deterministic ID namespace for a reviewed replacement analysis",
+    )
     return parser.parse_args()
 
 
@@ -65,8 +70,12 @@ def main() -> int:
         agent=ComparativeLearningAgent(client),
         store=ExperienceStore(args.experiences_root.resolve()),
     )
-    bundle, first = workflow.run(optimization_dir)
-    _, replay = workflow.run(optimization_dir, reuse_saved_response=True)
+    bundle, first = workflow.run(optimization_dir, experience_id_prefix=args.experience_id_prefix)
+    _, replay = workflow.run(
+        optimization_dir,
+        reuse_saved_response=True,
+        experience_id_prefix=args.experience_id_prefix,
+    )
     if first != replay:
         raise RuntimeError("Phase 7 replay is not idempotent")
     if skills_before != _skill_snapshot():

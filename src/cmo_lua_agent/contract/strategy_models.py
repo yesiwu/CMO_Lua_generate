@@ -232,6 +232,10 @@ class AirTactics:
             value = getattr(self, field_name)
             if not isinstance(value, int) or isinstance(value, bool) or not minimum <= value <= maximum:
                 raise ValueError(f"{field_name} must be within {minimum}..{maximum}")
+        if self.ingress_altitude_m >= self.popup_altitude_m:
+            raise ValueError("ingress_altitude_m must be lower than popup_altitude_m")
+        if self.attack_range_nm >= self.popup_range_nm:
+            raise ValueError("attack_range_nm must be lower than popup_range_nm")
 
     def to_dict(self) -> dict[str, int]:
         return {

@@ -1,0 +1,7 @@
+{
+  "skill_id": "naval-air-fire-quantity",
+  "version": "1.0.0",
+  "relative_path": "versions/1.0.0",
+  "status": "curated",
+  "description": "Use when selecting controlled fire quantities for red-force anti-surface attacks against targets with different defensive value and priority."
+}

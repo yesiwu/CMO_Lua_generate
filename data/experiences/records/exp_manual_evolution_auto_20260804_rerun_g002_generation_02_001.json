@@ -1,0 +1,64 @@
+{
+  "applicable_conditions": [
+    "scoring_evidence_status is MISSING",
+    "multiple candidates had aircraft destroyed before release",
+    "candidate_00 changed launch delay and altitude for J15_1; candidate_01 changed timing and range"
+  ],
+  "consumer": "StrategyProposalAgent",
+  "counter_conditions": [
+    "Missing weapon release data for many sorties",
+    "Random interception variability",
+    "Changes in other strategy fields simultaneously"
+  ],
+  "created_from": [
+    "generation-learning-bundle.json",
+    "comparative-analysis.json"
+  ],
+  "environment": {
+    "renderer_version": "manual_template_v1",
+    "runtime_version": "2.0.0",
+    "score_spec_checksum": "9a7f68a20cea722df7ae77c28a93199b1042258bd153973e25021b5e498762df"
+  },
+  "evidence_quality": 0.4,
+  "evidence_refs": [
+    "attempts\\attempt_00\\batch-results\\20260804-152337\\001_g002_cmo_candidate_00_a00\\execution-timeline.jsonl",
+    "attempts\\attempt_00\\batch-results\\20260804-152439\\001_g002_cmo_candidate_01_a00\\execution-timeline.jsonl",
+    "attempts\\attempt_00\\execution-diagnostic.json",
+    "attempts\\attempt_00\\execution-summary.json"
+  ],
+  "evidence_stance": "qualify",
+  "experience_id": "exp_manual_evolution_auto_20260804_rerun_g002_generation_02_001",
+  "experience_key": "naval_air_anti_surface.aircraft_early_loss",
+  "experience_type": "evidence_limitation",
+  "hypothesis": "Aircraft early loss before weapon release may be associated with changes in launch delay and ingress altitude, but missing scoring evidence prevents attribution of these changes to the observed outcome.",
+  "model_confidence": 0.3,
+  "observed_effect": {
+    "baseline_score": 160,
+    "black_box_outcome_only": true,
+    "contradicting_candidate_ids": [],
+    "score_delta_vs_baseline": {
+      "candidate_00": 0,
+      "candidate_01": 0
+    },
+    "scores": {
+      "candidate_00": 160,
+      "candidate_01": 160
+    },
+    "supporting_candidate_ids": [
+      "candidate_00",
+      "candidate_01"
+    ]
+  },
+  "recommended_pattern": {
+    "summary": "Conduct a factorial experiment varying one factor at a time (launch delay, ingress altitude, attack range) while recording detailed weapon release events and scoring evidence, to determine which factor affects survival-to-release."
+  },
+  "schema_version": "2",
+  "scoring_evidence_status": "MISSING",
+  "skill_promotion_eligible": false,
+  "source_optimization_id": "manual_evolution_auto_20260804_rerun_g002",
+  "status": "candidate",
+  "strategy_dimensions": [
+    "attacks",
+    "sorties"
+  ]
+}

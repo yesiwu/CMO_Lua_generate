@@ -10,6 +10,7 @@ Phase 9C 生产环境推演进化任务组装模块，同时提供完全隔离�
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -42,6 +43,10 @@ from cmo_lua_agent.evolution.production_knowledge import (
 )
 # 预览构建器：预览模式，不跑真实CMO，只做规划渲染预览，用于调试
 from cmo_lua_agent.evolution.production_preview_builder import ProductionPreviewBuilder
+from cmo_lua_agent.evolution.rolling_baseline import (
+    RollingBaselineResolver,
+    apply_rolling_baseline,
+)
 # Phase7/Phase8生产适配器：把外部契约对接进进化任务工作流
 from cmo_lua_agent.evolution.production_phase_adapters import (
     ProductionPhase7Adapter,
@@ -51,6 +56,11 @@ from cmo_lua_agent.evolution.production_phase_adapters import (
 from cmo_lua_agent.evolution.stop_policy import StopPolicy
 # LLM JSON客户端，强制输出JSON，做格式校验
 from cmo_lua_agent.llm.json_client import ClaudeJsonClient
+from cmo_lua_agent.llm.agent_loop_json_client import AgentLoopJsonClient
+from cmo_lua_agent.learning.skill_evolution.curated_skill_registry import CuratedSkillRegistry
+from cmo_lua_agent.tools.list_curated_skills_tool import ListCuratedSkillsTool
+from cmo_lua_agent.tools.view_curated_skill_tool import ViewCuratedSkillTool
+from cmo_lua_agent.tools.tool_base.registry import ToolRegistry
 # 策略提案Agent：基于经验库生成新的策略候选StrategySpec
 from cmo_lua_agent.optimization.strategy_proposal_agent import StrategyProposalAgent
 
@@ -280,19 +290,44 @@ class ProductionEvolutionCampaignService:
 
     def preview_generation(self, **kwargs: Any):
         """预览模式：不跑真实CMO，仅做策略生成、Lua渲染预览"""
+        self._bind_generation_core(
+            campaign_id=str(kwargs["campaign_id"]),
+            generation_index=int(kwargs["generation_index"]),
+        )
         return self._service(str(kwargs["campaign_id"])).preview_generation(**kwargs)
 
     def repair_preview_candidate(self, **kwargs: Any):
         """修复预览模式下失败的候选方案"""
+        self._bind_generation_core(
+            campaign_id=str(kwargs["campaign_id"]),
+            generation_index=int(kwargs["generation_index"]),
+        )
         return self._service(str(kwargs["campaign_id"])).repair_preview_candidate(**kwargs)
 
     def resume_preview_from_candidate(self, **kwargs: Any):
         """从某个已有候选恢复预览推演流程"""
+        self._bind_generation_core(
+            campaign_id=str(kwargs["campaign_id"]),
+            generation_index=int(kwargs["generation_index"]),
+        )
         return self._service(str(kwargs["campaign_id"])).resume_preview_from_candidate(**kwargs)
 
     def execute_generation(self,** kwargs: Any):
         """正式执行一代：生成候选 → CMO仿真 → Phase3‑6校验打分 → Phase7‑8学习"""
         return self._service(str(kwargs["campaign_id"])).execute_generation(**kwargs)
+
+    def _bind_generation_core(self, *, campaign_id: str, generation_index: int) -> None:
+        """Use the persisted Champion as the next generation's baseline."""
+        root = self._campaigns_root / campaign_id
+        spec_data = json.loads((root / "campaign-spec.json").read_text(encoding="utf-8"))
+        spec = EvolutionCampaignService._spec_from_dict(spec_data)
+        package = self._package_loader.load(spec.scenario_ref)
+        if generation_index > 0:
+            package = apply_rolling_baseline(
+                package,
+                RollingBaselineResolver(root).resolve_for_generation(generation_index),
+            )
+        self._services[campaign_id] = self._build_core(spec, package)
 
     def inspect_campaign(self, campaign_id: str):
         """查询整个进化任务总体状态"""
@@ -333,6 +368,15 @@ def create_production_evolution_campaign_service(
     """
 
     json_client = ClaudeJsonClient(llm_client)
+    curated_skill_registry = ToolRegistry()
+    curated_skills = CuratedSkillRegistry(project_root / "data" / "skills")
+    curated_skill_registry.register(ListCuratedSkillsTool(registry=curated_skills))
+    curated_skill_registry.register(ViewCuratedSkillTool(registry=curated_skills))
+    intent_client = AgentLoopJsonClient(
+        client=llm_client,
+        tool_registry=curated_skill_registry,
+        max_turns=6,
+    )
     phase7 = ProductionPhase7Adapter(
         project_root=project_root,
         json_client=json_client,
@@ -348,7 +392,7 @@ def create_production_evolution_campaign_service(
             project_root=project_root,
             # Phase 9C‑1：冻结当前版本与工作树指纹写入输入包，不再拒绝带修改的预览
         ),
-        proposal_agent=StrategyProposalAgent(json_client),
+        proposal_agent=StrategyProposalAgent(json_client, intent_client=intent_client),
         candidate_evaluator=FormalCandidateEvaluator(
             json_client=json_client,
             cmo_runner_path=Path(r"C:\CMO\CmoBatchRunner\CmoBatchRunner.exe"),

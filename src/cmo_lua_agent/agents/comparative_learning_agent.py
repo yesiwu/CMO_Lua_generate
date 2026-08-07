@@ -10,7 +10,9 @@ from collections.abc import Mapping
 from typing import Protocol
 
 from cmo_lua_agent.learning.models import (
+    CandidateComparison,
     ComparativeAnalysis,
+    ComparativeLearningResponse,
     EvidenceStance,
     ExperienceProposal,
     GenerationLearningBundle,
@@ -33,11 +35,17 @@ class ComparativeLearningAgent:
 
     def __init__(self, client: ComparativeJsonClient) -> None:
         self._client = client
+        self._last_attempts: tuple[dict[str, object], ...] = ()
+
+    @property
+    def last_attempts(self) -> tuple[dict[str, object], ...]:
+        """Bounded response-validation audit; model response text is never retained."""
+        return self._last_attempts
 
     def analyze(
         self,
         bundle: GenerationLearningBundle,
-    ) -> tuple[ComparativeAnalysis, tuple[ExperienceProposal, ...]]:
+    ) -> ComparativeLearningResponse:
         """
         执行多候选仿真案例对比分析
         :param bundle: 标准化一代学习数据包
@@ -45,16 +53,47 @@ class ComparativeLearningAgent:
         :raises ValueError: LLM返回JSON结构不符合约定Schema时抛出异常
         """
         # 将学习数据包序列化为有序JSON送入大模型
-        raw = self._client.complete_json(
-            system=_SYSTEM,
-            prompt=json.dumps(bundle.to_dict(), ensure_ascii=False, sort_keys=True),
-        )
+        expected_ids = tuple(item.candidate_id for item in bundle.candidate_views)
+        attempts: list[dict[str, object]] = []
+        error: ValueError | None = None
+        for attempt_index in range(4):
+            try:
+                raw = self._client.complete_json(
+                    system=_SYSTEM if error is None else _REPAIR_SYSTEM,
+                    prompt=_prompt(
+                        bundle=bundle,
+                        expected_ids=expected_ids,
+                        repair_error=None if error is None else str(error),
+                    ),
+                )
+                response = self._parse(raw=raw, expected_ids=expected_ids)
+            except ValueError as exc:
+                error = exc
+                attempts.append({
+                    "attempt": attempt_index + 1,
+                    "status": "invalid",
+                    "error_code": _error_code(exc),
+                })
+                continue
+            attempts.append({"attempt": attempt_index + 1, "status": "accepted"})
+            self._last_attempts = tuple(attempts)
+            return response
+
+        self._last_attempts = tuple(attempts)
+        assert error is not None
+        raise error
+
+    @staticmethod
+    def _parse(
+        *, raw: object, expected_ids: tuple[str, ...],
+    ) -> ComparativeLearningResponse:
 
         # 校验顶层结构：根字典仅允许 analysis、proposals 两个字段
-        if not isinstance(raw, Mapping) or set(raw) != {"analysis", "proposals"}:
+        if not isinstance(raw, Mapping) or set(raw) != {"candidate_comparisons", "cross_candidate_analysis", "proposals"}:
             raise ValueError("comparative response schema is invalid")
 
-        analysis_raw = raw["analysis"]
+        comparisons_raw = raw["candidate_comparisons"]
+        analysis_raw = raw["cross_candidate_analysis"]
         proposals_raw = raw["proposals"]
 
         # 约定的分析模块固定字段清单
@@ -69,6 +108,23 @@ class ComparativeLearningAgent:
         # 校验analysis内部字段，不允许多字段、缺字段
         if not isinstance(analysis_raw, Mapping) or set(analysis_raw) != set(analysis_fields):
             raise ValueError("analysis schema is invalid")
+        if not isinstance(comparisons_raw, list) or len(comparisons_raw) != len(expected_ids):
+            raise ValueError("candidate_comparisons must contain every candidate exactly once")
+        comparisons: list[CandidateComparison] = []
+        for candidate_id, item in zip(expected_ids, comparisons_raw, strict=True):
+            # Candidate IDs come from frozen Python input order. Legacy wrapper
+            # IDs are ignored so a model cannot mis-bind an analysis.
+            candidate_analysis = item
+            if isinstance(item, Mapping) and set(item) == {"candidate_id", "analysis"}:
+                candidate_analysis = item["analysis"]
+            if not isinstance(candidate_analysis, Mapping):
+                raise ValueError("candidate comparison schema is invalid")
+            if not isinstance(candidate_analysis, Mapping) or set(candidate_analysis) != set(analysis_fields):
+                raise ValueError("candidate comparison analysis schema is invalid")
+            comparisons.append(CandidateComparison(
+                candidate_id,
+                ComparativeAnalysis(*(tuple(str(value) for value in candidate_analysis[field]) for field in analysis_fields)),
+            ))
         # 提案必须为列表，数量限制0~5条，控制假说规模，防止上下文爆炸
         if not isinstance(proposals_raw, list) or len(proposals_raw) > 5:
             raise ValueError("proposals must contain 0..5 items")
@@ -76,8 +132,8 @@ class ComparativeLearningAgent:
         # 组装标准化对比分析实体
         analysis = ComparativeAnalysis(*(tuple(str(item) for item in analysis_raw[field]) for field in analysis_fields))
         # 逐条校验并转换为经验提案实体
-        proposals = tuple(self._proposal(item) for item in proposals_raw)
-        return analysis, proposals
+        proposals = tuple(ComparativeLearningAgent._proposal(item) for item in proposals_raw)
+        return ComparativeLearningResponse(tuple(comparisons), analysis, proposals)
 
     @staticmethod
     def _proposal(value: object) -> ExperienceProposal:
@@ -161,9 +217,38 @@ class ComparativeLearningAgent:
 
 
 # LLM系统提示词（中文正式约束版本）
+def _prompt(
+    *,
+    bundle: GenerationLearningBundle,
+    expected_ids: tuple[str, ...],
+    repair_error: str | None,
+) -> str:
+    payload: dict[str, object] = {
+        "generation_bundle": bundle.to_dict(),
+        "response_contract": {
+            "candidate_comparison_order": list(expected_ids),
+            "candidate_comparisons_item": "analysis_object_only",
+        },
+    }
+    if repair_error is not None:
+        payload["repair"] = {
+            "previous_error": repair_error,
+            "instruction": "Return a complete replacement response that satisfies the response_contract.",
+        }
+    return json.dumps(payload, ensure_ascii=False, sort_keys=True)
+
+
+def _error_code(error: ValueError) -> str:
+    value = str(error).strip().lower().replace(" ", "_")
+    return value or error.__class__.__name__.lower()
+
+
 _SYSTEM = (
     "Return exactly one JSON object, with no Markdown or surrounding text. "
-    "The root object must contain exactly analysis and proposals. analysis must contain exactly "
+    "The root object must contain exactly candidate_comparisons, cross_candidate_analysis, and proposals. "
+    "candidate_comparisons must contain one analysis object for every input candidate in response_contract.candidate_comparison_order. "
+    "Never output candidate_id in candidate_comparisons; Python binds each array position to the frozen order. "
+    "cross_candidate_analysis and every candidate comparison analysis must contain exactly "
     "observed_strategy_differences, observed_execution_differences, "
     "observed_outcome_differences, evidence_limitations, possible_random_factors, and "
     "next_testable_hypotheses; every analysis field must be an array of strings. "
@@ -183,7 +268,19 @@ _SYSTEM = (
     "For qualify, at least one candidate reference and at least one counter_condition are required. Otherwise return no proposal. "
     "Do not output experience IDs, status, evidence references, environment details, scores, Lua, "
     "CMO commands, or ranking changes. candidate_quality is a deterministic quality report and may be used "
-    "only to qualify the scope of a hypothesis. scoring_evidence_status controls admission: COMPLETE and "
-    "DERIVED may support a proposal, while MISSING or CONFLICTING must return an empty proposals array. "
-    "DERIVED evidence must be described as reconstructed and lower confidence."
+    "only to qualify the scope of a hypothesis. COMPLETE and DERIVED scoring evidence may support a normal "
+    "proposal. When scoring_evidence_status is MISSING or CONFLICTING but official_score is valid and the "
+    "candidate executed successfully, every proposal must use experience_type=evidence_limitation and must "
+    "be an explicitly testable black-box hypothesis. It may say only that changed StrategySpec fields may be "
+    "associated with an observed outcome. Do not state or invent missile quantities, platform-specific kills, "
+    "weapon release, damage attribution, or direct causal mechanisms unless that exact fact appears in the "
+    "input view. recommended_pattern must describe a controlled follow-up experiment, not a tactical "
+    "recommendation. State missing evidence and plausible alternatives in counter_conditions. Such a proposal "
+    "is not Skill-promotion evidence. DERIVED evidence must be described as reconstructed and lower confidence."
+)
+
+_REPAIR_SYSTEM = (
+    _SYSTEM
+    + " This is a repair attempt. Return a complete replacement response. "
+    "candidate_comparisons is an ordered array of analysis objects only; never include candidate_id."
 )

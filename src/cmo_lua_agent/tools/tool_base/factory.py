@@ -49,6 +49,9 @@ from cmo_lua_agent.tools.list_skills_tool import (
 from cmo_lua_agent.tools.load_skill_tool import (
     LoadSkillTool,
 )
+from cmo_lua_agent.tools.list_curated_skills_tool import ListCuratedSkillsTool
+from cmo_lua_agent.tools.view_curated_skill_tool import ViewCuratedSkillTool
+from cmo_lua_agent.learning.skill_evolution.curated_skill_registry import CuratedSkillRegistry
 from cmo_lua_agent.tools.tool_base.registry import (
     ToolRegistry,
 )
@@ -124,6 +127,7 @@ def build_tool_registry(
             raise ValueError("campaign_chat_profile_requires_service")
         for tool in campaign_tools(service=evolution_campaign_service):
             registry.register(tool)
+        # 全自动推演工具（单入口、可恢复、经验目标驱动）
         return registry
     if chat_profile != "standard":
         raise ValueError("unknown_chat_profile")
@@ -170,6 +174,10 @@ def build_tool_registry(
             skills_root=PACKAGE_SKILLS_ROOT,
         )
     )
+
+    curated_skills = CuratedSkillRegistry(workdir / "data" / "skills")
+    registry.register(ListCuratedSkillsTool(registry=curated_skills))
+    registry.register(ViewCuratedSkillTool(registry=curated_skills))
 
     if cmo_lua_services is not None:
         registry.register(

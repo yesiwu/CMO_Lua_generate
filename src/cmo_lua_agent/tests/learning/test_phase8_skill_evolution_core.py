@@ -100,6 +100,20 @@ def test_aggregator_deduplicates_one_optimization_and_uses_stance() -> None:
     assert aggregate.contradiction_ratio == 0.5
 
 
+def test_aggregator_accepts_legacy_candidate_delta_mapping() -> None:
+    record = _record("opt-legacy", "scene-a")
+    record["observed_effect"]["score_delta_vs_baseline"] = {
+        "candidate_00": 20,
+        "candidate_01": 40,
+    }
+
+    aggregate = ExperienceAggregator(
+        ExperienceKeyCatalog.default()
+    ).aggregate((record,)).aggregates[0]
+
+    assert aggregate.supporting_evidence[0].score_delta == 30.0
+
+
 def test_conflicting_stances_in_one_optimization_use_conservative_precedence() -> None:
     records = (
         _record("opt-1", "scene-a", stance="support"),

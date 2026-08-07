@@ -1,0 +1,7 @@
+{
+  "skill_id": "naval-air-target-deconfliction",
+  "version": "1.0.0",
+  "status": "curated",
+  "mission_type": "naval_air_anti_surface",
+  "created_by": "manual_expert_review"
+}

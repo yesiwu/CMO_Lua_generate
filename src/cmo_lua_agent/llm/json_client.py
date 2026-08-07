@@ -58,6 +58,20 @@ class ClaudeJsonClient:
             raise JsonCompletionError(_diagnostics(text))
         return dict(value)
 
+    def complete_text(self, *, system: str, prompt: str) -> str:
+        """Return a single non-empty text completion without JSON parsing."""
+        message = self._client.create_message(
+            system=system,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        content = getattr(message, "content", None)
+        if not isinstance(content, list) or len(content) != 1:
+            raise JsonCompletionError(_diagnostics(None, response_type=type(content).__name__))
+        text = getattr(content[0], "text", None)
+        if not isinstance(text, str) or not text.strip():
+            raise JsonCompletionError(_diagnostics(text, response_type=type(text).__name__))
+        return text.strip() + "\n"
+
 
 _FENCED_JSON = re.compile(r"\A\s*```json[ \t]*\r?\n(?P<body>.*?)\r?\n```\s*\Z", re.DOTALL)
 

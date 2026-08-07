@@ -350,6 +350,13 @@
       ],
       "operation_id": "air_launch.red_j15_1_attack_cvn70",
       "parameters": {
+        "air_tactics": {
+          "attack_range_nm": 80,
+          "ingress_altitude_m": 200,
+          "launch_delay_seconds": 5,
+          "popup_altitude_m": 9500,
+          "popup_range_nm": 95
+        },
         "aircraft_id": "red_j15_1",
         "base_unit_id": "red_liaoning",
         "sortie_id": "red_j15_1_attack_cvn70"
@@ -375,6 +382,13 @@
       ],
       "operation_id": "air_launch.red_j15_2_attack_ddg113_2",
       "parameters": {
+        "air_tactics": {
+          "attack_range_nm": 80,
+          "ingress_altitude_m": 200,
+          "launch_delay_seconds": 5,
+          "popup_altitude_m": 9500,
+          "popup_range_nm": 95
+        },
         "aircraft_id": "red_j15_2",
         "base_unit_id": "red_liaoning",
         "sortie_id": "red_j15_2_attack_ddg113_2"
@@ -400,6 +414,13 @@
       ],
       "operation_id": "air_route.red_j15_1_attack_cvn70",
       "parameters": {
+        "air_tactics": {
+          "attack_range_nm": 80,
+          "ingress_altitude_m": 200,
+          "launch_delay_seconds": 5,
+          "popup_altitude_m": 9500,
+          "popup_range_nm": 95
+        },
         "aircraft_id": "red_j15_1",
         "altitude_meters": 8000,
         "route": [
@@ -425,6 +446,13 @@
       ],
       "operation_id": "air_range.red_j15_1_attack_cvn70",
       "parameters": {
+        "air_tactics": {
+          "attack_range_nm": 80,
+          "ingress_altitude_m": 200,
+          "launch_delay_seconds": 5,
+          "popup_altitude_m": 9500,
+          "popup_range_nm": 95
+        },
         "aircraft_id": "red_j15_1",
         "sortie_id": "red_j15_1_attack_cvn70",
         "target_id": "blue_cvn70",
@@ -476,6 +504,13 @@
       ],
       "operation_id": "air_route.red_j15_2_attack_ddg113_2",
       "parameters": {
+        "air_tactics": {
+          "attack_range_nm": 80,
+          "ingress_altitude_m": 200,
+          "launch_delay_seconds": 5,
+          "popup_altitude_m": 9500,
+          "popup_range_nm": 95
+        },
         "aircraft_id": "red_j15_2",
         "altitude_meters": 8000,
         "route": [
@@ -501,6 +536,13 @@
       ],
       "operation_id": "air_range.red_j15_2_attack_ddg113_2",
       "parameters": {
+        "air_tactics": {
+          "attack_range_nm": 80,
+          "ingress_altitude_m": 200,
+          "launch_delay_seconds": 5,
+          "popup_altitude_m": 9500,
+          "popup_range_nm": 95
+        },
         "aircraft_id": "red_j15_2",
         "sortie_id": "red_j15_2_attack_ddg113_2",
         "target_id": "blue_ddg113_2",

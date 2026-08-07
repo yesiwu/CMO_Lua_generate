@@ -1,4 +1,16 @@
-"""The sole formal coordinator for constrained Phase 6 strategy proposals."""
+"""The sole formal coordinator for constrained Phase 6 strategy proposals.
+
+production_service.py    [agent_loop_json_client.py])提供 限制使用工具
+
+[optimization/strategy_proposal_agent.py]本身没有大段 LLM Prompt，它只是协调器。
+实际提示词分散在三个位置：
+四个候选方案意图的 Prompt
+[candidate_intent_planner.py (line 130)]
+_SYSTEM = You are CandidateIntentPlanner...
+它的动态上下文在：
+candidate_intent_planner.py (line 45)
+包含目标、Bootstrap Skill、经验卡、角色约束、Tactical Context 等。
+"""
 
 from __future__ import annotations
 
@@ -29,8 +41,8 @@ from cmo_lua_agent.optimization.strategy_dimensions import semantic_dimensions
 class StrategyProposalAgent:
     """Coordinates exactly one intent call and bounded per-candidate patch calls."""
 
-    def __init__(self, client: IntentJsonClient) -> None:
-        self._planner = CandidateIntentPlanner(client)
+    def __init__(self, client: IntentJsonClient, *, intent_client: IntentJsonClient | None = None) -> None:
+        self._planner = CandidateIntentPlanner(intent_client or client)
         self._generator = CandidatePatchGenerator(client)
         self._last_usage = StrategyProposalUsage()
         self._last_audit: dict[str, object] = {}
@@ -92,8 +104,8 @@ class StrategyProposalAgent:
                 audit["baseline_operation_count"] = len(tactical.baseline_operations)
                 audit["patchable_path_count"] = len(catalog)
                 audit["failure_profile_available"] = bool(tactical.failure_profile["available"])
-            intent_calls += 1
             intents = self._planner.plan(context, role_specs=role_specs)
+            intent_calls += self._planner.last_call_count
             audit["intents"] = [
                     {"candidate_id": item.candidate_id, "role": item.role, "objective": item.objective,
                      "strategy_dimensions": list(item.strategy_dimensions),
@@ -296,28 +308,31 @@ class StrategyProposalAgent:
                 "patch_path_not_executable",
             }:
                 raise CandidateProposalError(candidate_id=intent.candidate_id, stage="patch_generation", cause=initial_error) from initial_error
-            try:
-                patch = self._generator.generate(
-                    intent=intent,
-                    catalog=catalog,
-                    accepted=accepted,
-                    tactical_context=self._patch_tactical_context(context, catalog, accepted),
-                    error=initial_error,
-                )
-                attempts.append(_patch_audit(intent.candidate_id, "repair", patch, initial_error))
-                assembled = assembler.assemble(patch)
-                # A repair is bounded to one call. Once it is hard-valid, retain any
-                # remaining role-quality warning instead of rejecting the preview.
-                self._validate_candidate(intent=intent, strategy=assembled.strategy, changed_paths=assembled.changed_paths, context=context, catalog=catalog, validator=validator)
-            except ProposalContractError as repair_error:
-                repair_error.diagnostics["initial_patch_failure"] = initial_failure
-                repair_error.diagnostics["candidate_patch_attempts"] = attempts
-                raise CandidateProposalError(
-                    candidate_id=intent.candidate_id,
-                    stage="patch_repair",
-                    cause=repair_error,
-                ) from repair_error
-            return StrategyCandidate(intent.candidate_id, assembled.strategy, patch.proposal_summary, assembled.changed_paths), 1, 1, attempts
+            repair_context = initial_error
+            for repair_index in range(3):
+                try:
+                    patch = self._generator.generate(
+                        intent=intent,
+                        catalog=catalog,
+                        accepted=accepted,
+                        tactical_context=self._patch_tactical_context(context, catalog, accepted),
+                        error=repair_context,
+                    )
+                    attempts.append(_patch_audit(intent.candidate_id, f"repair_{repair_index + 1}", patch, repair_context))
+                    assembled = assembler.assemble(patch)
+                    self._validate_candidate(intent=intent, strategy=assembled.strategy, changed_paths=assembled.changed_paths, context=context, catalog=catalog, validator=validator)
+                except ProposalContractError as repair_error:
+                    repair_error.diagnostics["initial_patch_failure"] = initial_failure
+                    repair_error.diagnostics["candidate_patch_attempts"] = attempts
+                    if repair_index == 2:
+                        raise CandidateProposalError(
+                            candidate_id=intent.candidate_id,
+                            stage="patch_repair",
+                            cause=repair_error,
+                        ) from repair_error
+                    repair_context = repair_error
+                    continue
+                return StrategyCandidate(intent.candidate_id, assembled.strategy, patch.proposal_summary, assembled.changed_paths), 1, repair_index + 1, attempts
         return StrategyCandidate(intent.candidate_id, assembled.strategy, patch.proposal_summary, assembled.changed_paths), 1, 0, attempts
 
     @staticmethod

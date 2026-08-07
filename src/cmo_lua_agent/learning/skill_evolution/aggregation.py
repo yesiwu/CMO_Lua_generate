@@ -88,6 +88,25 @@ def _candidate_ids(record: Mapping[str, Any]) -> tuple[str, ...]:
     return tuple(sorted({str(value) for value in values}))
 
 
+def _score_delta(record: Mapping[str, Any]) -> float | None:
+    """Read both current numeric and legacy per-candidate score deltas."""
+    effect = record.get("observed_effect")
+    if not isinstance(effect, Mapping):
+        return None
+    value = effect.get("score_delta_vs_baseline")
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return float(value)
+    if isinstance(value, Mapping):
+        values = [
+            float(item)
+            for item in value.values()
+            if isinstance(item, (int, float)) and not isinstance(item, bool)
+        ]
+        if values:
+            return statistics.mean(values)
+    return None
+
+
 class ExperienceAggregator:
     """
     经验聚合器
@@ -211,11 +230,8 @@ class ExperienceAggregator:
             qualities = [float(row.get("evidence_quality", 0)) for row in rows]
             # 本轮相对基线得分差值
             deltas = [
-                float(row["observed_effect"]["score_delta_vs_baseline"])
-                for row in rows
-                if isinstance(row.get("observed_effect"), Mapping)
-                and row["observed_effect"].get("score_delta_vs_baseline")
-                is not None
+                delta for row in rows
+                if (delta := _score_delta(row)) is not None
             ]
             # 汇总全部溯源证据文件路径
             refs = tuple(sorted({

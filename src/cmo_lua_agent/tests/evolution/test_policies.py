@@ -39,6 +39,15 @@ def test_negative_scores_are_ranked_normally() -> None:
     assert decision.selected_champion_id == "candidate_00"
 
 
+def test_champion_allows_completed_scoreable_result_with_partial_process_evidence() -> None:
+    decision = ChampionSelectionPolicy(minimum_improvement_delta=1).select(
+        rolling_baseline=_candidate("baseline", -40, execution_fidelity="unknown"),
+        candidates=(_candidate("candidate_00", 160, execution_fidelity="unknown"),),
+    )
+
+    assert decision.selected_champion_id == "candidate_00"
+
+
 def test_stop_policy_stops_on_exact_contract_change() -> None:
     decision = StopPolicy().evaluate(contract_changed=True, manual_stop_requested=False)
     assert decision.should_stop

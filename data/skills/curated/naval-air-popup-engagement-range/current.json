@@ -1,0 +1,7 @@
+{
+  "skill_id": "naval-air-popup-engagement-range",
+  "version": "1.0.0",
+  "relative_path": "versions/1.0.0",
+  "status": "curated",
+  "description": "Use when adjusting aircraft pop-up distance and attack range to balance target access, defensive exposure, and weapon employment opportunity."
+}

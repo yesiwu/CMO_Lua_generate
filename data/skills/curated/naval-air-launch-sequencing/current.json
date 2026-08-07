@@ -1,0 +1,7 @@
+{
+  "skill_id": "naval-air-launch-sequencing",
+  "version": "1.0.0",
+  "relative_path": "versions/1.0.0",
+  "status": "curated",
+  "description": "Use when coordinating aircraft launch delay with surface-fire timing during a naval-air anti-surface operation."
+}

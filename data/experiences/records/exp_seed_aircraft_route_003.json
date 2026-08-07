@@ -1,0 +1,66 @@
+{
+  "schema_version": "2.0",
+  "experience_id": "exp_seed_aircraft_route_003",
+  "experience_key": "naval_air_anti_surface.aircraft_route",
+  "experience_type": "tactical_positive",
+  "evidence_stance": "support",
+  "status": "candidate",
+  "consumer": "StrategyProposalAgent",
+  "artifact_provenance": "synthetic_seed",
+  "scoring_evidence_status": "COMPLETE",
+  "skill_promotion_eligible": true,
+  "hypothesis": "让两架航空兵使用不同侧翼的中间点和接近点，结果支持分轴航路策略与更高得分相关，但仍需后续控制变量验证。",
+  "applicable_conditions": [
+    "两架航空兵能够独立规划接近航路。",
+    "敌方防御主要集中在单一正面方向或单一进入扇区。"
+  ],
+  "recommended_pattern": {
+    "summary": "在StrategySpec中为两架航空任务设置分离的侧翼航路偏移，同时保持目标、弹量和起飞延迟不变。",
+    "strategy_dimensions": [
+      "sorties"
+    ]
+  },
+  "counter_conditions": [
+    "当两条侧翼航路的长度差异过大时，攻击到达时间可能失去协同。"
+  ],
+  "strategy_dimensions": [
+    "sorties"
+  ],
+  "observed_effect": {
+    "supporting_candidate_ids": [
+      "candidate_02"
+    ],
+    "contradicting_candidate_ids": [],
+    "baseline_score": 150,
+    "scores": {
+      "candidate_02": 185
+    },
+    "score_delta_vs_baseline": 35,
+    "target_damage": {
+      "blue_cvn70": 100,
+      "blue_ddg113_2": 50
+    },
+    "losses_red": 0
+  },
+  "execution_success": true,
+  "scoreable": true,
+  "semantic_valid": true,
+  "execution_fidelity": "verified",
+  "evidence_quality": 0.76,
+  "model_confidence": 0.8,
+  "score_source": "execution_summary",
+  "environment": {
+    "mission_type": "naval_air_anti_surface",
+    "scenario_id": "red_blue_6v4_liaoning",
+    "runtime_version": "2.0.0",
+    "renderer_version": "manual_template_v1",
+    "score_spec_version": "2.0.0",
+    "score_spec_checksum": "9a7f68a20cea722df7ae77c28a93199b1042258bd153973e25021b5e498762df",
+    "scenario_schema_version": "1.0",
+    "score_source": "execution_summary"
+  },
+  "source_optimization_id": "seed_aircraft_route_opt_003",
+  "evidence_refs": [
+    "runs/evolution/manual_evolution_auto_20260804_rerun/generations/generation_002/phase6/candidate_00/attempts/attempt_00/execution-summary.json"
+  ]
+}

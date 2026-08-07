@@ -31,13 +31,15 @@ local function baseline_v2_cumulative_award(rule, damage)
     local percent = math.max(0, math.min(100, tonumber(damage) or 0))
     local thresholds = {25, 50, 75, 100}
     local award = 0
+    local reached_threshold = 0
     for _, threshold in ipairs(thresholds) do
         if percent >= threshold then
             award = math.floor((math.abs(rule.total) * threshold / 100) + 0.5)
+            reached_threshold = threshold
         end
     end
     if rule.total < 0 then award = -award end
-    return award, percent
+    return award, reached_threshold
 end
 
 local function baseline_v2_apply(rule, desired_award, threshold, reason)
@@ -70,6 +72,14 @@ local function baseline_v2_apply(rule, desired_award, threshold, reason)
         score_after=current + delta,
         reason=reason,
     }, {'rule_id','unit_id','damage_threshold_percent','delta','cumulative_unit_award','score_after','reason'})
+    emit_agent_event('SCORE_CHANGE', {
+        rule_id='mission_score/' .. rule.unit_id,
+        unit_id=rule.unit_id,
+        damage_threshold_percent=threshold,
+        delta=delta,
+        score_after=current + delta,
+        reason=reason,
+    }, {'rule_id','unit_id','damage_threshold_percent','delta','score_after','reason'})
 end
 
 function baseline_v2_score_once()
@@ -77,9 +87,9 @@ function baseline_v2_score_once()
         local unit = unit_by_id(rule.unit_id)
         if rule.partial then
             if unit then
-                local desired, percent = baseline_v2_cumulative_award(rule, damage_percent(unit))
+                local desired, threshold = baseline_v2_cumulative_award(rule, damage_percent(unit))
                 if desired ~= 0 then
-                    baseline_v2_apply(rule, desired, math.floor(percent), 'damage_threshold')
+                    baseline_v2_apply(rule, desired, threshold, 'damage_threshold')
                 end
             else
                 baseline_v2_apply(rule, rule.total, 100, 'destroyed_missing_from_wrapper')
@@ -101,38 +111,6 @@ function baseline_v2_score_poll()
     )
 end
 
-local function install_v2_destroy_finalizer(rule)
-    local unit = unit_by_id(rule.unit_id)
-    if not unit or not unit.guid then
-        error('[CMO-V2-SCORE] unit lookup failed: ' .. rule.unit_id)
-    end
-    local suffix = string.gsub(rule.unit_id, '[^%w_]', '_')
-    local event_name = 'v2score_evt_' .. suffix
-    local trigger_name = 'v2score_trg_' .. suffix
-    local action_name = 'v2score_act_' .. suffix
-    pcall(ScenEdit_SetEvent, event_name, {mode='remove'})
-    pcall(ScenEdit_SetAction, {mode='remove', type='Points', name=action_name})
-    pcall(ScenEdit_SetTrigger, {mode='remove', type='UnitDestroyed', name=trigger_name})
-    checked_cmo_call('V2ScoreTrigger/' .. rule.unit_id, ScenEdit_SetTrigger, {
-        mode='add', type='UnitDestroyed', name=trigger_name,
-        TargetFilter={TargetSide=UNIT_CATALOG[rule.unit_id].side, SpecificUnitID=unit.guid},
-    })
-    checked_cmo_call('V2ScoreAction/' .. rule.unit_id, ScenEdit_SetAction, {
-        mode='add', type='Points', name=action_name,
-        SideID=SIDE_RED, PointChange=rule.total,
-    })
-    checked_cmo_call('V2ScoreEvent/' .. rule.unit_id, function(args)
-        return ScenEdit_SetEvent(args.name, args.options)
-    end, {name=event_name, options={mode='add', IsActive=true, IsRepeatable=false}})
-    checked_cmo_call('V2ScoreEventTrigger/' .. rule.unit_id, function(args)
-        return ScenEdit_SetEventTrigger(args.event, {mode='add', name=args.trigger})
-    end, {event=event_name, trigger=trigger_name})
-    checked_cmo_call('V2ScoreEventAction/' .. rule.unit_id, function(args)
-        return ScenEdit_SetEventAction(args.event, {mode='add', name=args.action})
-    end, {event=event_name, action=action_name})
-end
-
-for _, rule in ipairs(V2_SCORE_UNITS) do install_v2_destroy_finalizer(rule) end
 schedule_lua('baseline_v2_score_poll', 'baseline_v2_score_poll()', 5)
 print('[CMO-V2-SCORE] installed cumulative damage scoring rules=' .. tostring(#V2_SCORE_UNITS))
 '''.lstrip()

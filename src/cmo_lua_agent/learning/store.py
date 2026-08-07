@@ -228,6 +228,7 @@ class ExperienceRetriever:
                 -float(full_data["evidence_quality"]),
                 -metadata_matches,
                 -float(full_data["model_confidence"]),
+                str(full_data["experience_id"]),
                 full_data
             ))
 
@@ -237,7 +238,7 @@ class ExperienceRetriever:
         # 转换为轻量化经验卡片 ExperienceCard
         all_cards = []
         for item_tuple in matched_items:
-            _, _, _, _, item = item_tuple
+            _, _, _, _, _, item = item_tuple
             card = ExperienceCard(
                 experience_key=item["experience_key"],
                 experience_type=item["experience_type"],

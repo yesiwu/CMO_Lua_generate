@@ -44,7 +44,7 @@ def test_manual_template_assembly_renders_baseline_and_mapped_candidate() -> Non
         candidate_id="baseline",
     )
     # RenderedLua normalizes the terminal newline. The Lua body is otherwise
-    # byte-identical to the operator-provided tested baseline.
+    # byte-identical to the checked-in operator baseline Golden.
     assert baseline.rendered.content == (
         ROOT
         / "baseline"
@@ -53,6 +53,12 @@ def test_manual_template_assembly_renders_baseline_and_mapped_candidate() -> Non
         / "reference"
         / "candidate_baseline_fixed.reference.lua"
     ).read_text(encoding="utf-8").rstrip()
+    assert "local SCORE_RULES =" in baseline.rendered.content
+    assert "type='Points', name=action_name" in baseline.rendered.content
+    assert "function baseline_v2_score_poll()" not in baseline.rendered.content
+    assert "baseline_ship_attack_poll" in baseline.rendered.content
+    assert "baseline_air_launch_poll" in baseline.rendered.content
+    assert baseline.rendered.metadata["score_spec_version"] == "destroyed_unit_native_points"
     assert baseline.generation_manifest["artifact_provenance"] == "manual_template"
 
     candidate_data = derived.strategy.to_dict()

@@ -80,7 +80,8 @@ class StrategyPatchAssembler:
         if not MIN_EFFECTIVE_PATCH_LEAVES <= len(patch.changes) <= MAX_EFFECTIVE_PATCH_LEAVES:
             raise ProposalContractError("candidate_change_count_out_of_bounds")
         payload = deepcopy(self._baseline.to_dict())
-        expected_paths: list[str] = []
+        validated: list[tuple[Any, PatchableLeaf]] = []
+        no_effective_changes: list[dict[str, JsonScalar | str]] = []
         for operation in patch.changes:
             leaf = self._catalog.get(operation.path)
             if leaf is None:
@@ -88,8 +89,24 @@ class StrategyPatchAssembler:
             if type(operation.value) is not type(leaf.current_value):
                 raise ProposalContractError("scalar_type_mismatch")
             self._validate_value(leaf, operation.value)
+            validated.append((operation, leaf))
             if operation.value == leaf.current_value:
-                raise ProposalContractError("no_effective_change")
+                no_effective_changes.append({
+                    "path": operation.path,
+                    "baseline_value": leaf.current_value,
+                    "proposed_value": operation.value,
+                })
+        if no_effective_changes:
+            first = no_effective_changes[0]
+            raise ProposalContractError(
+                "no_effective_change",
+                diagnostics={
+                    **first,
+                    "no_effective_changes": no_effective_changes,
+                },
+            )
+        expected_paths: list[str] = []
+        for operation, leaf in validated:
             _set(payload, _tokens(operation.path), operation.value)
             expected_paths.append(operation.path)
         try:

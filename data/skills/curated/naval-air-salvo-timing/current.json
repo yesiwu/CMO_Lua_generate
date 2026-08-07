@@ -1,0 +1,7 @@
+{
+  "skill_id": "naval-air-salvo-timing",
+  "version": "1.0.0",
+  "relative_path": "versions/1.0.0",
+  "status": "curated",
+  "description": "Use when planning the sequence and delay of surface and air salvos against a defended naval target group."
+}

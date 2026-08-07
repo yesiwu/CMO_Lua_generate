@@ -1,0 +1,74 @@
+{
+  "applicable_conditions": [
+    "When the scoring criteria reward destroying the carrier over other ships (as implied by the large damage pool).",
+    "When the surface group's defense is layered and needs to be overwhelmed by mass.",
+    "When total missile inventory is limited and must be prioritized."
+  ],
+  "consumer": "StrategyProposalAgent",
+  "counter_conditions": [
+    "If the carrier's damage points exceed the cumulative damage of the entire attack force, focusing on it will not yield a kill and may leave other targets untouched.",
+    "If the enemy has multiple high-value ships worth nearly equal points, splitting the salvo may secure more total kills.",
+    "If the carrier's defensive systems are superior to escorts, a focused attack might be wasted."
+  ],
+  "created_from": [
+    "generation-learning-bundle.json",
+    "comparative-analysis.json"
+  ],
+  "environment": {
+    "renderer_version": "manual_template_v1",
+    "runtime_version": "2.0.0",
+    "score_spec_checksum": "9a7f68a20cea722df7ae77c28a93199b1042258bd153973e25021b5e498762df"
+  },
+  "evidence_quality": 1.0,
+  "evidence_refs": [
+    "attempts\\attempt_00\\batch-results\\20260803-172241\\001_g001_cmo_candidate_00_a00\\execution-timeline.jsonl",
+    "attempts\\attempt_00\\batch-results\\20260803-172344\\001_g001_cmo_candidate_01_a00\\execution-timeline.jsonl",
+    "attempts\\attempt_00\\batch-results\\20260803-172447\\001_g001_cmo_candidate_03_a00\\execution-timeline.jsonl",
+    "attempts\\attempt_00\\batch-results\\20260803-172549\\001_g001_cmo_candidate_02_a00\\execution-timeline.jsonl",
+    "attempts\\attempt_00\\execution-diagnostic.json",
+    "attempts\\attempt_00\\execution-summary.json"
+  ],
+  "evidence_stance": "qualify",
+  "experience_id": "exp_phase9_blackbox_generation_001_v2_rerun_20260803_generation_02_001",
+  "experience_key": "naval_air_anti_surface.target_concentration",
+  "experience_type": "tactical_positive",
+  "hypothesis": "Concentrating the majority of the missile inventory on a single primary target (such as a carrier) is more effective at achieving mission objective (target destruction) than spreading fire across multiple targets, but it may fail to secure kills if the target's damage threshold is too high.",
+  "model_confidence": 0.7,
+  "observed_effect": {
+    "baseline_score": 0,
+    "contradicting_candidate_ids": [
+      "candidate_00",
+      "candidate_01",
+      "candidate_03"
+    ],
+    "score_delta_vs_baseline": {
+      "candidate_00": 0,
+      "candidate_01": 0,
+      "candidate_02": 0,
+      "candidate_03": 0
+    },
+    "scores": {
+      "candidate_02": 0
+    },
+    "supporting_candidate_ids": [
+      "candidate_02"
+    ]
+  },
+  "recommended_pattern": {
+    "details": [
+      "Step 1: Surface ships fire 90% of YJ-18s at the carrier.",
+      "Step 2: J-15s launch a small attack on the most damaged escort (e.g., DDG with 99% damage) to secure a kill.",
+      "Step 3: If the carrier survives, accept the partial damage while still destroying other units."
+    ],
+    "summary": "Focus all heavy surface-launched missiles on the carrier to degrade it significantly, but allocate at least two J-15s or a final follow-up salvo to finish off lightly damaged escorts that may need only a few hits."
+  },
+  "schema_version": "2",
+  "scoring_evidence_status": "MISSING",
+  "skill_promotion_eligible": false,
+  "source_optimization_id": "phase9_blackbox_generation_001_v2_rerun_20260803",
+  "status": "candidate",
+  "strategy_dimensions": [
+    "attacks",
+    "sorties"
+  ]
+}

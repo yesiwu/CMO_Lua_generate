@@ -77,7 +77,10 @@ class ProductionGenerationExecutor:
             existing_path = phase6_root / self.candidate_root_name(candidate_id) / "candidate_outcome.json"
             if existing_path.is_file():
                 existing = json.loads(existing_path.read_text(encoding="utf-8"))
-                if self._completion_gate.evaluate(
+                # A prior CMO-process failure is not a reusable result.  It
+                # must get a fresh attempt after the external condition (for
+                # example an open Command.exe UI) has been corrected.
+                if bool(existing.get("execution_success")) and self._completion_gate.evaluate(
                     expected_candidate_ids=(candidate_id,),
                     outcomes=(existing,),
                 ).complete:
@@ -221,32 +224,25 @@ class ProductionGenerationExecutor:
             },
         )
         self._atomic_json(phase6_root / "strategy_diff.json", strategy_diff)
-        if (
-            context.spec.budget.max_comparative_learning_calls == 0
-            and context.spec.budget.max_skill_author_calls == 0
-        ):
-            result = {
-                "artifact_provenance": self._artifact_provenance,
-                "candidate_order": [item[0] for item in ordered],
-                "outcomes": outcomes,
-                "leaderboard": leaderboard,
-                "phase7": {"status": "not_run", "reason": "budget_disabled"},
-                "phase8": {"status": "not_run", "reason": "budget_disabled"},
-                "champion_decision": None,
-                "stop_decision": None,
-                "process_restart_recovery": "not_validated",
-            }
-            self._atomic_json(generation_root / "generation-result.json", result)
-            return GenerationExecutionResult.completed(result)
-        phase7_result = self._phase7.run(
-            generation_index=preview.generation_index,
-            optimization_dir=phase6_root,
-            outcomes=tuple(outcomes),
-        )
-        phase8_result = self._phase8.run(
-            generation_index=preview.generation_index,
-            phase7_result=phase7_result,
-        )
+        if context.spec.budget.max_comparative_learning_calls == 0:
+            phase7_result = {"status": "not_run", "reason": "budget_disabled"}
+        elif self._completed_phase7_result(phase6_root) is not None:
+            phase7_result = self._completed_phase7_result(phase6_root)
+        else:
+            phase7_result = self._phase7.run(
+                generation_index=preview.generation_index,
+                optimization_dir=phase6_root,
+                outcomes=tuple(outcomes),
+            )
+        if context.spec.budget.max_skill_author_calls == 0:
+            phase8_result = {"status": "not_run", "reason": "budget_disabled"}
+        elif phase7_result.get("status") != "completed":
+            phase8_result = {"status": "not_run", "reason": "phase7_not_completed"}
+        else:
+            phase8_result = self._phase8.run(
+                generation_index=preview.generation_index,
+                phase7_result=phase7_result,
+            )
         if phase8_result.get("status") == "pending_regression_failed":
             return GenerationExecutionResult.paused("require_review")
         scores = tuple(FormalPhase6Adapter._score(item) for item in outcomes)
@@ -348,6 +344,26 @@ class ProductionGenerationExecutor:
         # Ranking consumes the five slot outcomes directly.  Contract hashes
         # remain on disk for audit but are not an execution or ranking gate.
         return self._rank(outcomes)
+
+    @staticmethod
+    def _completed_phase7_result(phase6_root: Path) -> dict[str, Any] | None:
+        """Reuse a complete generation-level learning result during recovery."""
+        learning_root = phase6_root / "learning"
+        required = (
+            learning_root / "candidate-learning-views.json",
+            learning_root / "comparative-analysis.json",
+            learning_root / "experience-candidates.json",
+        )
+        if not all(path.is_file() for path in required):
+            return None
+        candidates = json.loads(required[2].read_text(encoding="utf-8"))
+        if not isinstance(candidates, list):
+            return None
+        return {
+            "status": "completed",
+            "reused": True,
+            "experience_candidate_count": len(candidates),
+        }
 
 
     @staticmethod

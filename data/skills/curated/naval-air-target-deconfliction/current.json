@@ -1,0 +1,7 @@
+{
+  "skill_id": "naval-air-target-deconfliction",
+  "version": "1.0.0",
+  "relative_path": "versions/1.0.0",
+  "status": "curated",
+  "description": "Use when surface ships and aircraft can unintentionally concentrate fire on the same blue-force target during a naval-air anti-surface strike."
+}

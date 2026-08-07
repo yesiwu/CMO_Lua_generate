@@ -1,0 +1,66 @@
+{
+  "applicable_conditions": [
+    "When testing sensitivity of J-15 launch timing in a defended environment.",
+    "When the enemy point-defense system has consistent effectiveness against small salvos.",
+    "When the J-15 missile type is the same and range/altitude unchanged."
+  ],
+  "consumer": "StrategyProposalAgent",
+  "counter_conditions": [
+    "If the timing difference is large (minutes) such that surface strikes have depleted defenses.",
+    "If the J-15s are launched from different directions or altitudes.",
+    "If the missile type is changed to one with better penetration."
+  ],
+  "created_from": [
+    "generation-learning-bundle.json",
+    "comparative-analysis.json"
+  ],
+  "environment": {
+    "renderer_version": "manual_template_v1",
+    "runtime_version": "2.0.0",
+    "score_spec_checksum": "9a7f68a20cea722df7ae77c28a93199b1042258bd153973e25021b5e498762df"
+  },
+  "evidence_quality": 1.0,
+  "evidence_refs": [
+    "attempts\\attempt_00\\batch-results\\20260803-172549\\001_g001_cmo_candidate_02_a00\\execution-timeline.jsonl",
+    "attempts\\attempt_00\\execution-diagnostic.json",
+    "attempts\\attempt_00\\execution-summary.json"
+  ],
+  "evidence_stance": "contradict",
+  "experience_id": "exp_phase9_blackbox_generation_001_v2_rerun_20260803_generation_04_001",
+  "experience_key": "naval_air_anti_surface.salvo_timing",
+  "experience_type": "tactical_negative",
+  "hypothesis": "Shifting J-15 launch delay by 5 seconds does not improve weapon effectiveness; earlier J-15 release (at 00:35:29 vs 00:36:39) produced identical misses, indicating that J-15 missile hits are not sensitive to small timing changes.",
+  "model_confidence": 0.6,
+  "observed_effect": {
+    "baseline_score": 0,
+    "contradicting_candidate_ids": [
+      "candidate_02"
+    ],
+    "score_delta_vs_baseline": {
+      "candidate_02": 0
+    },
+    "scores": {
+      "candidate_03": 0
+    },
+    "supporting_candidate_ids": [
+      "candidate_03"
+    ]
+  },
+  "recommended_pattern": {
+    "details": [
+      "Minimum viable timing adjustments should be at least 60 seconds.",
+      "Coordinate J-15 release to coincide with the second wave of surface missiles after defensive expenditure.",
+      "Test timing changes only when other variables (fire quantity, target) are held constant."
+    ],
+    "summary": "Do not expect 5-10 second changes in J-15 launch delay to affect hit probability; instead focus on salvo size or coordination with surface attacks."
+  },
+  "schema_version": "2",
+  "scoring_evidence_status": "MISSING",
+  "skill_promotion_eligible": false,
+  "source_optimization_id": "phase9_blackbox_generation_001_v2_rerun_20260803",
+  "status": "candidate",
+  "strategy_dimensions": [
+    "attacks",
+    "sorties"
+  ]
+}

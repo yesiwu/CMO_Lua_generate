@@ -453,7 +453,9 @@ class EvolutionCampaignService:
             store.invalidate_approvals(generation_index=generation_index, reason="preview_regenerated")
         state = store.load_campaign_state()
         # LLM算力预算校验
-        proposal_reservation = 9
+        # One intent, four initial patches, and at most three local repairs
+        # for each candidate.
+        proposal_reservation = 17
         calls = int(state.llm_call_counts.get("strategy_proposal", 0))
         if calls + proposal_reservation > spec.budget.max_strategy_proposal_calls or sum(state.llm_call_counts.values()) + proposal_reservation > spec.budget.max_llm_total_calls:
             raise ValueError("strategy_proposal_llm_budget_exhausted")

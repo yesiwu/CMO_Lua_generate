@@ -122,6 +122,30 @@ class SkillAuthorContext:
             "available_source_slots": sorted(self.source_slots),
             "active_skill_summary": self.active_skill_summary,
             "maximum_rules": self.maximum_rules,
+            "response_contract": {
+                "top_level_fields": [
+                    "title",
+                    "description",
+                    "when_to_use",
+                    "strategy_patterns",
+                    "conditions",
+                    "counterexamples",
+                    "verification_rules",
+                ],
+                "rule_fields": [
+                    "rule_key",
+                    "statement",
+                    "source_slots",
+                ],
+                "forbidden_fields": [
+                    "evidence",
+                    "evidence_refs",
+                    "confidence",
+                    "rationale",
+                    "metadata",
+                    "version",
+                ],
+            },
         }
 
 
@@ -352,7 +376,11 @@ class SkillAuthorAgent:
 
 # 新建技能系统提示词
 _CREATE_SYSTEM = """你是受管控的Phase 8 技能编写智能体。
-严格返回唯一一份符合 SkillDraftContent 结构规范的JSON对象。
+严格返回唯一一份JSON对象，且顶层字段必须恰好为：
+"title"、"description"、"when_to_use"、"strategy_patterns"、"conditions"、"counterexamples"、"verification_rules"。
+除 title 和 description 外，每个规则分组必须是数组。每个数组元素必须恰好为：
+{"rule_key":"小写.分层键","statement":"StrategySpec层战术规则","source_slots":["提供的插槽名"]}。
+不得输出 markdown、schema、metadata、rules、version、notes 或任何其他顶层字段。
 仅编写面向CMO作战规划的StrategySpec层级战术规则。每条规则必须使用至少一个提供的数据源插槽名称。
 禁止输出证据ID、文件路径、校验和、版本、状态、审批信息、Lua代码、CMO引擎接口、Shell命令、工具指令、评分规则，不得携带任何额外字段。"""
 

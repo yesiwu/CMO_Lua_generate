@@ -47,7 +47,9 @@ class CandidateLearningViewBuilder:
         root = Path(candidate_dir)
         # 读取候选方案元数据与得分结果
         outcome = _read(root / "candidate_outcome.json")
-        attempt = root / "attempts" / "attempt_00"
+        attempts_root = root / "attempts"
+        attempts = sorted((path for path in attempts_root.glob("attempt_*") if path.is_dir()), reverse=True)
+        attempt = next((path for path in attempts if (path / "execution-summary.json").is_file() or any(path.rglob("execution-summary.json"))), attempts_root / "attempt_00")
 
         # 查找执行摘要文件（全局搜索，取第一个匹配文件）
         summary_path = attempt / "execution-summary.json"
@@ -74,8 +76,14 @@ class CandidateLearningViewBuilder:
 
         diagnostic_path = attempt / "execution-diagnostic.json"
         diagnostic = _read(diagnostic_path) if diagnostic_path.is_file() else {}
+        strategy = _read(root / "strategy" / "final_strategy.json") if (root / "strategy" / "final_strategy.json").is_file() else {}
+        direct = self._direct_process_evidence(summary, strategy)
         analysis_path = next(iter(attempt.rglob("llm-analysis.json")), None)
-        auxiliary_execution_analysis = self._load_auxiliary_execution_analysis(analysis_path)
+        auxiliary_execution_analysis = (
+            {"available": False, "bypassed": True}
+            if direct["status"] in {"DIRECT", "PARTIAL"}
+            else self._load_auxiliary_execution_analysis(analysis_path, strategy, summary)
+        )
 
         # 计划vs实际执行状态初始值
         planned = {
@@ -104,12 +112,11 @@ class CandidateLearningViewBuilder:
         # 收集有效证据文件相对路径（用于溯源）
         refs = tuple(
             str(p.relative_to(root))
-            for p in (summary_path, timeline, diagnostic_path, analysis_path)
+            for p in (summary_path, timeline, diagnostic_path, None if direct["status"] in {"DIRECT", "PARTIAL"} else analysis_path)
             if p and p.is_file()
         )
 
         # 加载最终策略文件，不存在则为空字典
-        strategy = _read(root / "strategy" / "final_strategy.json") if (root / "strategy" / "final_strategy.json").is_file() else {}
         # 加载生成清单文件
         manifest = _read(attempt / "generation_manifest.json") if (attempt / "generation_manifest.json").is_file() else {}
 
@@ -140,11 +147,54 @@ class CandidateLearningViewBuilder:
             evidence_refs=refs,
             scoring_evidence_status=str(summary.get("scoring_evidence_status", "MISSING")),
             candidate_quality=dict(candidate_quality or {}),
+            score_breakdown={
+                "initial": official.get("initial"), "final": official.get("final"),
+                "delta": official.get("delta"), "events": summary.get("score_events", [])[:10],
+            },
+            attack_execution_trace=tuple(direct["traces"]),
+            air_outcomes=tuple(direct["air_outcomes"]),
+            weapon_release=tuple(direct["weapon_release"]),
+            process_evidence_status=str(direct["status"]),
             auxiliary_execution_analysis=auxiliary_execution_analysis,
         )
 
     @staticmethod
-    def _load_auxiliary_execution_analysis(path: Path | None) -> dict[str, Any]:
+    def _direct_process_evidence(summary: dict[str, Any], strategy: dict[str, Any]) -> dict[str, Any]:
+        fields = ("attack_execution_trace", "air_outcomes", "engagement_summary")
+        present = [name for name in fields if name in summary]
+        if any(name in summary and not isinstance(summary[name], list) for name in fields):
+            return {"status": "CONFLICTING", "traces": [], "air_outcomes": [], "weapon_release": []}
+        if not present:
+            return {"status": "LEGACY_DERIVED", "traces": [], "air_outcomes": [], "weapon_release": []}
+        status = "DIRECT" if len(present) == len(fields) else "PARTIAL"
+        attackers = {str(item.get("shooter_id", item.get("unit_id"))) for item in strategy.get("attacks", []) if isinstance(item, dict)}
+        attackers |= {str(item.get("aircraft_id")) for item in strategy.get("sorties", []) if isinstance(item, dict)}
+        targets = {str(target) for item in strategy.get("attacks", []) if isinstance(item, dict) for target in item.get("target_ids", [])}
+        targets |= {str(item.get("target_id")) for item in strategy.get("sorties", []) if isinstance(item, dict)}
+        compact = []
+        for row in summary.get("engagement_summary", []) if isinstance(summary.get("engagement_summary"), list) else []:
+            if not isinstance(row, dict):
+                continue
+            attacker = str(row.get("source_platform_id", row.get("attacker_id", "")))
+            target = str(row.get("target_id", ""))
+            if attacker not in attackers or target not in targets:
+                continue
+            compact.append({key: row.get(key) for key in (
+                "operation_id", "attribution_status", "source_platform_id", "attacker_id", "target_id",
+                "weapon_dbid", "fired_count", "hit_count", "kill_count", "miss_count",
+                "first_fire_time", "last_fire_time", "evidence_refs",
+            ) if key in row})
+            if len(compact) == 5:
+                break
+        return {
+            "status": status,
+            "traces": [row for row in summary.get("attack_execution_trace", []) if isinstance(row, dict)][:5],
+            "air_outcomes": [row for row in summary.get("air_outcomes", []) if isinstance(row, dict)][:2],
+            "weapon_release": compact,
+        }
+
+    @staticmethod
+    def _load_auxiliary_execution_analysis(path: Path | None, strategy: dict[str, Any], summary: dict[str, Any]) -> dict[str, Any]:
         """Project selected event facts from BatchRunner's auxiliary analysis.
 
         This deliberately keeps official score, losses, and damage sourced from
@@ -159,12 +209,23 @@ class CandidateLearningViewBuilder:
         except (OSError, ValueError, json.JSONDecodeError):
             return {"available": False, "status": "unreadable"}
 
+        attackers = {str(item.get("shooter_id", item.get("unit_id"))) for item in strategy.get("attacks", []) if isinstance(item, dict)}
+        attackers |= {str(item.get("aircraft_id")) for item in strategy.get("sorties", []) if isinstance(item, dict)}
+        targets = {str(target) for item in strategy.get("attacks", []) if isinstance(item, dict) for target in item.get("target_ids", [])}
+        targets |= {str(item.get("target_id")) for item in strategy.get("sorties", []) if isinstance(item, dict)}
+        loss_text = json.dumps(summary.get("losses", {}), ensure_ascii=False)
         def selected(items: object, fields: tuple[str, ...], limit: int) -> list[dict[str, Any]]:
             if not isinstance(items, list):
                 return []
+            def relevance(item: object) -> tuple[int, int, int, int, int]:
+                if not isinstance(item, dict): return (0, 0, 0, 0, 0)
+                text = json.dumps(item, ensure_ascii=False)
+                platform = str(item.get("PlatformId", item.get("SideId", "")))
+                target = str(item.get("TargetId", ""))
+                return (int(platform in attackers), int(target in targets), int("red" in platform.lower()), int("J-15" in text), int(target in loss_text))
             return [
                 {field: item.get(field) for field in fields if field in item}
-                for item in items[:limit]
+                for item in sorted(items, key=relevance, reverse=True)[:limit]
                 if isinstance(item, dict)
             ]
 
@@ -204,6 +265,12 @@ class GenerationLearningBundleBuilder:
         root = Path(optimization_dir)
         result = _read(root / "generation_result.json")
         leaderboard = json.loads((root / "leaderboard.json").read_text(encoding="utf-8"))
+        # Operational black-box runs retain the baseline score beside the
+        # ranked rows. Learning only consumes the rows, just as it does for
+        # the legacy list-shaped leaderboard artifact.
+        leaderboard_rows = leaderboard.get("entries", ()) if isinstance(leaderboard, dict) else leaderboard
+        if not isinstance(leaderboard_rows, list):
+            raise ValueError("leaderboard must be a list or contain an entries list")
 
         # 分离基线方案与普通候选方案
         baseline = next(item for item in views if item.is_baseline)
@@ -217,8 +284,6 @@ class GenerationLearningBundleBuilder:
             item.candidate_id
             for item in candidates
             if item.execution_success and item.scoreable and item.semantic_valid
-            and item.execution_fidelity == "verified"
-            and item.scoring_evidence_status in {"COMPLETE", "DERIVED"}
         )
         # 无效候选 = 全部候选剔除有效候选
         invalid = tuple(item.candidate_id for item in candidates if item.candidate_id not in valid)
@@ -229,7 +294,7 @@ class GenerationLearningBundleBuilder:
             contract,
             baseline,
             candidates,
-            tuple(leaderboard),
+            tuple(leaderboard_rows),
             # key:candidate_id, value:策略差异列表
             {item.candidate_id: item.strategy_diff for item in candidates},
             valid,

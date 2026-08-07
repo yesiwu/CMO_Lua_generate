@@ -242,6 +242,17 @@ def test_production_executor_skips_phase7_and_phase8_when_both_budgets_are_zero(
         def run(self, **_kwargs):
             raise AssertionError("Phase 7/8 must not run when its budget is zero")
 
+    class Champion:
+        def select(self, *, rolling_baseline, candidates):
+            return SimpleNamespace(
+                best_candidate_id="baseline", selected_champion_id="baseline",
+                selected_score=0, improved=False, exclusion_reasons={},
+            )
+
+    class Stop:
+        def evaluate(self, **_kwargs):
+            return SimpleNamespace(should_stop=False, reason=SimpleNamespace(value="none"), details={})
+
     def evaluate(**kwargs):
         return {
             "candidate_id": kwargs["candidate_id"],
@@ -261,8 +272,8 @@ def test_production_executor_skips_phase7_and_phase8_when_both_budgets_are_zero(
         candidate_evaluator=evaluate,
         phase7_adapter=ForbiddenPhase(),
         phase8_adapter=ForbiddenPhase(),
-        champion_policy=object(),
-        stop_policy=object(),
+        champion_policy=Champion(),
+        stop_policy=Stop(),
         frozen_provider=Provider(),
         artifact_provenance="test_fixture",
         candidate_comparator=Comparator(),
@@ -281,6 +292,7 @@ def test_production_executor_skips_phase7_and_phase8_when_both_budgets_are_zero(
             budget=SimpleNamespace(
                 max_comparative_learning_calls=0,
                 max_skill_author_calls=0,
+                max_generations=3,
             ),
         ),
         campaign_root=tmp_path,
@@ -293,7 +305,88 @@ def test_production_executor_skips_phase7_and_phase8_when_both_budgets_are_zero(
     payload = result.result
     assert payload["phase7"] == {"status": "not_run", "reason": "budget_disabled"}
     assert payload["phase8"] == {"status": "not_run", "reason": "budget_disabled"}
-    assert payload["champion_decision"] is None
+    assert payload["champion_decision"]["selected_champion_id"] == "baseline"
+
+
+def test_production_executor_runs_phase7_but_skips_phase8_when_skill_budget_is_zero(
+    tmp_path: Path,
+) -> None:
+    frozen = _frozen()
+    frozen_path = tmp_path / "frozen.json"
+    frozen_path.write_text(json.dumps(frozen.to_dict()), encoding="utf-8")
+
+    class Provider:
+        def load(self, _frozen_set):
+            return {"value": 0}, tuple(
+                (f"candidate_{index:02d}", {"value": index + 1})
+                for index in range(4)
+            )
+
+    class Phase7:
+        calls = 0
+
+        def run(self, **_kwargs):
+            self.calls += 1
+            return {"status": "completed", "experience_candidate_count": 1}
+
+    class ForbiddenPhase8:
+        def run(self, **_kwargs):
+            raise AssertionError("Phase 8 must be disabled with zero skill budget")
+
+    class Champion:
+        def select(self, *, rolling_baseline, candidates):
+            return SimpleNamespace(
+                best_candidate_id="candidate_00",
+                selected_champion_id="candidate_00",
+                selected_score=1,
+                improved=True,
+                exclusion_reasons={},
+            )
+
+    class Stop:
+        def evaluate(self, **_kwargs):
+            return SimpleNamespace(should_stop=False, reason=SimpleNamespace(value="none"), details={})
+
+    def evaluate(**kwargs):
+        return {
+            "candidate_id": kwargs["candidate_id"], "success": True,
+            "executable": True, "execution_success": True,
+            "semantic_valid": True, "scoreable": True,
+            "native_score": 1, "score_source": "execution-summary.json#/official_score/final",
+            "execution_fidelity": "verified",
+        }
+
+    class Champion:
+        def select(self, *, rolling_baseline, candidates):
+            return SimpleNamespace(
+                best_candidate_id="candidate_03", selected_champion_id="candidate_03",
+                selected_score=5, improved=True, exclusion_reasons={},
+            )
+
+    class Stop:
+        def evaluate(self, **_kwargs):
+            return SimpleNamespace(should_stop=False, reason=SimpleNamespace(value="none"), details={})
+
+    phase7 = Phase7()
+    executor = ProductionGenerationExecutor(
+        package=SimpleNamespace(), candidate_evaluator=evaluate,
+        phase7_adapter=phase7, phase8_adapter=ForbiddenPhase8(),
+        champion_policy=Champion(), stop_policy=Stop(),
+        frozen_provider=Provider(), artifact_provenance="test_fixture",
+    )
+    context = SimpleNamespace(
+        preview=SimpleNamespace(generation_index=0, frozen_candidate_set_ref=str(frozen_path), strategy_diffs=()),
+        spec=SimpleNamespace(campaign_id="campaign_fixture", budget=SimpleNamespace(
+            max_comparative_learning_calls=1, max_skill_author_calls=0, max_generations=3,
+        )),
+        campaign_root=tmp_path, control_action=lambda: None,
+    )
+
+    result = executor.run(context)
+
+    assert phase7.calls == 1
+    assert result.result["phase8"] == {"status": "not_run", "reason": "budget_disabled"}
+    assert result.result["champion_decision"]["selected_champion_id"] == "candidate_03"
 
 
 def test_executor_runs_slots_when_frozen_checksum_metadata_is_stale(
@@ -328,13 +421,31 @@ def test_executor_runs_slots_when_frozen_checksum_metadata_is_stale(
             "final_state": "completed",
         }
 
+    class Champion:
+        def select(self, *, rolling_baseline, candidates):
+            return SimpleNamespace(
+                best_candidate_id="candidate_03",
+                selected_champion_id="candidate_03",
+                selected_score=5,
+                improved=True,
+                exclusion_reasons={},
+            )
+
+    class Stop:
+        def evaluate(self, **_kwargs):
+            return SimpleNamespace(
+                should_stop=False,
+                reason=SimpleNamespace(value="none"),
+                details={},
+            )
+
     executor = ProductionGenerationExecutor(
         package=SimpleNamespace(),
         candidate_evaluator=evaluate,
         phase7_adapter=object(),
         phase8_adapter=object(),
-        champion_policy=object(),
-        stop_policy=object(),
+        champion_policy=Champion(),
+        stop_policy=Stop(),
         frozen_provider=Provider(),
         artifact_provenance="test_fixture",
     )
@@ -352,6 +463,7 @@ def test_executor_runs_slots_when_frozen_checksum_metadata_is_stale(
             budget=SimpleNamespace(
                 max_comparative_learning_calls=0,
                 max_skill_author_calls=0,
+                max_generations=3,
             ),
         ),
         campaign_root=tmp_path,

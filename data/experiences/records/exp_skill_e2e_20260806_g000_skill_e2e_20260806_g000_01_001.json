@@ -1,0 +1,75 @@
+{
+  "applicable_conditions": [
+    "When the opposing fleet includes a high-value carrier (blue_cvn70) and a cruiser (blue_cg59).",
+    "When the candidate has sufficient missiles to allocate larger salvos.",
+    "When official score is valid but scoring event evidence is incomplete (MISSING)."
+  ],
+  "consumer": "StrategyProposalAgent",
+  "counter_conditions": [
+    "If score event chains are complete and weapon attribution is DIRECT, alternative hypotheses can be tested.",
+    "If the carrier is not present or is not scoring high, the concentration may not be beneficial.",
+    "If resource constraints limit missile quantity, larger fire_quantity may be infeasible."
+  ],
+  "created_from": [
+    "generation-learning-bundle.json",
+    "comparative-analysis.json"
+  ],
+  "environment": {
+    "renderer_version": "manual_template_v1",
+    "runtime_version": "2.0.0",
+    "score_spec_checksum": "9a7f68a20cea722df7ae77c28a93199b1042258bd153973e25021b5e498762df"
+  },
+  "evidence_quality": 0.4,
+  "evidence_refs": [
+    "attempts\\attempt_01\\batch-results\\20260806-095403\\001_g000_cmo_baseline_a00\\execution-timeline.jsonl",
+    "attempts\\attempt_01\\batch-results\\20260806-095507\\001_g000_cmo_candidate_00_a00\\execution-timeline.jsonl",
+    "attempts\\attempt_01\\batch-results\\20260806-095609\\001_g000_cmo_candidate_01_a00\\execution-timeline.jsonl",
+    "attempts\\attempt_01\\batch-results\\20260806-095710\\001_g000_cmo_candidate_02_a00\\execution-timeline.jsonl",
+    "attempts\\attempt_01\\batch-results\\20260806-095811\\001_g000_cmo_candidate_03_a00\\execution-timeline.jsonl",
+    "attempts\\attempt_01\\execution-diagnostic.json",
+    "attempts\\attempt_01\\execution-summary.json"
+  ],
+  "evidence_stance": "qualify",
+  "experience_id": "exp_skill_e2e_20260806_g000_skill_e2e_20260806_g000_01_001",
+  "experience_key": "naval_air_anti_surface.target_concentration",
+  "experience_type": "evidence_limitation",
+  "hypothesis": "Changing attack 0 to target blue_cg59 with higher fire quantity, while shifting fire toward the carrier, is associated with a higher score (160 vs 60), but due to missing scoring event chains and unknown attribution, the causal mechanism cannot be confirmed.",
+  "model_confidence": 0.4,
+  "observed_effect": {
+    "baseline_score": 60,
+    "black_box_outcome_only": true,
+    "contradicting_candidate_ids": [
+      "baseline",
+      "candidate_03"
+    ],
+    "score_delta_vs_baseline": {
+      "candidate_00": 100,
+      "candidate_01": 100,
+      "candidate_02": 100,
+      "candidate_03": 0
+    },
+    "scores": {
+      "candidate_00": 160,
+      "candidate_01": 160,
+      "candidate_02": 160
+    },
+    "supporting_candidate_ids": [
+      "candidate_00",
+      "candidate_01",
+      "candidate_02"
+    ]
+  },
+  "recommended_pattern": {
+    "details": "Run at least three repetitions for each configuration to assess stochastic variance. Compare outcomes across target choices (carrier vs cruiser) and fire quantities (2, 8, 16). Do not infer direct causal chains; only observe score differences.",
+    "summary": "Conduct a controlled black-box experiment that varies attack 0 target and fire_quantity while holding all other attack parameters fixed at baseline, recording official_score and weapon release hit counts."
+  },
+  "schema_version": "2",
+  "scoring_evidence_status": "MISSING",
+  "skill_promotion_eligible": false,
+  "source_optimization_id": "skill_e2e_20260806_g000",
+  "status": "candidate",
+  "strategy_dimensions": [
+    "attacks",
+    "sorties"
+  ]
+}

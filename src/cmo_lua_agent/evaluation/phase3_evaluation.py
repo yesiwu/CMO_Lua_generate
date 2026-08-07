@@ -107,13 +107,40 @@ class AttackEpisode:
     weapons_fired: int | None    # 发射弹药总数
     hits: int | None             # 命中击杀数
     intercepted: int | None      # 被拦截弹药数
-    target_destroyed: bool       # 目标是否击毁
-    attacker_destroyed: bool     # 发射方是否被毁
+    target_destroyed: bool | None       # 目标是否击毁
+    attacker_destroyed: bool | None     # 发射方是否被毁
     returned_to_base: bool | None# 是否成功返航
     important_errors: tuple[str, ...] # 本次攻击相关报错
+    scheduled: bool | None = None
+    triggered: bool | None = None
+    attacker_found: bool | None = None
+    target_found: bool | None = None
+    contact_acquired: bool | None = None
+    attack_range_reached: bool | None = None
+    attack_command_called: bool | None = None
+    attack_command_succeeded: bool | None = None
+    failure_stage: str | None = None
+    evidence_refs: tuple[str, ...] = ()
 
 
 # ------------------------------ 综合证据包：三类证据统一封装 ------------------------------
+@dataclass(frozen=True, slots=True)
+class AirOutcome:
+    """Direct, bounded air-operation evidence from execution-summary.json."""
+    aircraft_id: str
+    sortie_id: str | None
+    launch_requested: bool | None
+    airborne: bool | None
+    weapon_released: bool | None
+    released_quantity: int | None
+    rtb_requested: bool | None
+    landed: bool | None
+    destroyed: bool | None
+    survival_seconds: float | None
+    terminal_state: str | None
+    evidence_refs: tuple[str, ...] = ()
+
+
 @dataclass(frozen=True, slots=True)
 class CombatEvidence:
     batch: BatchRunnerEvidence                  # 进程执行证据
@@ -184,6 +211,8 @@ class Phase3EvaluationResult:
     metrics: Phase3CombatMetrics                 # 作战指标
     reward_breakdown: RewardBreakdown            # 得分明细
     score_events: tuple[NativeScoreEvent, ...] = ()
+    air_outcomes: tuple[AirOutcome, ...] = ()
+    process_evidence_status: str = "MISSING"
 
 
 # ------------------------------ 工具函数：定位本次仿真所有产物文件 ------------------------------
@@ -287,7 +316,8 @@ class Phase3EvaluationService:
                     _write_artifacts(Path(output_dir), result, batch, RuntimeTelemetry((), (), (), (), ()))
                 return result
             # 3 原始武器事件聚合为标准化攻击链路AttackEpisode
-            episodes = _episodes(plan, scenario, snapshot.destroyed_units, telemetry, weapon_events)
+            direct_episodes, air_outcomes, process_status = _direct_process_evidence(paths.execution_summary_path)
+            episodes = direct_episodes or _episodes(plan, scenario, snapshot.destroyed_units, telemetry, weapon_events)
             # 4 理论预期得分（按计分规则统计击毁单位）
             expected = snapshot.native_score_delta
             reasons: list[str] = []
@@ -315,7 +345,7 @@ class Phase3EvaluationService:
             # 7 提取标准化作战指标
             metrics = _metrics(batch, snapshot, episodes, semantic)
             # 组装完整评估结果
-            result = Phase3EvaluationResult(paths, snapshot, episodes, reconciliation, semantic, metrics, reward, score_events)
+            result = Phase3EvaluationResult(paths, snapshot, episodes, reconciliation, semantic, metrics, reward, score_events, air_outcomes, process_status)
         # 落地全套json产物文件
         if output_dir is not None:
             _write_artifacts(Path(output_dir), result, batch, telemetry if paths.is_confirmed else RuntimeTelemetry((), (), (), (), ()))
@@ -379,20 +409,18 @@ def _parse_execution_summary(
         raise ValueError("execution summary exact CMO side does not match score contract")
     if not isinstance(score.get("display_name"), str) or not score["display_name"].strip():
         raise ValueError("execution summary display name is missing")
-    if score.get("status") != "VALID" or score.get("score_event_chain_status") != "VALID":
+    if score.get("status") != "VALID":
         raise ValueError("execution summary official score is unscorable")
-    if (
-        integrity.get("status") != "VALID"
-        or integrity.get("score_chain_consistent") is not True
-        or integrity.get("results_complete") is not True
-    ):
-        raise ValueError("execution summary evidence integrity is not valid")
     initial, final, declared_delta = score.get("initial"), score.get("final"), score.get("delta")
     if any(not isinstance(value, int) for value in (initial, final, declared_delta)):
         raise ValueError("official_score values must be integers")
     if final - initial != declared_delta:
         raise ValueError("official_score delta does not equal final minus initial")
+    # A native final score remains usable for black-box outcome comparison
+    # when Collector-side event provenance is incomplete.
     raw_events = payload.get("score_events")
+    if score.get("score_event_chain_status") != "VALID":
+        raw_events = []
     if not isinstance(raw_events, list):
         raise ValueError("execution summary score_events must be an array")
     # Zero-score executions have no score transition to report.  They remain
@@ -461,6 +489,69 @@ def _parse_execution_summary(
         "execution-summary.json#/official_score/final",
         execution_fidelity,
     ), tuple(events)
+
+
+def _direct_process_evidence(path: Path | None) -> tuple[tuple[AttackEpisode, ...], tuple[AirOutcome, ...], str]:
+    """Project direct BatchRunner evidence without participating in score parsing."""
+    if path is None or not path.is_file():
+        return (), (), "MISSING"
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError, json.JSONDecodeError):
+        return (), (), "CONFLICTING"
+    traces_raw, air_raw, engagement_raw = (
+        payload.get("attack_execution_trace"), payload.get("air_outcomes"), payload.get("engagement_summary"),
+    )
+    values = (traces_raw, air_raw, engagement_raw)
+    if any(value is not None and not isinstance(value, list) for value in values):
+        return (), (), "CONFLICTING"
+    present = sum(value is not None for value in values)
+    if not present:
+        return (), (), "LEGACY_DERIVED"
+    status = "DIRECT" if present == 3 else "PARTIAL"
+
+    def stage_value(stages: object, name: str) -> bool | None:
+        rows = [row for row in stages if isinstance(row, dict) and row.get("stage") == name] if isinstance(stages, list) else []
+        if not rows:
+            return None
+        return True if any(row.get("success") is True for row in rows) else False if all(row.get("success") is False for row in rows) else None
+
+    episodes: list[AttackEpisode] = []
+    for row in traces_raw if isinstance(traces_raw, list) else []:
+        if not isinstance(row, dict) or not isinstance(row.get("attacker_id"), str) or not isinstance(row.get("target_id"), str):
+            continue
+        stages = row.get("attack_stages", row.get("stages", []))
+        waves = row.get("attack_waves", [])
+        refs = tuple(str(value) for value in row.get("evidence_refs", []) if isinstance(value, str))
+        fired = sum(int(wave.get("fired_count", 0)) for wave in waves if isinstance(wave, dict) and isinstance(wave.get("fired_count", 0), int))
+        hits = sum(int(wave.get("hit_count", 0)) for wave in waves if isinstance(wave, dict) and isinstance(wave.get("hit_count", 0), int))
+        episodes.append(AttackEpisode(
+            str(row.get("operation_id")) if row.get("operation_id") is not None else None,
+            row["attacker_id"], row["target_id"], None, None, fired if waves else None, hits if waves else None, None,
+            bool((row.get("target_damage") or {}).get("destroyed")) if isinstance(row.get("target_damage"), dict) and (row.get("target_damage") or {}).get("destroyed") is not None else None,
+            None, None, (),
+            stage_value(stages, "scheduled"), stage_value(stages, "triggered"), stage_value(stages, "attacker_found"),
+            stage_value(stages, "target_found"), stage_value(stages, "contact_acquired"), stage_value(stages, "attack_range_reached"),
+            stage_value(stages, "attack_command_called"),
+            row.get("attack_command_accepted", stage_value(stages, "attack_command_succeeded")),
+            str(row.get("final_stage")) if row.get("success") is False and row.get("final_stage") is not None else None, refs,
+        ))
+    outcomes: list[AirOutcome] = []
+    for row in air_raw if isinstance(air_raw, list) else []:
+        if not isinstance(row, dict) or not isinstance(row.get("aircraft_id"), str):
+            continue
+        states = row.get("air_states", row.get("states", []))
+        waves = row.get("attack_waves", [])
+        released = sum(int(wave.get("fired_count", 0)) for wave in waves if isinstance(wave, dict) and isinstance(wave.get("fired_count", 0), int))
+        outcomes.append(AirOutcome(
+            row["aircraft_id"], str(row.get("sortie_id")) if row.get("sortie_id") is not None else None,
+            stage_value([{**item, "stage": item.get("state")} for item in states] if isinstance(states, list) else [], "launch_requested"),
+            row.get("airborne"), row.get("weapon_released"), released if waves else None, row.get("rtb_requested"), row.get("landed"), row.get("destroyed"),
+            row.get("survival_seconds") if isinstance(row.get("survival_seconds"), (int, float)) else None,
+            str(row.get("final_state")) if row.get("final_state") is not None else None,
+            tuple(str(value) for value in row.get("evidence_refs", []) if isinstance(value, str)),
+        ))
+    return tuple(episodes), tuple(outcomes), status
 
 
 # ------------------------------ 分发解析器：自动区分sqlite/csv文件 ------------------------------

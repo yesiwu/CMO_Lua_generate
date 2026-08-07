@@ -1,5 +1,5 @@
 {
-  "cmoExecutable": "C:\\CMO\\CommanC\\bin\\Debug\\Command.exe",
+  "cmoExecutable": "C:\\CMO\\Command\\bin\\Debug\\Command.exe",
   "scenario": "C:\\CMO\\Command\\bin\\Debug\\Scenarios\\批量脚本测试2.scen",
   "outputDirectory": "C:\\CMO\\CmoBatchRunner\\Results",
   "collectionProfile": "combat-minimal",

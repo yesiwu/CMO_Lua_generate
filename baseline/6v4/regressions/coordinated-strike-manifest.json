@@ -13,7 +13,7 @@
     "red_j15_1",
     "red_j15_2"
   ],
-  "derived_baseline_checksum": "2355c5f898affafe39c6d7fe7a7f973e64d9b32264456ff5217f1aa3aec1459c",
+  "derived_baseline_checksum": "28694b9081aaa1f4770b0d134e2adcbfdf486dd49b189f8059076eb3e8607791",
   "execution_plan_checksum": "5db46d86e4be1ff5b9c0198559236c8908c805b796207ec508f7655b971ea3ca",
   "fixture_purpose": "formal_chain_expression_regression",
   "formal_comparison_eligible": false,
@@ -30,6 +30,6 @@
   ],
   "sortie_operation_count": 2,
   "source_scenario_ir_checksum": "b04a65ed8d06d49e20671e446624c2de886f35247e09b28e25d31b995b6a558d",
-  "strategy_checksum": "19dfac2b100c49e3298df68a2d9c78ae3041117834ffe11df18d052e35cd8cc8",
+  "strategy_checksum": "23ba9e2293e31f1f6a5d7dcfa41168ebf25d9c802d06a942021282d8f1c64c13",
   "surface_operation_count": 3
 }

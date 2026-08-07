@@ -202,10 +202,16 @@ def _strict_strategy(value: object) -> StrategySpec:
     if not all(isinstance(item, dict) and set(item) == attack_fields for item in value["attacks"]):
         raise ValueError("每条攻击指令字段不完整或存在多余字段")
     # 校验所有出击结构字段完整
-    if not all(isinstance(item, dict) and set(item) == sortie_fields for item in value["sorties"]):
+    allowed_sortie_fields = sortie_fields | {"air_tactics"}
+    if not all(isinstance(item, dict) and set(item) in {frozenset(sortie_fields), frozenset(allowed_sortie_fields)} for item in value["sorties"]):
         raise ValueError("每条舰载机出击指令字段不完整或存在多余字段")
     # 校验航路点格式
     for sortie in value["sorties"]:
+        if "air_tactics" in sortie and (
+            not isinstance(sortie["air_tactics"], dict)
+            or set(sortie["air_tactics"]) != {"launch_delay_seconds", "ingress_altitude_m", "popup_altitude_m", "popup_range_nm", "attack_range_nm"}
+        ):
+            raise ValueError("air_tactics fields are invalid")
         if not isinstance(sortie["route"], list) or not all(
             isinstance(point, dict) and set(point) == {"latitude", "longitude"}
             for point in sortie["route"]

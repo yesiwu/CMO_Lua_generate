@@ -1,0 +1,65 @@
+{
+  "schema_version": "2.0",
+  "experience_id": "exp_seed_aircraft_route_001",
+  "experience_key": "naval_air_anti_surface.aircraft_route",
+  "experience_type": "tactical_positive",
+  "evidence_stance": "support",
+  "status": "candidate",
+  "consumer": "StrategyProposalAgent",
+  "artifact_provenance": "synthetic_seed",
+  "scoring_evidence_status": "COMPLETE",
+  "skill_promotion_eligible": true,
+  "hypothesis": "采用较低进入高度并让两架航空兵从不同侧翼接近目标，结果支持该策略与更高得分相关，但仍需后续控制变量验证。",
+  "applicable_conditions": [
+    "航空兵需要穿越敌方远程防空区域。",
+    "两架飞机可以使用不同航路偏移而不发生航路冲突。"
+  ],
+  "recommended_pattern": {
+    "summary": "在StrategySpec中降低航空架次的进入高度，并为不同架次设置方向相反的中间点和接近点偏移。",
+    "strategy_dimensions": [
+      "sorties"
+    ]
+  },
+  "counter_conditions": [
+    "当低空航路受到地形、航程或任务区域限制时，不应盲目降低进入高度。"
+  ],
+  "strategy_dimensions": [
+    "sorties"
+  ],
+  "observed_effect": {
+    "supporting_candidate_ids": [
+      "candidate_00"
+    ],
+    "contradicting_candidate_ids": [],
+    "baseline_score": 160,
+    "scores": {
+      "candidate_00": 200
+    },
+    "score_delta_vs_baseline": 40,
+    "target_damage": {
+      "blue_ddg113_2": 80
+    },
+    "losses_red": 0
+  },
+  "execution_success": true,
+  "scoreable": true,
+  "semantic_valid": true,
+  "execution_fidelity": "verified",
+  "evidence_quality": 0.74,
+  "model_confidence": 0.78,
+  "score_source": "execution_summary",
+  "environment": {
+    "mission_type": "naval_air_anti_surface",
+    "scenario_id": "red_blue_6v4_liaoning",
+    "runtime_version": "2.0.0",
+    "renderer_version": "manual_template_v1",
+    "score_spec_version": "2.0.0",
+    "score_spec_checksum": "9a7f68a20cea722df7ae77c28a93199b1042258bd153973e25021b5e498762df",
+    "scenario_schema_version": "1.0",
+    "score_source": "execution_summary"
+  },
+  "source_optimization_id": "seed_aircraft_route_opt_001",
+  "evidence_refs": [
+    "runs/evolution/manual_evolution_auto_20260804_rerun/generations/generation_000/phase6/candidate_00/attempts/attempt_00/execution-summary.json"
+  ]
+}

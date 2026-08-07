@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 from cmo_lua_agent.contract.baseline_strategy_builder import BaselineStrategyBuilder
+from cmo_lua_agent.contract.strategy_models import AirTactics
 from cmo_lua_agent.generation.execution_plan_compiler import ExecutionPlanCompiler
 from cmo_lua_agent.generation.runtime_models import LuaRuntimeProfile
 from cmo_lua_agent.optimization.tactical_capability_registry import TacticalCapabilityRegistry
@@ -42,3 +43,12 @@ def test_registry_exposes_only_bounded_role_specific_air_tactics_paths():
     )
     attack_range = registry.capability_for_path("/sorties/1/air_tactics/attack_range_nm")
     assert attack_range is not None and (attack_range.minimum, attack_range.maximum) == (30, 140)
+
+
+def test_air_tactics_rejects_attack_range_at_or_beyond_popup_range():
+    try:
+        AirTactics(popup_range_nm=95, attack_range_nm=100)
+    except ValueError as exc:
+        assert str(exc) == "attack_range_nm must be lower than popup_range_nm"
+    else:
+        raise AssertionError("invalid air tactic ordering must be rejected before Lua rendering")
