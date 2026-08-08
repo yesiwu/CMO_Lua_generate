@@ -223,4 +223,8 @@ def test_runner_leaves_transient_failure_runnable_for_the_background_runtime(tmp
 
     assert state.status is TrainingStatus.CREATED
     assert state.action is TrainingAction.VALIDATE_INPUT
+    retry = state.runner["retry"]
+    assert retry["kind"] == "TRANSIENT"
+    assert retry["consecutive_failures"] == 1
+    assert retry["next_retry_at"]
     assert any('"kind": "TRANSIENT"' in line for line in (store.root / "journal.jsonl").read_text(encoding="utf-8").splitlines())

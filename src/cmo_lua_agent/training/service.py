@@ -63,6 +63,7 @@ class TrainingService:
             "completed_generations": list(state.completed_generations),
             "campaign_id": state.campaign_id,
             "phase8_status": state.phase8.status.value,
+            "retry": state.runner.get("retry"),
         }
 
     def control(self, workflow_id: str, action: str) -> dict[str, object]:

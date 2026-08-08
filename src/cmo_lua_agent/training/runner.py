@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from typing import Protocol
 
 from cmo_lua_agent.training.models import (
@@ -51,7 +52,7 @@ class TrainingRunner:
             while True:
                 before = self._store.load_state()
                 after = self.run_once()
-                if after.action is TrainingAction.IDLE or after == before:
+                if after.action is TrainingAction.IDLE or after == before or self._retry_pending(after):
                     return after
 
     def run_once(self) -> TrainingState:
@@ -68,7 +69,8 @@ class TrainingRunner:
             if record.kind is FailureKind.TRANSIENT:
                 # Keep the exact persisted action so the background runtime
                 # can retry it after a short wait without user intervention.
-                return self._store.load_state()
+                state = self._store.load_state()
+                return self._store.transition(runner=self._next_retry(state, record))
             if record.kind is FailureKind.CODE and self._repair is not None:
                 self._store.transition(status=TrainingStatus.REPAIRING)
                 result = self._repair.repair(
@@ -83,6 +85,28 @@ class TrainingRunner:
                     )
                 return self._store.transition(status=TrainingStatus.FAILED, action=TrainingAction.IDLE)
             raise
+
+    @staticmethod
+    def _retry_pending(state: TrainingState) -> bool:
+        return isinstance(state.runner.get("retry"), dict)
+
+    @staticmethod
+    def _next_retry(state: TrainingState, record) -> dict[str, object]:
+        previous = state.runner.get("retry")
+        prior_count = previous.get("consecutive_failures", 0) if isinstance(previous, dict) else 0
+        count = int(prior_count) + 1
+        delay_seconds = min(5 * (2 ** (count - 1)), 60)
+        next_retry_at = datetime.now(UTC) + timedelta(seconds=delay_seconds)
+        return {
+            **state.runner,
+            "retry": {
+                "kind": record.kind.value,
+                "error_type": record.error_type,
+                "message": record.message,
+                "consecutive_failures": count,
+                "next_retry_at": next_retry_at.isoformat(),
+            },
+        }
 
     def _run_once(self) -> TrainingState:
         request = self._store.load_request()

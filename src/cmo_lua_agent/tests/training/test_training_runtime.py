@@ -27,6 +27,7 @@ def test_runtime_retries_running_workflow_after_a_wait(monkeypatch, tmp_path) ->
     monkeypatch.setattr(runtime, "create_production_evolution_campaign_service", lambda **_kwargs: object())
     monkeypatch.setattr(runtime, "TrainingRunner", Runner)
     monkeypatch.setattr(runtime, "sleep", lambda seconds: calls.append(f"sleep:{seconds}"))
+    monkeypatch.setattr(runtime, "retry_sleep_seconds", lambda _state: 5)
 
     assert runtime.run_workflow(project_root=tmp_path, workflow_id="training-001") is TrainingStatus.COMPLETED
-    assert calls == ["reconcile", "sleep:1"]
+    assert calls == ["reconcile", "sleep:5"]

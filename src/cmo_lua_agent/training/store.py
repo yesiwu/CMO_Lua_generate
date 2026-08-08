@@ -93,6 +93,7 @@ class TrainingStore:
         worker_operation_id: str | None = None,
         phase8: Phase8Progress | None = None,
         last_good_commit: str | None = None,
+        runner: dict[str, Any] | None = None,
     ) -> TrainingState:
         current = self.load_state()
         next_state = replace(
@@ -121,6 +122,11 @@ class TrainingStore:
                 last_good_commit
                 if last_good_commit is not None
                 else current.last_good_commit
+            ),
+            runner=(
+                dict(runner)
+                if runner is not None
+                else {key: value for key, value in current.runner.items() if key != "retry"}
             ),
             phase8=phase8 if phase8 is not None else current.phase8,
             updated_at=_utc_now(),

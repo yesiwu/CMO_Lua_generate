@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from datetime import UTC, datetime
 from pathlib import Path
 from time import sleep
 from typing import Any
@@ -104,7 +105,24 @@ def run_workflow(*, project_root: Path, workflow_id: str) -> TrainingStatus:
         # A RUNNING workflow can be either waiting for CMO or retrying a
         # classified transient provider/process failure.  In both cases its
         # persisted action remains resumable and needs no user confirmation.
-        sleep(1)
+        sleep(retry_sleep_seconds(state))
+
+
+def retry_sleep_seconds(state: object) -> int:
+    """Return the persisted retry delay, with normal worker polling as fallback."""
+    runner = getattr(state, "runner", {})
+    retry = runner.get("retry") if isinstance(runner, dict) else None
+    next_retry_at = retry.get("next_retry_at") if isinstance(retry, dict) else None
+    if not isinstance(next_retry_at, str):
+        return 1
+    try:
+        target = datetime.fromisoformat(next_retry_at.replace("Z", "+00:00"))
+    except ValueError:
+        return 1
+    if target.tzinfo is None:
+        target = target.replace(tzinfo=UTC)
+    remaining = int((target - datetime.now(UTC)).total_seconds())
+    return max(1, min(remaining, 60))
 
 
 def main(argv: list[str] | None = None) -> int:
