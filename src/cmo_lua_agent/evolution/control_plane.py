@@ -830,6 +830,98 @@ class EvolutionCampaignService:
         result["process_restart_recovery"] = "not_validated"
         return result
 
+    def reconcile_generation(
+        self,
+        campaign_id: str,
+        generation_index: int,
+    ) -> dict[str, Any]:
+        """Reconcile a generation interrupted after its worker process disappeared."""
+        store, _ = self._load(campaign_id)
+        workers = [
+            worker
+            for worker in store.list_workers()
+            if worker.campaign_id == campaign_id
+            and worker.generation_index == generation_index
+        ]
+        if not workers:
+            return {
+                "campaign_id": campaign_id,
+                "generation_index": generation_index,
+                "process_restart_recovery": "no_worker",
+            }
+
+        worker = workers[-1]
+        result_path = (
+            store.root
+            / "generations"
+            / f"generation_{generation_index:03d}"
+            / "generation-result.json"
+        )
+        if result_path.is_file():
+            result = self._read_json(result_path)
+            operation = store.get_operation(worker.operation_id)
+            if operation is not None and operation.status is not OperationStatus.COMPLETED:
+                store.mark_operation_completed(
+                    worker.operation_id,
+                    output_ref=str(result_path),
+                )
+            store.save_worker(
+                WorkerState(
+                    worker.operation_id,
+                    worker.campaign_id,
+                    worker.generation_index,
+                    "completed",
+                    worker.worker_id,
+                    result,
+                )
+            )
+            state = store.load_campaign_state()
+            store.update_campaign_state(
+                status=CampaignStatus.RUNNING,
+                current_generation=max(
+                    state.current_generation,
+                    generation_index + 1,
+                ),
+            )
+            return {
+                "campaign_id": campaign_id,
+                "generation_index": generation_index,
+                "worker_operation_id": worker.operation_id,
+                "process_restart_recovery": "validated",
+                "result_path": str(result_path),
+            }
+
+        operation = store.get_operation(worker.operation_id)
+        if operation is not None and operation.status in {
+            OperationStatus.STARTED,
+            OperationStatus.UNKNOWN,
+        }:
+            store.mark_operation_unknown(
+                worker.operation_id,
+                "runner_process_restart_reconciliation_required",
+            )
+        store.save_worker(
+            WorkerState(
+                worker.operation_id,
+                worker.campaign_id,
+                worker.generation_index,
+                "reconciliation_required",
+                worker.worker_id,
+                worker.result,
+                "generation_result_missing_after_runner_restart",
+            )
+        )
+        store.update_campaign_state(
+            status=CampaignStatus.AWAITING_APPROVAL,
+            current_generation=generation_index,
+        )
+        return {
+            "campaign_id": campaign_id,
+            "generation_index": generation_index,
+            "worker_operation_id": worker.operation_id,
+            "process_restart_recovery": "reconciliation_required",
+        }
+
     def is_approval_valid(self, approval_id: str) -> bool:
         """跨任务检索审批单是否有效（运维接口）"""
         for root in self._campaigns_root.glob("*") if self._campaigns_root.is_dir() else ():
@@ -848,8 +940,26 @@ class EvolutionCampaignService:
         if not root.is_dir():
             raise ValueError("campaign_not_found")
         store = CampaignStore(root)
-        spec_data = json.loads((root / "campaign-spec.json").read_text(encoding="utf-8"))
-        return store, self._spec_from_dict(spec_data)
+        return store, self.load_spec(root)
+
+    @staticmethod
+    def _read_json(path: Path) -> dict[str, Any]:
+        value = json.loads(Path(path).read_text(encoding="utf-8"))
+        if not isinstance(value, dict):
+            raise ValueError("campaign_artifact_invalid")
+        return value
+
+    @staticmethod
+    def load_spec(campaign_root: Path) -> EvolutionCampaignSpec:
+        """Load a persisted Campaign specification through a public API."""
+        root = Path(campaign_root)
+        spec_path = root / "campaign-spec.json"
+        if not spec_path.is_file():
+            raise ValueError("campaign_not_found")
+        spec_data = json.loads(spec_path.read_text(encoding="utf-8"))
+        if not isinstance(spec_data, dict):
+            raise ValueError("campaign_spec_invalid")
+        return EvolutionCampaignService._spec_from_dict(spec_data)
 
     def _campaign_root(self, campaign_id: str) -> Path:
         """构造任务存储目录，防御路径穿越攻击"""

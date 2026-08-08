@@ -7,6 +7,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+import subprocess
 
 
 class CmoLockError(RuntimeError):
@@ -49,6 +50,43 @@ class CmoInstanceLock:
         if self._held and self._path.is_file():
             self._path.unlink()
         self._held = False
+
+    def clear_stale(self) -> bool:
+        """Remove a lock left by a process that is no longer alive."""
+        if self._held or not self._path.is_file():
+            return False
+        try:
+            value = json.loads(self._path.read_text(encoding="utf-8"))
+            pid = int(value["pid"])
+        except (OSError, TypeError, ValueError, KeyError, json.JSONDecodeError):
+            return False
+        if pid < 1 or self._pid_is_alive(pid):
+            return False
+        try:
+            self._path.unlink()
+        except FileNotFoundError:
+            return False
+        return True
+
+    @staticmethod
+    def _pid_is_alive(pid: int) -> bool:
+        if os.name == "nt":
+            result = subprocess.run(
+                ["tasklist", "/FI", f"PID eq {pid}", "/NH"],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            return str(pid) in result.stdout
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return False
+        except PermissionError:
+            return True
+        except OSError:
+            return True
+        return True
 
     def __enter__(self) -> "CmoInstanceLock":
         """进入with上下文时自动获取锁"""

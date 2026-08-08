@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import json
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -52,3 +55,23 @@ def test_production_campaigns_cannot_share_cmo_lock(tmp_path: Path) -> None:
     first.release()
     second.acquire()
     second.release()
+
+
+def test_cmo_lock_clears_only_a_dead_owner(tmp_path: Path) -> None:
+    path = tmp_path / "cmo.lock"
+    live = CmoInstanceLock(path, campaign_id="live")
+    live.acquire()
+
+    assert live.clear_stale() is False
+    assert path.is_file()
+
+    live.release()
+    exited = subprocess.Popen([sys.executable, "-c", "pass"])
+    exited.wait(timeout=5)
+    path.write_text(
+        json.dumps({"campaign_id": "old", "pid": exited.pid}),
+        encoding="utf-8",
+    )
+
+    assert CmoInstanceLock(path, campaign_id="new").clear_stale() is True
+    assert not path.exists()

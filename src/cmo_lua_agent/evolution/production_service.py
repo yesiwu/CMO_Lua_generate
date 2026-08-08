@@ -282,10 +282,19 @@ class ProductionEvolutionCampaignService:
         )
 
     def _service(self, campaign_id: str) -> EvolutionCampaignService:
-        """内部工具：获取已缓存任务服务实例；不存在抛出异常"""
+        """Return a cached core service, rehydrating persisted Campaigns on demand."""
         service = self._services.get(campaign_id)
         if service is None:
-            raise ValueError("campaign_service_not_loaded")
+            service = self.load_campaign(campaign_id)
+        return service
+
+    def load_campaign(self, campaign_id: str) -> EvolutionCampaignService:
+        """Recreate a Campaign core from its persisted specification and input package."""
+        root = self._campaigns_root / campaign_id
+        spec = EvolutionCampaignService.load_spec(root)
+        package = self._package_loader.load(spec.scenario_ref)
+        service = self._build_core(spec, package)
+        self._services[campaign_id] = service
         return service
 
     def preview_generation(self, **kwargs: Any):
@@ -314,13 +323,16 @@ class ProductionEvolutionCampaignService:
 
     def execute_generation(self,** kwargs: Any):
         """正式执行一代：生成候选 → CMO仿真 → Phase3‑6校验打分 → Phase7‑8学习"""
+        self._bind_generation_core(
+            campaign_id=str(kwargs["campaign_id"]),
+            generation_index=int(kwargs["generation_index"]),
+        )
         return self._service(str(kwargs["campaign_id"])).execute_generation(**kwargs)
 
     def _bind_generation_core(self, *, campaign_id: str, generation_index: int) -> None:
         """Use the persisted Champion as the next generation's baseline."""
         root = self._campaigns_root / campaign_id
-        spec_data = json.loads((root / "campaign-spec.json").read_text(encoding="utf-8"))
-        spec = EvolutionCampaignService._spec_from_dict(spec_data)
+        spec = EvolutionCampaignService.load_spec(root)
         package = self._package_loader.load(spec.scenario_ref)
         if generation_index > 0:
             package = apply_rolling_baseline(
@@ -336,6 +348,13 @@ class ProductionEvolutionCampaignService:
     def inspect_generation(self, campaign_id: str, generation_index: int):
         """查询指定某一代的详细结果"""
         return self._service(campaign_id).inspect_generation(campaign_id, generation_index)
+
+    def reconcile_campaign(self, campaign_id: str) -> dict[str, Any]:
+        """Reconcile the persisted generation currently owned by a restarted runner."""
+        service = self._service(campaign_id)
+        campaign = service.inspect_campaign(campaign_id)
+        generation_index = int(campaign["current_generation"])
+        return service.reconcile_generation(campaign_id, generation_index)
 
     def pause_campaign(self, campaign_id: str):
         """暂停进化任务"""

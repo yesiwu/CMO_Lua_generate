@@ -31,8 +31,19 @@ from cmo_lua_agent.main import (
 from cmo_lua_agent.learning.store import ExperienceStore
 from cmo_lua_agent.evolution.production_service import (
     ProductionDependencyOverrides,
+    ProductionEvolutionCampaignService,
     create_production_evolution_campaign_service,
     create_test_evolution_campaign_service,
+)
+from cmo_lua_agent.evolution.control_plane import (
+    EvolutionCampaignService,
+    GenerationExecutionResult,
+    GenerationPreviewPayload,
+)
+from cmo_lua_agent.evolution.models import (
+    CampaignBudget,
+    CampaignExecutionMode,
+    EvolutionCampaignSpec,
 )
 from cmo_lua_agent.evolution.formal_candidate_evaluator import (
     FormalCandidateEvaluator,
@@ -614,3 +625,61 @@ def test_test_factory_runs_frozen_preview_and_generation_without_second_proposal
         ).read_text(encoding="utf-8")
     )
     assert outcome["artifact_provenance"] == "test_fixture"
+
+
+def test_production_facade_loads_a_persisted_campaign_after_restart(
+    tmp_path: Path,
+) -> None:
+    """The public facade must not depend on its process-local service cache."""
+
+    class Preview:
+        def build(self, **_kwargs: object) -> GenerationPreviewPayload:
+            return GenerationPreviewPayload("snapshot", "candidates", (), 0)
+
+    class Executor:
+        def run(self, _context: object) -> GenerationExecutionResult:
+            return GenerationExecutionResult.completed({})
+
+    spec = EvolutionCampaignSpec(
+        campaign_id="persisted_campaign",
+        scenario_id="fixture",
+        scenario_ref="scenario.json",
+        scenario_checksum="scenario",
+        initial_strategy_ref="strategy.json",
+        runtime_contract_checksum="runtime",
+        renderer_contract_checksum="renderer",
+        score_contract_checksum="score",
+        semantic_contract_checksum="semantic",
+        code_revision="revision",
+        allowed_strategy_paths=("/attacks/0/fire_quantity",),
+        generation_objective="improve",
+        budget=CampaignBudget(
+            1, 5, 1, 1, 0, 1, 20, 20, 0, 0, 0, 0, 60, 60, 30
+        ),
+        execution_mode=CampaignExecutionMode.FAKE_FIXTURE,
+    )
+    EvolutionCampaignService(
+        campaigns_root=tmp_path / "runs" / "evolution",
+        preview_builder=Preview(),
+        generation_executor=Executor(),
+        synchronous_fake_workers=True,
+    ).prepare_campaign(spec)
+
+    facade = ProductionEvolutionCampaignService(
+        project_root=tmp_path,
+        package_loader=SimpleNamespace(load=lambda _reference: object()),
+        proposal_agent=object(),
+        candidate_evaluator=object(),
+        phase7_adapter=object(),
+        phase8_adapter=object(),
+        champion_policy=None,
+        stop_policy=object(),
+        synchronous_fake_workers=True,
+        artifact_provenance="test_fixture",
+    )
+
+    loaded = facade.load_campaign("persisted_campaign")
+
+    assert loaded.inspect_campaign("persisted_campaign")["campaign_id"] == (
+        "persisted_campaign"
+    )

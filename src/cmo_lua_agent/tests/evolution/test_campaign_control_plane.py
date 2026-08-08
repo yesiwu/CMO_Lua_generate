@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
 from pathlib import Path
 from threading import Event
 
@@ -21,6 +22,7 @@ from cmo_lua_agent.evolution.models import (
     CampaignExecutionMode,
     CampaignStatus,
     EvolutionCampaignSpec,
+    WorkerState,
 )
 
 
@@ -157,6 +159,41 @@ def test_execute_is_async_and_concurrent_execute_reuses_operation(tmp_path: Path
     executor.release.set()
     service.wait_for_worker(first.operation_id, timeout_seconds=2)
     assert service.inspect_campaign("control_fixture")["status"] == CampaignStatus.RUNNING.value
+
+
+def test_reconcile_generation_marks_persisted_result_completed_after_restart(
+    tmp_path: Path,
+) -> None:
+    service, _, _ = _service(tmp_path)
+    service.prepare_campaign(_spec())
+    service.preview_generation(campaign_id="control_fixture", generation_index=0)
+    root = tmp_path / "runs" / "evolution" / "control_fixture"
+    store = CampaignStore(root)
+    operation = store.prepare_operation(
+        generation_index=0,
+        kind=OperationKind.PHASE6,
+        input_checksum="interrupted-worker",
+    )
+    store.mark_operation_started(operation.operation_id)
+    store.save_worker(
+        WorkerState(
+            operation.operation_id,
+            "control_fixture",
+            0,
+            "running",
+            "worker-from-old-process",
+        )
+    )
+    result_path = root / "generations" / "generation_000" / "generation-result.json"
+    result_path.parent.mkdir(parents=True)
+    result_path.write_text(json.dumps({"leaderboard": []}), encoding="utf-8")
+
+    result = service.reconcile_generation("control_fixture", 0)
+
+    assert result["process_restart_recovery"] == "validated"
+    assert store.get_worker(operation.operation_id).status == "completed"
+    assert store.get_operation(operation.operation_id).status is OperationStatus.COMPLETED
+    assert store.load_campaign_state().current_generation == 1
 
 
 def test_pause_invalidates_approval_and_resume_never_executes(tmp_path: Path) -> None:
