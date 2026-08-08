@@ -46,6 +46,7 @@ class ControlledCampaignInputPackage:
     scenario_ir_checksum: str = ""
     baseline_derivation_manifest: Any | None = None
     manual_template_root: Path | None = None
+    scenario_ir_path: Path | None = None
 
 
 class ControlledCampaignInputPackageLoader:
@@ -107,11 +108,10 @@ class ControlledCampaignInputPackageLoader:
         )
 
     def load(self, package_id: str) -> ControlledCampaignInputPackage:
-        if package_id != self.PACKAGE_ID:
-            raise ValueError("unknown_campaign_input_package")
+        scenario_ir_path = self._scenario_ir_path(package_id)
         baseline_root = self.root / "baseline" / "6v4"
         paths = {
-            "scenario_ir": self.root / "json_data" / "6v4ScenarioIR.json",
+            "scenario_ir": scenario_ir_path,
             "objectives": baseline_root / "scenario_objectives.json",
             "role_catalog": baseline_root / "unit_role_catalog.json",
             "score_profile": baseline_root / "score_profile.json",
@@ -211,7 +211,19 @@ class ControlledCampaignInputPackageLoader:
             scenario_ir_checksum=derived.manifest.scenario_ir_checksum,
             baseline_derivation_manifest=derived.manifest.to_dict(),
             manual_template_root=template_root,
+            scenario_ir_path=scenario_ir_path,
         )
+
+    def _scenario_ir_path(self, package_id: str) -> Path:
+        if package_id == self.PACKAGE_ID:
+            return self.root / "json_data" / "6v4ScenarioIR.json"
+        candidate = Path(package_id)
+        if not candidate.is_absolute():
+            candidate = self.root / candidate
+        candidate = candidate.resolve()
+        if not candidate.is_file() or candidate.suffix.lower() != ".json":
+            raise ValueError("unknown_campaign_input_package")
+        return candidate
 
     def _git_state(self) -> tuple[str, bool, str | None]:
         try:

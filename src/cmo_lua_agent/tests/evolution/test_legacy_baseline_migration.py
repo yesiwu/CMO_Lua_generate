@@ -99,6 +99,27 @@ def test_controlled_package_records_dirty_worktree_without_rejecting_it(
     assert package.diff_checksum == "fixture-diff"
 
 
+def test_controlled_package_loads_a_training_scenario_ir_reference(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        ControlledScenarioAssetRegistry,
+        "load_verified",
+        lambda _self, _asset_id: _asset(),
+    )
+    reference = "baseline/6v4/manual-template/6v4ScenarioIR_baseline_v3.json"
+
+    package = ControlledCampaignInputPackageLoader(
+        project_root=PROJECT_ROOT,
+    ).load(reference)
+
+    assert package.package_id == reference
+    assert package.scenario_ir_path == PROJECT_ROOT / reference
+    assert package.scenario.scenario_id == "red_blue_6v4_liaoning"
+    assert package.baseline.strategy.attacks[0].weapon_selection == "explicit"
+    assert package.baseline.strategy.sorties[0].air_tactics.popup_altitude_m == 9500
+
+
 def test_explicit_legacy_baseline_override_is_rejected() -> None:
     with pytest.raises(ValueError, match="legacy_baseline_not_production_eligible"):
         CampaignInputLoader().load_6v4(

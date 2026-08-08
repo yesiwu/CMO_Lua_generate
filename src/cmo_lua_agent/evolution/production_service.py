@@ -204,7 +204,7 @@ class ProductionEvolutionCampaignService:
             scenario_id=package.scenario.scenario_id,
             scenario_ref=input_package_id,
             scenario_checksum=package.checksums["scenario_definition_derived"],
-            initial_strategy_ref="json_data/6v4ScenarioIR.json#derived-baseline",
+            initial_strategy_ref=f"{input_package_id}#derived-baseline",
             runtime_contract_checksum=package.checksums["runtime"],
             renderer_contract_checksum=package.checksums["renderer"],
             score_contract_checksum=package.checksums["score_spec_compiled"],

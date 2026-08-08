@@ -8,6 +8,7 @@ import json
 from typing import Any, Mapping
 
 from cmo_lua_agent.contract.strategy_models import (
+    AirTactics,
     AttackDirective,
     RouteWaypoint,
     ScenarioDefinition,
@@ -18,7 +19,7 @@ from cmo_lua_agent.contract.strategy_models import (
 )
 
 
-BUILDER_VERSION = "1.0.0"
+BUILDER_VERSION = "1.1.0"
 
 
 class BaselineDerivationError(ValueError):
@@ -158,6 +159,8 @@ class BaselineStrategyBuilder:
             dbid = mission.get("weaponDbid")
             if selection == "auto":
                 dbid = None
+            elif selection == "manual":
+                selection = "explicit"
             elif selection != "explicit":
                 raise BaselineDerivationError("baseline_derivation_weapon_selection_invalid")
             reserve = mission.get("reserveQuantity")
@@ -175,14 +178,38 @@ class BaselineStrategyBuilder:
                 raise BaselineDerivationError("baseline_derivation_attack_invalid") from error
             if mission_type == "aircraft_attack":
                 try:
-                    route = tuple(RouteWaypoint(latitude=point["latitude"], longitude=point["longitude"])
-                                  for point in mission["route"])
+                    route_source = mission.get(
+                        "route",
+                        mission.get("resolvedBaselineRoute"),
+                    )
+                    route = tuple(
+                        RouteWaypoint(
+                            latitude=point["latitude"],
+                            longitude=point["longitude"],
+                        )
+                        for point in route_source
+                    )
+                    air_tactics = AirTactics(
+                        launch_delay_seconds=mission.get(
+                            "launchStartDelaySeconds",
+                            mission.get("delaySeconds", 5),
+                        ),
+                        ingress_altitude_m=mission.get("ingressAltitudeM", 200),
+                        popup_altitude_m=mission.get("popupAltitudeM", 9500),
+                        popup_range_nm=mission.get("popupRangeNm", 95),
+                        attack_range_nm=mission.get("attackRangeNm", 80),
+                    )
                     sorties.append(SortieDirective(
                         sortie_id=mission_id, aircraft_id=shooter_id, target_id=target_id,
                         base_unit_id=mission["baseUnitId"], route=route,
-                        altitude_meters=mission["altitude"], throttle=mission["throttle"],
+                        altitude_meters=mission.get(
+                            "altitude",
+                            mission.get("popupAltitudeM", 8000),
+                        ),
+                        throttle=mission["throttle"],
                         fire_delay_seconds=mission["attackStartAfterAirborneSeconds"],
                         return_delay_seconds=mission["returnAfterAttackSeconds"],
+                        air_tactics=air_tactics,
                     ))
                 except (KeyError, TypeError, ValueError) as error:
                     raise BaselineDerivationError("baseline_derivation_sortie_invalid") from error
