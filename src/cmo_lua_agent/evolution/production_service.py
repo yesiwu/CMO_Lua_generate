@@ -393,6 +393,28 @@ class ProductionEvolutionCampaignService:
         generation_index = int(campaign["current_generation"])
         return service.reconcile_generation(campaign_id, generation_index)
 
+    def run_training_phase8(
+        self,
+        *,
+        workflow_id: str,
+        campaign_id: str,
+        completed_generations: tuple[int, ...],
+    ) -> dict[str, object]:
+        """Freeze this workflow's Phase 7 experience ids and aggregate them once."""
+        experience_ids: list[str] = []
+        for generation_index in completed_generations:
+            generation = self.inspect_generation(campaign_id, generation_index)
+            phase7 = generation.get("result", {}).get("phase7", {})
+            if isinstance(phase7, dict):
+                experience_ids.extend(str(item) for item in phase7.get("experience_ids", ()) if item)
+        run_for_training = getattr(self._phase8, "run_for_training", None)
+        if run_for_training is None:
+            raise RuntimeError("phase8_training_adapter_not_configured")
+        return run_for_training(
+            workflow_id=workflow_id,
+            experience_ids=tuple(sorted(set(experience_ids))),
+        )
+
     def pause_campaign(self, campaign_id: str):
         """暂停进化任务"""
         return self._service(campaign_id).pause_campaign(campaign_id)

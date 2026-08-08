@@ -120,6 +120,7 @@ class SkillEvolutionWorkflow:
         phase8_run_id: str,
         runs_root: Path,
         experience_store: ExperienceStore,
+        experience_ids: tuple[str, ...] | None = None,
     ) -> SkillEvolutionResult:
         """
         执行整套Phase8技能演化流程
@@ -139,7 +140,7 @@ class SkillEvolutionWorkflow:
         output.mkdir(parents=True, exist_ok=True)
 
         # 读取全部Phase7原始经验记录
-        records = self._read_records(experience_store)
+        records = self._read_records(experience_store, experience_ids=experience_ids)
         manifest_value = {
             "schema_version": "2",
             "profile_id": self._profile.profile_id,
@@ -422,7 +423,11 @@ class SkillEvolutionWorkflow:
         return result
 
     @staticmethod
-    def _read_records(store: ExperienceStore) -> tuple[dict[str, Any], ...]:
+    def _read_records(
+        store: ExperienceStore,
+        *,
+        experience_ids: tuple[str, ...] | None = None,
+    ) -> tuple[dict[str, Any], ...]:
         """
         读取Phase7持久化的全部经验记录
         :param store: 经验存储实例
@@ -432,11 +437,15 @@ class SkillEvolutionWorkflow:
             return ()
         records: list[dict[str, Any]] = []
         excluded_ids = store.excluded_ids()
+        selected_ids = set(experience_ids) if experience_ids is not None else None
         for path in sorted(store.records.glob("*.json")):
             value = _object(path)
             if "experience_id" not in value:
                 raise ValueError(f"非法的Phase7经验记录文件：{path}")
-            if value["experience_id"] not in excluded_ids:
+            if (
+                value["experience_id"] not in excluded_ids
+                and (selected_ids is None or value["experience_id"] in selected_ids)
+            ):
                 records.append(value)
         return tuple(records)
 

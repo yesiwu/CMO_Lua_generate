@@ -5,6 +5,8 @@ from __future__ import annotations
 from typing import Protocol
 
 from cmo_lua_agent.training.models import (
+    Phase8Progress,
+    Phase8Status,
     TrainingAction,
     TrainingStage,
     TrainingState,
@@ -24,6 +26,7 @@ class CampaignDriver(Protocol):
     def resume(self, campaign_id: str) -> None: ...
     def stop(self, campaign_id: str) -> None: ...
     def reconcile(self, campaign_id: str) -> dict[str, object]: ...
+    def run_phase8(self, campaign_id: str, completed_generations: tuple[int, ...]) -> dict[str, object]: ...
 
 
 class TrainingRunner:
@@ -60,8 +63,27 @@ class TrainingRunner:
         if request.generation_count is None:
             raise ValueError("fixed_generation_count_required")
         if len(state.completed_generations) >= request.generation_count:
+            if state.phase8.status is Phase8Status.NOT_STARTED:
+                result = self._driver.run_phase8(
+                    state.campaign_id,
+                    state.completed_generations,
+                )
+                if result.get("status") != "completed":
+                    return self._store.transition(
+                        stage=TrainingStage.PHASE8,
+                        action=TrainingAction.IDLE,
+                        phase8=Phase8Progress(Phase8Status.FAILED, str(result.get("job_id") or "")),
+                    )
+                self._store.append_event({"event": "phase8_completed", "campaign_id": state.campaign_id})
+                return self._store.transition(
+                    status=TrainingStatus.COMPLETED,
+                    stage=TrainingStage.REPORT,
+                    action=TrainingAction.IDLE,
+                    phase8=Phase8Progress(Phase8Status.COMPLETED, str(result.get("job_id") or "")),
+                )
             return self._store.transition(
-                stage=TrainingStage.PHASE8,
+                status=TrainingStatus.COMPLETED,
+                stage=TrainingStage.REPORT,
                 action=TrainingAction.IDLE,
             )
 

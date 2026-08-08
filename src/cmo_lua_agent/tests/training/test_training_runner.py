@@ -4,6 +4,8 @@ from pathlib import Path
 
 from cmo_lua_agent.training.models import (
     TrainingAction,
+    Phase8Progress,
+    Phase8Status,
     TrainingRequest,
     TrainingStage,
     TrainingStatus,
@@ -44,6 +46,10 @@ class FakeCampaignDriver:
         self.calls.append("reconcile")
         return {"status": "ok"}
 
+    def run_phase8(self, campaign_id: str, completed_generations: tuple[int, ...]) -> dict[str, str]:
+        self.calls.append(f"phase8:{','.join(map(str, completed_generations))}")
+        return {"status": "completed", "job_id": f"{campaign_id}-phase8"}
+
 
 def _store(tmp_path: Path, *, generations: int) -> TrainingStore:
     store = TrainingStore(tmp_path, "training-001")
@@ -62,9 +68,11 @@ def test_runner_completes_one_generation_without_user_approval(tmp_path: Path) -
     state = TrainingRunner(_store(tmp_path, generations=1), driver).run()
 
     assert state.completed_generations == (0,)
-    assert state.stage is TrainingStage.PHASE8
+    assert state.stage is TrainingStage.REPORT
     assert state.action is TrainingAction.IDLE
-    assert driver.calls == ["prepare", "preview:0", "execute:0", "inspect:0"]
+    assert state.status is TrainingStatus.COMPLETED
+    assert state.phase8 == Phase8Progress(Phase8Status.COMPLETED, "training-001-campaign-phase8")
+    assert driver.calls == ["prepare", "preview:0", "execute:0", "inspect:0", "phase8:0"]
 
 
 def test_runner_drives_requested_generations_without_count_budget(tmp_path: Path) -> None:
@@ -72,13 +80,14 @@ def test_runner_drives_requested_generations_without_count_budget(tmp_path: Path
 
     state = TrainingRunner(_store(tmp_path, generations=3), driver).run()
 
-    assert state.status is TrainingStatus.RUNNING
+    assert state.status is TrainingStatus.COMPLETED
     assert state.completed_generations == (0, 1, 2)
     assert driver.calls == [
         "prepare",
         "preview:0", "execute:0", "inspect:0",
         "preview:1", "execute:1", "inspect:1",
         "preview:2", "execute:2", "inspect:2",
+        "phase8:0,1,2",
     ]
 
 
@@ -126,3 +135,21 @@ def test_runner_pause_resume_and_stop_at_safe_boundaries(tmp_path: Path) -> None
     assert stopped.status is TrainingStatus.STOPPED
     runner.stop()
     assert driver.calls == ["prepare", "pause", "reconcile", "resume", "stop"]
+
+
+def test_restarted_runner_does_not_repeat_a_persisted_execute(tmp_path: Path) -> None:
+    driver = FakeCampaignDriver()
+    store = _store(tmp_path, generations=1)
+    first = TrainingRunner(store, driver)
+    first.run_once()
+    first.run_once()
+    first.run_once()
+
+    recovered = TrainingRunner(store, driver)
+    recovered.reconcile()
+    state = recovered.run()
+
+    assert state.completed_generations == (0,)
+    assert driver.calls == [
+        "prepare", "preview:0", "execute:0", "reconcile", "inspect:0", "phase8:0",
+    ]

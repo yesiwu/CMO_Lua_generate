@@ -91,6 +91,7 @@ class TrainingStore:
         campaign_id: str | None = None,
         completed_generations: tuple[int, ...] | None = None,
         worker_operation_id: str | None = None,
+        phase8: Phase8Progress | None = None,
     ) -> TrainingState:
         current = self.load_state()
         next_state = replace(
@@ -115,6 +116,7 @@ class TrainingStore:
                 if worker_operation_id is not None
                 else current.worker_operation_id
             ),
+            phase8=phase8 if phase8 is not None else current.phase8,
             updated_at=_utc_now(),
         )
         self._write_state(next_state)

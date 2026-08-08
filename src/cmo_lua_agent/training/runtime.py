@@ -51,3 +51,14 @@ class ProductionCampaignDriver:
 
     def reconcile(self, campaign_id: str) -> dict[str, object]:
         return self._service.reconcile_campaign(campaign_id)
+
+    def run_phase8(
+        self,
+        campaign_id: str,
+        completed_generations: tuple[int, ...],
+    ) -> dict[str, object]:
+        return self._service.run_training_phase8(
+            workflow_id=campaign_id.removesuffix("-campaign"),
+            campaign_id=campaign_id,
+            completed_generations=completed_generations,
+        )

@@ -122,3 +122,18 @@ class ProductionPhase8Adapter:
         )
         # 将内部dataclass转为字典返回，供上层保存日志
         return result.to_dict()
+
+    def run_for_training(
+        self,
+        *,
+        workflow_id: str,
+        experience_ids: tuple[str, ...],
+    ) -> dict[str, object]:
+        """Aggregate only the experiences produced by one completed workflow."""
+        result = self._workflow.run(
+            phase8_run_id=f"{workflow_id}_phase8",
+            runs_root=self._root / "runs" / "evolution",
+            experience_store=self._experience_store,
+            experience_ids=experience_ids,
+        )
+        return result.to_dict()
