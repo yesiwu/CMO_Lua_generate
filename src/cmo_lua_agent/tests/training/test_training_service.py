@@ -4,6 +4,8 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from cmo_lua_agent.training.service import TrainingService
+from cmo_lua_agent.training.models import TrainingStatus
+from cmo_lua_agent.training.store import TrainingStore
 
 
 def test_service_persists_request_before_launching_runner(tmp_path: Path) -> None:
@@ -52,3 +54,27 @@ def test_service_control_persists_safe_boundary_commands(tmp_path: Path) -> None
 
     assert service.control("training-001", "pause")["status"] == "PAUSED"
     assert service.control("training-001", "stop")["status"] == "STOPPED"
+
+
+def test_service_resume_restarts_a_dead_running_workflow(tmp_path: Path) -> None:
+    launches: list[str] = []
+
+    class ProcessManager:
+        def start(self, workflow_id: str) -> int:
+            launches.append(workflow_id)
+            return 1
+
+        def is_running(self, _workflow_id: str) -> bool:
+            return False
+
+    service = TrainingService(
+        project_root=tmp_path,
+        input_resolver=SimpleNamespace(resolve=lambda _path: SimpleNamespace(reference="scenario.json")),
+        process_manager=ProcessManager(),
+        workflow_id_factory=lambda: "training-001",
+    )
+    service.start(input_path="scenario.json", objective="improve", generation_count=1)
+    TrainingStore(tmp_path, "training-001").transition(status=TrainingStatus.RUNNING)
+
+    assert service.control("training-001", "resume")["status"] == "RUNNING"
+    assert launches == ["training-001", "training-001"]

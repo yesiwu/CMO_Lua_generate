@@ -28,8 +28,11 @@ class FailureClassifier:
     def classify(self, error: BaseException) -> FailureRecord:
         message = str(error)
         lowered = message.lower()
-        if isinstance(error, (TimeoutError, ConnectionError)) or any(
-            marker in lowered for marker in ("timeout", "connection reset", "temporarily unavailable")
+        if isinstance(error, (TimeoutError, ConnectionError)) or type(error).__name__ in {
+            "APIConnectionError",
+            "APITimeoutError",
+        } or any(
+            marker in lowered for marker in ("timeout", "connection error", "connection reset", "temporarily unavailable")
         ):
             kind = FailureKind.TRANSIENT
         elif isinstance(error, (FileNotFoundError, json.JSONDecodeError)) or any(

@@ -95,8 +95,9 @@ def run_workflow(*, project_root: Path, workflow_id: str) -> TrainingStatus:
         state = runner.run()
         if state.status is not TrainingStatus.RUNNING:
             return state.status
-        if state.action is not TrainingAction.WAIT_WORKER:
-            return state.status
+        # A RUNNING workflow can be either waiting for CMO or retrying a
+        # classified transient provider/process failure.  In both cases its
+        # persisted action remains resumable and needs no user confirmation.
         sleep(1)
 
 

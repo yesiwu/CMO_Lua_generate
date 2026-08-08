@@ -72,8 +72,15 @@ class TrainingService:
         elif action == "stop":
             store.transition(status=TrainingStatus.STOPPED, action=TrainingAction.IDLE)
         elif action == "resume":
-            store.transition(status=TrainingStatus.RUNNING, action=TrainingAction.PREVIEW)
-            self._processes.start(workflow_id)
+            state = store.load_state()
+            if state.status is TrainingStatus.PAUSED:
+                store.transition(status=TrainingStatus.RUNNING, action=TrainingAction.PREVIEW)
+            if not self._process_is_running(workflow_id):
+                self._processes.start(workflow_id)
         else:
             raise ValueError("invalid_training_control_action")
         return self.inspect(workflow_id)
+
+    def _process_is_running(self, workflow_id: str) -> bool:
+        checker = getattr(self._processes, "is_running", None)
+        return bool(checker(workflow_id)) if callable(checker) else False

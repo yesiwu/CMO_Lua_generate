@@ -65,6 +65,10 @@ class TrainingRunner:
                 "error_type": record.error_type,
                 "message": record.message,
             })
+            if record.kind is FailureKind.TRANSIENT:
+                # Keep the exact persisted action so the background runtime
+                # can retry it after a short wait without user intervention.
+                return self._store.load_state()
             if record.kind is FailureKind.CODE and self._repair is not None:
                 self._store.transition(status=TrainingStatus.REPAIRING)
                 result = self._repair.repair(

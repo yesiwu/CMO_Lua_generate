@@ -194,3 +194,16 @@ def test_runner_records_verified_repair_commit_before_retrying(tmp_path: Path) -
     assert state.status is TrainingStatus.RUNNING
     assert state.last_good_commit == "abc123"
     assert state.action is TrainingAction.VALIDATE_INPUT
+
+
+def test_runner_leaves_transient_failure_runnable_for_the_background_runtime(tmp_path: Path) -> None:
+    class UnavailableDriver(FakeCampaignDriver):
+        def prepare(self, request: TrainingRequest) -> str:
+            raise ConnectionError("Connection error.")
+
+    store = _store(tmp_path, generations=1)
+    state = TrainingRunner(store, UnavailableDriver()).run_once()
+
+    assert state.status is TrainingStatus.CREATED
+    assert state.action is TrainingAction.VALIDATE_INPUT
+    assert any('"kind": "TRANSIENT"' in line for line in (store.root / "journal.jsonl").read_text(encoding="utf-8").splitlines())
