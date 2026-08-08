@@ -174,3 +174,23 @@ def test_runner_marks_code_failure_for_repair_without_repeating_action(tmp_path:
     state = runner.run_once()
 
     assert state.status is TrainingStatus.FAILED
+
+
+def test_runner_records_verified_repair_commit_before_retrying(tmp_path: Path) -> None:
+    class BrokenDriver(FakeCampaignDriver):
+        def prepare(self, request: TrainingRequest) -> str:
+            raise ImportError("cannot import Worker")
+
+    class Repairs:
+        def repair(self, **kwargs):
+            return SimpleNamespace(succeeded=True, commit_id="abc123")
+
+    state = TrainingRunner(
+        _store(tmp_path, generations=1),
+        BrokenDriver(),
+        repair_coordinator=Repairs(),
+    ).run_once()
+
+    assert state.status is TrainingStatus.RUNNING
+    assert state.last_good_commit == "abc123"
+    assert state.action is TrainingAction.VALIDATE_INPUT

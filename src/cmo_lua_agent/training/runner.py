@@ -73,7 +73,10 @@ class TrainingRunner:
                     test_command="python -m pytest src/cmo_lua_agent/tests/training -q",
                 )
                 if getattr(result, "succeeded", False):
-                    return self._store.transition(status=TrainingStatus.RUNNING)
+                    return self._store.transition(
+                        status=TrainingStatus.RUNNING,
+                        last_good_commit=getattr(result, "commit_id", None),
+                    )
                 return self._store.transition(status=TrainingStatus.FAILED, action=TrainingAction.IDLE)
             raise
 

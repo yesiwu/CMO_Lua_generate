@@ -92,6 +92,7 @@ class TrainingStore:
         completed_generations: tuple[int, ...] | None = None,
         worker_operation_id: str | None = None,
         phase8: Phase8Progress | None = None,
+        last_good_commit: str | None = None,
     ) -> TrainingState:
         current = self.load_state()
         next_state = replace(
@@ -115,6 +116,11 @@ class TrainingStore:
                 worker_operation_id
                 if worker_operation_id is not None
                 else current.worker_operation_id
+            ),
+            last_good_commit=(
+                last_good_commit
+                if last_good_commit is not None
+                else current.last_good_commit
             ),
             phase8=phase8 if phase8 is not None else current.phase8,
             updated_at=_utc_now(),
