@@ -241,6 +241,43 @@ class ProductionEvolutionCampaignService:
         )
         return result
 
+    def prepare_training_campaign(
+        self,
+        *,
+        campaign_id: str,
+        input_package_id: str,
+        generation_objective: str,
+        generation_count: int,
+    ) -> dict[str, Any]:
+        """Create the internal Campaign used by an already-authorized Training Workflow."""
+        if generation_count < 1:
+            raise ValueError("training_generation_count_must_be_positive")
+        return self.prepare_campaign_request(
+            campaign_id=campaign_id,
+            input_package_id=input_package_id,
+            generation_objective=generation_objective,
+            budget={
+                "max_generations": generation_count,
+                "max_cmo_runs": 1,
+                "max_cmo_attempts_per_candidate": 1,
+                "max_cmo_attempts_for_baseline": 1,
+                "max_repair_attempts_per_candidate": 1,
+                "max_failed_runs": 1,
+                "max_llm_total_calls": 1,
+                "max_strategy_proposal_calls": 1,
+                "max_lua_generation_calls": 1,
+                "max_lua_repair_calls": 1,
+                "max_comparative_learning_calls": 1,
+                "max_skill_author_calls": 1,
+                "max_wall_clock_seconds": 86400,
+                "per_generation_timeout_seconds": 14400,
+                "per_candidate_timeout_seconds": 3600,
+                "enforce_count_limits": False,
+            },
+            minimum_improvement_delta=1,
+            no_improvement_patience=generation_count + 1,
+        )
+
     def _build_core(self, spec: EvolutionCampaignSpec, package: object) -> EvolutionCampaignService:
         """
         组装真正的核心业务对象：

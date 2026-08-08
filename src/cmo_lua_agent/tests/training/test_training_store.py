@@ -75,6 +75,23 @@ def test_training_store_transitions_state_with_monotonic_revision(tmp_path: Path
     }
 
 
+def test_training_store_transition_persists_campaign_and_completed_generations(
+    tmp_path: Path,
+) -> None:
+    store = TrainingStore(tmp_path, "training-001")
+    store.create(_request())
+
+    changed = store.transition(
+        campaign_id="training-001-campaign",
+        completed_generations=(0,),
+        action=TrainingAction.SUMMARIZE,
+    )
+
+    assert changed.campaign_id == "training-001-campaign"
+    assert changed.completed_generations == (0,)
+    assert store.load_state() == changed
+
+
 def test_training_store_allows_only_one_runner_lock(tmp_path: Path) -> None:
     store = TrainingStore(tmp_path, "training-001")
     store.create(_request())

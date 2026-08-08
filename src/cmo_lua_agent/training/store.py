@@ -88,6 +88,9 @@ class TrainingStore:
         stage: TrainingStage | None = None,
         action: TrainingAction | None = None,
         current_generation: int | None = None,
+        campaign_id: str | None = None,
+        completed_generations: tuple[int, ...] | None = None,
+        worker_operation_id: str | None = None,
     ) -> TrainingState:
         current = self.load_state()
         next_state = replace(
@@ -100,6 +103,17 @@ class TrainingStore:
                 current_generation
                 if current_generation is not None
                 else current.current_generation
+            ),
+            campaign_id=campaign_id if campaign_id is not None else current.campaign_id,
+            completed_generations=(
+                completed_generations
+                if completed_generations is not None
+                else current.completed_generations
+            ),
+            worker_operation_id=(
+                worker_operation_id
+                if worker_operation_id is not None
+                else current.worker_operation_id
             ),
             updated_at=_utc_now(),
         )

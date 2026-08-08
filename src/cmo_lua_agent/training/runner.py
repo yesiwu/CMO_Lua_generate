@@ -1,0 +1,130 @@
+"""Deterministic scheduler for a persistent multi-generation training workflow."""
+
+from __future__ import annotations
+
+from typing import Protocol
+
+from cmo_lua_agent.training.models import (
+    TrainingAction,
+    TrainingStage,
+    TrainingState,
+    TrainingStatus,
+)
+from cmo_lua_agent.training.store import TrainingStore
+
+
+class CampaignDriver(Protocol):
+    """The small Campaign surface used by the TrainingRunner."""
+
+    def prepare(self, request) -> str: ...
+    def preview(self, campaign_id: str, generation_index: int) -> None: ...
+    def execute(self, campaign_id: str, generation_index: int) -> None: ...
+    def inspect_generation(self, campaign_id: str, generation_index: int) -> dict[str, object]: ...
+    def pause(self, campaign_id: str) -> None: ...
+    def resume(self, campaign_id: str) -> None: ...
+    def stop(self, campaign_id: str) -> None: ...
+    def reconcile(self, campaign_id: str) -> dict[str, object]: ...
+
+
+class TrainingRunner:
+    """Advance exactly one persisted action at a time, without approval callbacks."""
+
+    def __init__(self, store: TrainingStore, driver: CampaignDriver) -> None:
+        self._store = store
+        self._driver = driver
+
+    def run(self) -> TrainingState:
+        """Run all immediately schedulable generation actions under one workflow lock."""
+        with self._store.lock():
+            while True:
+                before = self._store.load_state()
+                after = self.run_once()
+                if after.action is TrainingAction.IDLE or after == before:
+                    return after
+
+    def run_once(self) -> TrainingState:
+        request = self._store.load_request()
+        state = self._store.load_state()
+        if state.status in {TrainingStatus.PAUSED, TrainingStatus.STOPPED, TrainingStatus.FAILED}:
+            return state
+        if state.campaign_id is None:
+            campaign_id = self._driver.prepare(request)
+            self._store.append_event({"event": "campaign_prepared", "campaign_id": campaign_id})
+            return self._store.transition(
+                campaign_id=campaign_id,
+                status=TrainingStatus.RUNNING,
+                stage=TrainingStage.EVOLUTION,
+                action=TrainingAction.PREVIEW,
+            )
+
+        if request.generation_count is None:
+            raise ValueError("fixed_generation_count_required")
+        if len(state.completed_generations) >= request.generation_count:
+            return self._store.transition(
+                stage=TrainingStage.PHASE8,
+                action=TrainingAction.IDLE,
+            )
+
+        generation_index = state.current_generation
+        if state.action in {TrainingAction.VALIDATE_INPUT, TrainingAction.PREVIEW}:
+            self._driver.preview(state.campaign_id, generation_index)
+            self._store.append_event({"event": "generation_previewed", "generation_index": generation_index})
+            return self._store.transition(
+                status=TrainingStatus.RUNNING,
+                stage=TrainingStage.EVOLUTION,
+                action=TrainingAction.EXECUTE,
+            )
+        if state.action is TrainingAction.EXECUTE:
+            self._driver.execute(state.campaign_id, generation_index)
+            self._store.append_event({"event": "generation_executed", "generation_index": generation_index})
+            return self._store.transition(action=TrainingAction.SUMMARIZE)
+        if state.action is TrainingAction.SUMMARIZE:
+            inspected = self._driver.inspect_generation(state.campaign_id, generation_index)
+            if inspected.get("status") != "completed":
+                return self._store.transition(action=TrainingAction.WAIT_WORKER)
+            completed = tuple(sorted((*state.completed_generations, generation_index)))
+            self._store.append_event({"event": "generation_completed", "generation_index": generation_index})
+            return self._store.transition(
+                completed_generations=completed,
+                current_generation=generation_index + 1,
+                action=TrainingAction.PREVIEW,
+            )
+        if state.action is TrainingAction.WAIT_WORKER:
+            inspected = self._driver.inspect_generation(state.campaign_id, generation_index)
+            if inspected.get("status") == "completed":
+                return self._store.transition(action=TrainingAction.SUMMARIZE)
+            return state
+        return state
+
+    def reconcile(self) -> TrainingState:
+        state = self._store.load_state()
+        if state.campaign_id is not None:
+            self._driver.reconcile(state.campaign_id)
+            self._store.append_event({"event": "campaign_reconciled", "campaign_id": state.campaign_id})
+        return self._store.load_state()
+
+    def pause(self) -> TrainingState:
+        state = self._store.load_state()
+        if state.campaign_id is not None and state.status is not TrainingStatus.PAUSED:
+            self._driver.pause(state.campaign_id)
+            self._store.append_event({"event": "workflow_paused", "campaign_id": state.campaign_id})
+        return self._store.transition(status=TrainingStatus.PAUSED)
+
+    def resume(self) -> TrainingState:
+        state = self._store.load_state()
+        if state.status is not TrainingStatus.PAUSED:
+            return state
+        if state.campaign_id is not None:
+            self._driver.reconcile(state.campaign_id)
+            self._driver.resume(state.campaign_id)
+            self._store.append_event({"event": "workflow_resumed", "campaign_id": state.campaign_id})
+        return self._store.transition(status=TrainingStatus.RUNNING)
+
+    def stop(self) -> TrainingState:
+        state = self._store.load_state()
+        if state.status is TrainingStatus.STOPPED:
+            return state
+        if state.campaign_id is not None:
+            self._driver.stop(state.campaign_id)
+            self._store.append_event({"event": "workflow_stopped", "campaign_id": state.campaign_id})
+        return self._store.transition(status=TrainingStatus.STOPPED, action=TrainingAction.IDLE)
