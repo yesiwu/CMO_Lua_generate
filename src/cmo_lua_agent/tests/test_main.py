@@ -9,6 +9,7 @@ from typing import Any
 import pytest
 
 import cmo_lua_agent.main as main_module
+from cmo_lua_agent.orchestration.chat_session_store import ChatSessionStore
 
 
 @dataclass
@@ -246,10 +247,12 @@ def test_main_chat模式保留原来的Agent装配流程(
         *,
         agent_loop: object,
         display: object,
+        session_store: ChatSessionStore,
     ) -> int:
         calls["run_chat"] = {
             "agent_loop": agent_loop,
             "display": display,
+            "session_store": session_store,
         }
         return 7
 
@@ -297,10 +300,9 @@ def test_main_chat模式保留原来的Agent装配流程(
         "config": config,
         "workdir": tmp_path.resolve(),
     }
-    assert calls["run_chat"] == {
-        "agent_loop": agent_loop,
-        "display": display,
-    }
+    assert calls["run_chat"]["agent_loop"] is agent_loop
+    assert calls["run_chat"]["display"] is display
+    assert isinstance(calls["run_chat"]["session_store"], ChatSessionStore)
 
 
 def test_main_run模式不加载LLM配置(

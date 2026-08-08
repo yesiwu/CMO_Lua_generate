@@ -32,6 +32,11 @@ from cmo_lua_agent.cli.terminal_display import (
 from cmo_lua_agent.orchestration.agent_loop import (
     AgentLoop,
 )
+from cmo_lua_agent.orchestration.chat_session_store import (
+    ChatSession,
+    ChatSessionStore,
+)
+from cmo_lua_agent.orchestration.context_manager import ContextManager
 
 
 _EXIT_COMMANDS = {
@@ -53,6 +58,8 @@ def run_chat(
     *,
     agent_loop: AgentLoop,
     display: TerminalDisplay,
+    session_store: ChatSessionStore | None = None,
+    context_manager: ContextManager | None = None,
 ) -> int:
     """
     启动交互式聊天循环。
@@ -68,7 +75,17 @@ def run_chat(
     Returns:
         程序退出码。正常退出返回 0。
     """
-    history: list[dict[str, Any]] = []
+    active_session = (
+        session_store.load_active()
+        if session_store is not None
+        else None
+    )
+    history: list[dict[str, Any]] = (
+        active_session.messages
+        if active_session is not None
+        else []
+    )
+    context_manager = context_manager or ContextManager()
 
     # 首次进入聊天模式时显示静态标题。
     # start 后立即 stop，可以留下完整标题和状态栏，
@@ -78,6 +95,8 @@ def run_chat(
 
     print()
     print("输入问题，输入 q 退出。")
+    if session_store is not None:
+        print("会话命令：:new 新建；:sessions 列出历史；:use <session-id> 切换。")
     print()
 
     while True:
@@ -89,6 +108,17 @@ def run_chat(
         if query.lower() in _EXIT_COMMANDS:
             return 0
 
+        if session_store is not None and query.startswith(":"):
+            command_result = _handle_session_command(
+                query=query,
+                session_store=session_store,
+                active_session=active_session,
+            )
+            if command_result is not None:
+                active_session = command_result
+                history = active_session.messages
+            continue
+
         if not query:
             continue
 
@@ -98,6 +128,11 @@ def run_chat(
                 "content": query,
             }
         )
+        if active_session is not None and session_store is not None:
+            session_store.save_messages(
+                active_session.session_id,
+                history,
+            )
 
         # 用户消息没有经过 AgentLoop，因此由聊天入口
         # 主动加入终端显示状态。
@@ -116,7 +151,10 @@ def run_chat(
             # 模型文本已经通过 TEXT_DELTA 事件实时展示。
             # 不再打印 run() 返回的 final_text，
             # 否则最终回答会重复出现两次。
-            agent_loop.run(history)
+            context = context_manager.build(history)
+            original_context_length = len(context)
+            agent_loop.run(context)
+            history.extend(context[original_context_length:])
 
         except KeyboardInterrupt:
             interrupted = True
@@ -138,6 +176,12 @@ def run_chat(
             # 无论模型调用、工具执行还是终端中断，
             # 都必须停止 Rich Live，恢复光标和终端状态。
             display.stop()
+
+            if active_session is not None and session_store is not None:
+                session_store.save_messages(
+                    active_session.session_id,
+                    history,
+                )
 
         if interrupted:
             print()
@@ -218,6 +262,41 @@ def _read_user_query() -> str | None:
         return None
 
     return query.strip()
+
+
+def _handle_session_command(
+    *,
+    query: str,
+    session_store: ChatSessionStore,
+    active_session: ChatSession | None,
+) -> ChatSession | None:
+    """Run a local transcript command and return a newly selected session."""
+    if query == ":new":
+        session = session_store.create()
+        print(f"已新建会话：{session.session_id}")
+        return session
+
+    if query == ":sessions":
+        sessions = session_store.list_sessions()
+        print()
+        for session in sessions:
+            marker = " *" if session.session_id == getattr(active_session, "session_id", None) else ""
+            print(f"{session.session_id}{marker}  {len(session.messages)} 条消息  {session.updated_at}")
+        print()
+        return None
+
+    if query.startswith(":use "):
+        session_id = query.removeprefix(":use ").strip()
+        try:
+            session = session_store.activate(session_id)
+        except KeyError:
+            print(f"未找到会话：{session_id}")
+            return None
+        print(f"已切换到会话：{session.session_id}")
+        return session
+
+    print("未知会话命令。可用：:new、:sessions、:use <session-id>。")
+    return None
 
 
 def _clear_terminal() -> None:

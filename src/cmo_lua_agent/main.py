@@ -58,6 +58,9 @@ from cmo_lua_agent.llm_config import load_config
 from cmo_lua_agent.orchestration.agent_loop import (
     AgentLoop,
 )
+from cmo_lua_agent.orchestration.chat_session_store import (
+    ChatSessionStore,
+)
 from cmo_lua_agent.orchestration.ui_state import (
     UIState,
 )
@@ -67,6 +70,7 @@ from cmo_lua_agent.tools.tool_base.factory import (
 from cmo_lua_agent.evolution.production_service import (
     create_production_evolution_campaign_service,
 )
+from cmo_lua_agent.training.service import TrainingService
 
 from cmo_lua_agent.bootstrap import (
     create_application,
@@ -166,7 +170,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     chat_parser.add_argument(
         "--profile",
-        choices=("standard", "campaign"),
+        choices=("standard", "campaign", "training"),
         default="standard",
         help="Chat tool profile.",
     )
@@ -282,12 +286,15 @@ def build_chat_components(
     hook_manager = HookManager()
 
     evolution_service = None
+    training_service = None
     if profile == "campaign":
         evolution_service = create_production_evolution_campaign_service(
             project_root=workdir,
             app_config=config,
             llm_client=llm_client,
         )
+    elif profile == "training":
+        training_service = TrainingService(project_root=workdir)
     elif profile != "standard":
         raise ValueError("unknown_chat_profile")
 
@@ -319,6 +326,7 @@ def build_chat_components(
         cmo_lua_services=cmo_lua_services,
         chat_profile=profile,
         evolution_campaign_service=evolution_service,
+        training_service=training_service,
     )
 
     agent_loop = AgentLoop(
@@ -413,6 +421,7 @@ def main() -> int:
         return run_chat(
             agent_loop=agent_loop,
             display=terminal_display,
+            session_store=ChatSessionStore(workdir),
         )
 
     if args.command == "run":
