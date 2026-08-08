@@ -169,7 +169,9 @@ class UIState:
     current_activity: str | None = None
 
     current_turn: int = 0
-    max_turns: int = 10
+    # None means the AgentLoop ends only on a final model response or a
+    # concrete guard outcome; it is not subject to an arbitrary turn budget.
+    max_turns: int | None = None
 
     elapsed_seconds: float = 0.0
 

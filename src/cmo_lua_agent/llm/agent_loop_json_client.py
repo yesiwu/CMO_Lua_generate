@@ -17,9 +17,15 @@ from cmo_lua_agent.tools.tool_base.registry import ToolRegistry
 
 
 class AgentLoopJsonClient:
-    """Allow one bounded, read-only tool loop before returning strict JSON."""
+    """Allow one read-only tool loop before returning strict JSON."""
 
-    def __init__(self, *, client: Any, tool_registry: ToolRegistry, max_turns: int = 6) -> None:
+    def __init__(
+        self,
+        *,
+        client: Any,
+        tool_registry: ToolRegistry,
+        max_turns: int | None = None,
+    ) -> None:
         self._client = client
         self._tool_registry = tool_registry
         self._max_turns = max_turns

@@ -1312,7 +1312,12 @@ class TerminalDisplay:
             style="cyan",
         )
 
-        if self._state.max_turns > 0:
+        if self._state.max_turns is None:
+            status.append(
+                f" · turn {self._state.current_turn}",
+                style="dim",
+            )
+        elif self._state.max_turns > 0:
             status.append(
                 (
                     " · turn "
@@ -1494,8 +1499,8 @@ class TerminalDisplay:
     def _to_int(
         value: Any,
         *,
-        default: int,
-    ) -> int:
+        default: int | None,
+    ) -> int | None:
         """
         安全地将值转换为整数。
         """

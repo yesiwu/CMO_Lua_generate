@@ -3,6 +3,10 @@ from __future__ import annotations
 from cmo_lua_agent.orchestration.ui_state import UIState
 
 
+def test_ui_state_defaults_to_an_unbounded_agent_loop() -> None:
+    assert UIState().max_turns is None
+
+
 def test_tool_progress_tracks_steps_and_limits_output_lines() -> None:
     state = UIState()
     state.start_tool(

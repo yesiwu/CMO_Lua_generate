@@ -284,8 +284,6 @@ def build_chat_components(
             workdir.resolve()
         ),
         mode="chat",
-        max_turns=12,
-        
     )
 
     terminal_display = TerminalDisplay(
@@ -342,7 +340,6 @@ def build_chat_components(
         llm_client=llm_client,
         tool_registry=tool_registry,
         system_prompt=(TRAINING_SYSTEM_PROMPT if profile == "training" else CHAT_SYSTEM_PROMPT),
-        max_turns=12,
         event_handler=terminal_display.handle,
     )
 

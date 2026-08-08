@@ -453,7 +453,6 @@ def create_production_evolution_campaign_service(
     intent_client = AgentLoopJsonClient(
         client=llm_client,
         tool_registry=curated_skill_registry,
-        max_turns=6,
     )
     phase7 = ProductionPhase7Adapter(
         project_root=project_root,
