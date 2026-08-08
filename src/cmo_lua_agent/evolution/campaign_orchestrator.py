@@ -16,6 +16,9 @@ Phase9C 统一编排器：单工具入口，幂等/可恢复/实时推送/经验
 
 from __future__ import annotations
 
+# LEGACY: retained for historical manual automation only. New unattended
+# training must enter through cmo_lua_agent.training.
+
 import json
 import logging
 import shutil

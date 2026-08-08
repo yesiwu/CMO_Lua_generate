@@ -16,6 +16,9 @@
 
 from __future__ import annotations
 
+# LEGACY: retained for historical manual automation only. New unattended
+# training must enter through cmo_lua_agent.training.
+
 import json
 import logging
 import time
