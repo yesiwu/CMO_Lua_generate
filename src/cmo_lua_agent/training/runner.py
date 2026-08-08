@@ -57,13 +57,7 @@ class TrainingRunner:
 
     def run_once(self) -> TrainingState:
         try:
-            state = self._run_once()
-            # A successful persisted action proves that the retryable provider
-            # output was replaced.  Do not carry its backoff into later phases.
-            if self._retry_pending(state):
-                runner = {key: value for key, value in state.runner.items() if key != "retry"}
-                return self._store.transition(runner=runner)
-            return state
+            return self._run_once()
         except Exception as exc:
             record = self._failures.classify(exc)
             self._store.append_event({
@@ -72,12 +66,9 @@ class TrainingRunner:
                 "error_type": record.error_type,
                 "message": record.message,
             })
-            if self._is_retryable_generation_failure(record):
+            if record.kind is FailureKind.TRANSIENT:
                 # Keep the exact persisted action so the background runtime
                 # can retry it after a short wait without user intervention.
-                # A CandidateProposalError means the model emitted an invalid
-                # candidate; the next Preview regenerates that proposal rather
-                # than requiring a user to intervene.
                 state = self._store.load_state()
                 return self._store.transition(runner=self._next_retry(state, record))
             if record.kind is FailureKind.CODE and self._repair is not None:
@@ -94,13 +85,6 @@ class TrainingRunner:
                     )
                 return self._store.transition(status=TrainingStatus.FAILED, action=TrainingAction.IDLE)
             raise
-
-    @staticmethod
-    def _is_retryable_generation_failure(record) -> bool:
-        return record.kind is FailureKind.TRANSIENT or (
-            record.kind is FailureKind.BUSINESS
-            and record.error_type == "CandidateProposalError"
-        )
 
     @staticmethod
     def _retry_pending(state: TrainingState) -> bool:
