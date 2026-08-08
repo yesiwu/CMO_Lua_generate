@@ -2,9 +2,20 @@
 
 from __future__ import annotations
 
+import argparse
+from pathlib import Path
+from time import sleep
 from typing import Any
 
+from cmo_lua_agent.evolution.production_service import (
+    create_production_evolution_campaign_service,
+)
+from cmo_lua_agent.llm.client import ClaudeClient
+from cmo_lua_agent.llm_config import load_config
 from cmo_lua_agent.training.models import TrainingRequest
+from cmo_lua_agent.training.models import TrainingAction, TrainingStatus
+from cmo_lua_agent.training.runner import TrainingRunner
+from cmo_lua_agent.training.store import TrainingStore
 
 
 class ProductionCampaignDriver:
@@ -62,3 +73,41 @@ class ProductionCampaignDriver:
             campaign_id=campaign_id,
             completed_generations=completed_generations,
         )
+
+
+def run_workflow(*, project_root: Path, workflow_id: str) -> TrainingStatus:
+    """Run or resume one persisted workflow until it completes or needs intervention."""
+    root = Path(project_root).resolve()
+    config = load_config()
+    service = create_production_evolution_campaign_service(
+        project_root=root,
+        app_config=config,
+        llm_client=ClaudeClient(config.llm),
+    )
+    runner = TrainingRunner(TrainingStore(root, workflow_id), ProductionCampaignDriver(service))
+    runner.reconcile()
+    while True:
+        state = runner.run()
+        if state.status is not TrainingStatus.RUNNING:
+            return state.status
+        if state.action is not TrainingAction.WAIT_WORKER:
+            return state.status
+        sleep(1)
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Run one persistent CMO training workflow")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+    run = subparsers.add_parser("run")
+    run.add_argument("--project-root", required=True)
+    run.add_argument("--workflow-id", required=True)
+    args = parser.parse_args(argv)
+    status = run_workflow(
+        project_root=Path(args.project_root),
+        workflow_id=str(args.workflow_id),
+    )
+    return 0 if status is TrainingStatus.COMPLETED else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
