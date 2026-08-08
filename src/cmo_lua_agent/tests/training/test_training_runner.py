@@ -118,6 +118,23 @@ def test_production_driver_prepares_unbounded_deferred_phase8_campaign() -> None
     }]
 
 
+def test_production_driver_regenerates_a_failed_preview_after_restart() -> None:
+    calls: list[dict[str, object]] = []
+
+    class Service:
+        def preview_generation(self, **kwargs):
+            calls.append(kwargs)
+            if not kwargs.get("regenerate_preview"):
+                raise ValueError("preview_regeneration_required")
+
+    ProductionCampaignDriver(Service()).preview("training-001-campaign", 0)
+
+    assert calls == [
+        {"campaign_id": "training-001-campaign", "generation_index": 0},
+        {"campaign_id": "training-001-campaign", "generation_index": 0, "regenerate_preview": True},
+    ]
+
+
 def test_runner_pause_resume_and_stop_at_safe_boundaries(tmp_path: Path) -> None:
     driver = FakeCampaignDriver()
     runner = TrainingRunner(_store(tmp_path, generations=2), driver)

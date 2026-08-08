@@ -38,10 +38,16 @@ class ProductionCampaignDriver:
         return campaign_id
 
     def preview(self, campaign_id: str, generation_index: int) -> None:
-        self._service.preview_generation(
-            campaign_id=campaign_id,
-            generation_index=generation_index,
-        )
+        arguments = {
+            "campaign_id": campaign_id,
+            "generation_index": generation_index,
+        }
+        try:
+            self._service.preview_generation(**arguments)
+        except ValueError as exc:
+            if str(exc) != "preview_regeneration_required":
+                raise
+            self._service.preview_generation(**arguments, regenerate_preview=True)
 
     def execute(self, campaign_id: str, generation_index: int) -> None:
         self._service.execute_generation(
