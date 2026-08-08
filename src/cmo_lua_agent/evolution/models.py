@@ -96,6 +96,7 @@ class CampaignBudget:
     max_wall_clock_seconds: int              # 推演全局总运行时长上限
     per_generation_timeout_seconds: int      # 单个世代执行超时时间
     per_candidate_timeout_seconds: int       # 单条候选仿真超时时间
+    enforce_count_limits: bool = True        # Training Harness 可关闭次数上限
 
     def __post_init__(self) -> None:
         """对象构造后校验参数合法性"""
@@ -114,6 +115,8 @@ class CampaignBudget:
 
     def can_reserve_generation(self, *, available_cmo_runs: int) -> bool:
         """判断剩余仿真次数是否足够支撑完整一代运行，防止算力中途枯竭"""
+        if not self.enforce_count_limits:
+            return True
         return available_cmo_runs >= self.required_cmo_attempts_per_generation
 
     @property
@@ -144,6 +147,7 @@ class EvolutionCampaignSpec:
     candidates_per_generation: int = 4        # 每世代固定4条候选策略（硬约束）
     no_improvement_patience: int = 2          # 连续多少代无提升则终止任务
     minimum_improvement_delta: int = 1        # 判断有效进化所需最小分数提升阈值
+    phase8_mode: str = "per_generation"      # legacy每代执行 / Training末尾统一执行
 
     def __post_init__(self) -> None:
         """构造时强校验所有必填字段与业务规则"""
@@ -161,6 +165,8 @@ class EvolutionCampaignSpec:
             raise ValueError("allowed_strategy_paths must contain JSON Pointer paths")
         if self.no_improvement_patience < 1:
             raise ValueError("no_improvement_patience must be positive")
+        if self.phase8_mode not in {"per_generation", "after_all_generations"}:
+            raise ValueError("invalid_phase8_mode")
 
     @property
     def contract_checksum(self) -> str:

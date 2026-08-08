@@ -83,6 +83,30 @@ def test_concurrent_duplicate_authorization_cannot_consume_slot_twice(tmp_path: 
         store_b.authorize_attempt_slot(**kwargs)
 
 
+def test_training_control_state_does_not_enforce_cmo_count_limit(tmp_path: Path) -> None:
+    store = CampaignStore(tmp_path / "campaign")
+    store.save_campaign_state(CampaignState(campaign_id="campaign_fixture"))
+    grant = _grant(maximum=2)
+    store.initialize_control_state(
+        max_cmo_runs=1,
+        budget_revision=0,
+        enforce_count_limits=False,
+    )
+    store.persist_generation_approval(grant)
+
+    for operation_id in grant.approved_operation_ids:
+        store.authorize_attempt_slot(
+            approval_id=grant.approval_id,
+            operation_id=operation_id,
+            expected_contract_checksum="contract",
+            expected_snapshot_checksum="snapshot",
+            expected_candidate_set_checksum="candidates",
+        )
+        store.mark_attempt_started(operation_id)
+
+    assert store.load_control_state()["budget"]["cmo_runs_started"] == 2
+
+
 def test_resume_abandons_authorized_slot_but_never_replays_started_unknown(tmp_path: Path) -> None:
     store = CampaignStore(tmp_path / "campaign")
     store.save_campaign_state(CampaignState(campaign_id="campaign_fixture"))

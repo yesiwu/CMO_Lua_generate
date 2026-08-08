@@ -63,6 +63,19 @@ def test_generation_reservation_accounts_for_baseline_and_all_candidates() -> No
     assert not budget.can_reserve_generation(available_cmo_runs=13)
 
 
+def test_training_campaign_policy_ignores_count_limits_and_defers_phase8() -> None:
+    budget = _budget(
+        max_cmo_runs=1,
+        max_llm_total_calls=1,
+        max_strategy_proposal_calls=1,
+        enforce_count_limits=False,
+    )
+    spec = _spec(budget=budget, phase8_mode="after_all_generations")
+
+    assert budget.can_reserve_generation(available_cmo_runs=0)
+    assert spec.phase8_mode == "after_all_generations"
+
+
 def test_contract_fingerprint_changes_when_any_exact_contract_changes() -> None:
     spec = _spec()
     changed = _spec(renderer_contract_checksum="different")

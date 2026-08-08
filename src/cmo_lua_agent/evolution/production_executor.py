@@ -234,7 +234,9 @@ class ProductionGenerationExecutor:
                 optimization_dir=phase6_root,
                 outcomes=tuple(outcomes),
             )
-        if context.spec.budget.max_skill_author_calls == 0:
+        if getattr(context.spec, "phase8_mode", "per_generation") == "after_all_generations":
+            phase8_result = {"status": "not_run", "reason": "deferred_to_training_phase8"}
+        elif context.spec.budget.max_skill_author_calls == 0:
             phase8_result = {"status": "not_run", "reason": "budget_disabled"}
         elif phase7_result.get("status") != "completed":
             phase8_result = {"status": "not_run", "reason": "phase7_not_completed"}

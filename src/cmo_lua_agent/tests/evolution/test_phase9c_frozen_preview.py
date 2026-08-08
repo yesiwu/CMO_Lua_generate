@@ -389,6 +389,68 @@ def test_production_executor_runs_phase7_but_skips_phase8_when_skill_budget_is_z
     assert result.result["champion_decision"]["selected_champion_id"] == "candidate_03"
 
 
+def test_production_executor_defers_phase8_for_training_campaign(tmp_path: Path) -> None:
+    frozen = _frozen()
+    frozen_path = tmp_path / "frozen.json"
+    frozen_path.write_text(json.dumps(frozen.to_dict()), encoding="utf-8")
+
+    class Provider:
+        def load(self, _frozen_set):
+            return {"value": 0}, (("candidate_00", {"value": 1}),)
+
+    class Phase7:
+        calls = 0
+
+        def run(self, **_kwargs):
+            self.calls += 1
+            return {"status": "completed", "experience_candidate_count": 1}
+
+    class ForbiddenPhase8:
+        def run(self, **_kwargs):
+            raise AssertionError("Phase 8 must be deferred until training completes")
+
+    class Champion:
+        def select(self, *, rolling_baseline, candidates):
+            return SimpleNamespace(
+                best_candidate_id="candidate_00", selected_champion_id="candidate_00",
+                selected_score=1, improved=True, exclusion_reasons={},
+            )
+
+    class Stop:
+        def evaluate(self, **_kwargs):
+            return SimpleNamespace(should_stop=False, reason=SimpleNamespace(value="none"), details={})
+
+    def evaluate(**kwargs):
+        return {
+            "candidate_id": kwargs["candidate_id"], "success": True,
+            "executable": True, "execution_success": True,
+            "semantic_valid": True, "scoreable": True,
+            "native_score": 1, "score_source": "execution-summary.json#/official_score/final",
+            "execution_fidelity": "verified",
+        }
+
+    phase7 = Phase7()
+    executor = ProductionGenerationExecutor(
+        package=SimpleNamespace(), candidate_evaluator=evaluate,
+        phase7_adapter=phase7, phase8_adapter=ForbiddenPhase8(),
+        champion_policy=Champion(), stop_policy=Stop(), frozen_provider=Provider(),
+        artifact_provenance="test_fixture",
+    )
+    context = SimpleNamespace(
+        preview=SimpleNamespace(generation_index=0, frozen_candidate_set_ref=str(frozen_path), strategy_diffs=()),
+        spec=SimpleNamespace(
+            campaign_id="campaign_fixture", phase8_mode="after_all_generations",
+            budget=SimpleNamespace(max_comparative_learning_calls=1, max_skill_author_calls=1, max_generations=3),
+        ),
+        campaign_root=tmp_path, control_action=lambda: None,
+    )
+
+    result = executor.run(context)
+
+    assert phase7.calls == 1
+    assert result.result["phase8"] == {"status": "not_run", "reason": "deferred_to_training_phase8"}
+
+
 def test_executor_runs_slots_when_frozen_checksum_metadata_is_stale(
     tmp_path: Path,
 ) -> None:

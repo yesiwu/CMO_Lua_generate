@@ -281,7 +281,14 @@ class CampaignStore:
             raise ValueError("operation_artifact_checksum_mismatch")
         return self._transition(operation_id, OperationStatus.COMPLETED, output_ref=str(artifact))
 
-    def authorize_cmo_attempt(self, *, operation_id: str, approval: GenerationApproval, max_cmo_runs: int) -> OperationRecord:
+    def authorize_cmo_attempt(
+        self,
+        *,
+        operation_id: str,
+        approval: GenerationApproval,
+        max_cmo_runs: int,
+        enforce_count_limits: bool = True,
+    ) -> OperationRecord:
         """
         原子预留一次CMO仿真运行配额，并将操作状态变更为已授权
         三重限流校验：
@@ -299,7 +306,7 @@ class CampaignStore:
             if used >= approval.max_cmo_attempts:
                 raise ValueError("generation_approval_cap_exhausted")
             state = self.load_campaign_state()
-            if state.cmo_run_count + len(reservations) >= max_cmo_runs:
+            if enforce_count_limits and state.cmo_run_count + len(reservations) >= max_cmo_runs:
                 raise ValueError("campaign_cmo_budget_exhausted")
             reservations[operation_id] = {"approval_id": approval.approval_id, "generation_index": current.generation_index}
             self._write_json(self.root / "attempt-reservations.json", reservations)
@@ -317,7 +324,13 @@ class CampaignStore:
 
     # Phase 9C uses this single transaction document as the authority for
     # approval usage, attempt slots, CMO budget, and operation state.
-    def initialize_control_state(self, *, max_cmo_runs: int, budget_revision: int) -> None:
+    def initialize_control_state(
+        self,
+        *,
+        max_cmo_runs: int,
+        budget_revision: int,
+        enforce_count_limits: bool = True,
+    ) -> None:
         with self._lock:
             if self._control_state_path.exists():
                 return
@@ -327,6 +340,7 @@ class CampaignStore:
                     "max_cmo_runs": int(max_cmo_runs),
                     "cmo_runs_started": 0,
                     "budget_revision": int(budget_revision),
+                    "enforce_count_limits": bool(enforce_count_limits),
                 },
                 "approvals": {},
                 "approval_usage": {},
@@ -402,7 +416,10 @@ class CampaignStore:
             usage = state["approval_usage"][approval_id]
             if usage["authorized_attempts"] >= grant.maximum_cmo_attempts:
                 raise ValueError("generation_approval_cap_exhausted")
-            if state["budget"]["cmo_runs_started"] >= state["budget"]["max_cmo_runs"]:
+            if (
+                state["budget"].get("enforce_count_limits", True)
+                and state["budget"]["cmo_runs_started"] >= state["budget"]["max_cmo_runs"]
+            ):
                 raise ValueError("campaign_cmo_budget_exhausted")
             slot.update({"status": "authorized", "approval_id": approval_id})
             usage["authorized_attempts"] += 1

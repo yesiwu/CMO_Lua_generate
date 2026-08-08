@@ -199,7 +199,12 @@ class CampaignPermissionBroker:
         # 在操作账本注册一条CMO类型操作记录
         operation = self._store.prepare_operation(generation_index=self._generation_index, kind=OperationKind.CMO, input_checksum=attempt_input_checksum)
         # 原子预留CMO仿真配额，校验单审批上限、全局算力预算
-        self._store.authorize_cmo_attempt(operation_id=operation.operation_id, approval=approval, max_cmo_runs=self._spec.budget.max_cmo_runs)
+        self._store.authorize_cmo_attempt(
+            operation_id=operation.operation_id,
+            approval=approval,
+            max_cmo_runs=self._spec.budget.max_cmo_runs,
+            enforce_count_limits=self._spec.budget.enforce_count_limits,
+        )
         return operation.operation_id
 
     def mark_cmo_started(self, operation_id: str) -> None:
@@ -457,7 +462,10 @@ class EvolutionCampaignService:
         # for each candidate.
         proposal_reservation = 17
         calls = int(state.llm_call_counts.get("strategy_proposal", 0))
-        if calls + proposal_reservation > spec.budget.max_strategy_proposal_calls or sum(state.llm_call_counts.values()) + proposal_reservation > spec.budget.max_llm_total_calls:
+        if spec.budget.enforce_count_limits and (
+            calls + proposal_reservation > spec.budget.max_strategy_proposal_calls
+            or sum(state.llm_call_counts.values()) + proposal_reservation > spec.budget.max_llm_total_calls
+        ):
             raise ValueError("strategy_proposal_llm_budget_exhausted")
         # 创建策略生成操作记录
         operation = store.prepare_operation(generation_index=generation_index, kind=OperationKind.STRATEGY_PROPOSAL, input_checksum=_checksum({"contract": spec.contract_checksum, "revision": revision}))
@@ -506,7 +514,7 @@ class EvolutionCampaignService:
         state = store.load_campaign_state()
         required_calls = 2
         used_calls = int(state.llm_call_counts.get("strategy_proposal", 0))
-        if (
+        if spec.budget.enforce_count_limits and (
             used_calls + required_calls > spec.budget.max_strategy_proposal_calls
             or sum(state.llm_call_counts.values()) + required_calls > spec.budget.max_llm_total_calls
         ):
@@ -575,7 +583,7 @@ class EvolutionCampaignService:
         state = store.load_campaign_state()
         required_calls = 4
         used_calls = int(state.llm_call_counts.get("strategy_proposal", 0))
-        if (
+        if spec.budget.enforce_count_limits and (
             used_calls + required_calls > spec.budget.max_strategy_proposal_calls
             or sum(state.llm_call_counts.values()) + required_calls > spec.budget.max_llm_total_calls
         ):
@@ -705,6 +713,7 @@ class EvolutionCampaignService:
             store.initialize_control_state(
                 max_cmo_runs=spec.budget.max_cmo_runs,
                 budget_revision=store.load_campaign_state().budget_revision,
+                enforce_count_limits=spec.budget.enforce_count_limits,
             )
         # A standard GenerationApproval authorizes one explicit initial attempt
         # per frozen strategy. Repair attempts require a separately scoped a01+
