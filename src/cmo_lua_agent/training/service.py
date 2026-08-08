@@ -7,7 +7,7 @@ from typing import Any, Callable
 from uuid import uuid4
 
 from cmo_lua_agent.training.input_resolver import ScenarioInputResolver
-from cmo_lua_agent.training.models import TrainingRequest
+from cmo_lua_agent.training.models import TrainingAction, TrainingRequest, TrainingStatus
 from cmo_lua_agent.training.process import TrainingProcessManager
 from cmo_lua_agent.training.store import TrainingStore
 
@@ -64,3 +64,16 @@ class TrainingService:
             "campaign_id": state.campaign_id,
             "phase8_status": state.phase8.status.value,
         }
+
+    def control(self, workflow_id: str, action: str) -> dict[str, object]:
+        store = TrainingStore(self._root, workflow_id)
+        if action == "pause":
+            store.transition(status=TrainingStatus.PAUSED, action=TrainingAction.IDLE)
+        elif action == "stop":
+            store.transition(status=TrainingStatus.STOPPED, action=TrainingAction.IDLE)
+        elif action == "resume":
+            store.transition(status=TrainingStatus.RUNNING, action=TrainingAction.PREVIEW)
+            self._processes.start(workflow_id)
+        else:
+            raise ValueError("invalid_training_control_action")
+        return self.inspect(workflow_id)

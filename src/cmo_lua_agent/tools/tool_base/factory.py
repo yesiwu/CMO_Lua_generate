@@ -59,6 +59,7 @@ from cmo_lua_agent.tools.generate_cmo_lua_tool import GenerateCmoLuaTool
 from cmo_lua_agent.tools.query_cmo_database_tool import QueryCmoDatabaseTool
 from cmo_lua_agent.evolution.control_plane import EvolutionCampaignService
 from cmo_lua_agent.tools.evolution_campaign_tools import campaign_tools
+from cmo_lua_agent.tools.training_tools import training_tools
 
 
 DEFAULT_CMO_RUNNER_PATH = Path(
@@ -77,6 +78,7 @@ def build_tool_registry(
     cmo_lua_services: CmoLuaToolServices | None = None,
     chat_profile: str = "standard",
     evolution_campaign_service: EvolutionCampaignService | None = None,
+    training_service: object | None = None,
 ) -> ToolRegistry:
     """
     创建并注册项目工具。
@@ -128,6 +130,12 @@ def build_tool_registry(
         for tool in campaign_tools(service=evolution_campaign_service):
             registry.register(tool)
         # 全自动推演工具（单入口、可恢复、经验目标驱动）
+        return registry
+    if chat_profile == "training":
+        if training_service is None:
+            raise ValueError("training_chat_profile_requires_service")
+        for tool in training_tools(service=training_service):
+            registry.register(tool)
         return registry
     if chat_profile != "standard":
         raise ValueError("unknown_chat_profile")

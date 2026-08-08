@@ -35,3 +35,20 @@ def test_service_persists_request_before_launching_runner(tmp_path: Path) -> Non
     assert result == {"workflow_id": "training-001", "pid": 4321}
     assert launches == ["training-001"]
     assert service.inspect("training-001")["generation_count"] == 3
+
+
+def test_service_control_persists_safe_boundary_commands(tmp_path: Path) -> None:
+    class Resolver:
+        def resolve(self, _path: str) -> SimpleNamespace:
+            return SimpleNamespace(reference="scenario.json")
+
+    service = TrainingService(
+        project_root=tmp_path,
+        input_resolver=Resolver(),
+        process_manager=SimpleNamespace(start=lambda _workflow_id: 1),
+        workflow_id_factory=lambda: "training-001",
+    )
+    service.start(input_path="scenario.json", objective="improve", generation_count=1)
+
+    assert service.control("training-001", "pause")["status"] == "PAUSED"
+    assert service.control("training-001", "stop")["status"] == "STOPPED"
