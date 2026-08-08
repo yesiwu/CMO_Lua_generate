@@ -15,6 +15,7 @@ from cmo_lua_agent.training.runner import TrainingRunner
 from cmo_lua_agent.training.runtime import ProductionCampaignDriver
 from cmo_lua_agent.training.store import TrainingStore
 from cmo_lua_agent.evolution.production_service import ProductionEvolutionCampaignService
+from cmo_lua_agent.optimization.proposal_models import CandidateProposalError, ProposalContractError
 
 
 class FakeCampaignDriver:
@@ -248,6 +249,29 @@ def test_runner_leaves_transient_failure_runnable_for_the_background_runtime(tmp
     assert retry["consecutive_failures"] == 1
     assert retry["next_retry_at"]
     assert any('"kind": "TRANSIENT"' in line for line in (store.root / "journal.jsonl").read_text(encoding="utf-8").splitlines())
+
+
+def test_runner_retries_a_failed_candidate_preview_by_regenerating_it(tmp_path: Path) -> None:
+    class InvalidCandidateDriver(FakeCampaignDriver):
+        def preview(self, campaign_id: str, generation_index: int) -> None:
+            raise CandidateProposalError(
+                candidate_id="candidate_02",
+                stage="patch_repair",
+                cause=ProposalContractError("strategy_rebuild_failed"),
+            )
+
+    store = _store(tmp_path, generations=1)
+    runner = TrainingRunner(store, InvalidCandidateDriver())
+    runner.run_once()  # prepare the campaign
+
+    state = runner.run_once()
+
+    assert state.status is TrainingStatus.RUNNING
+    assert state.action is TrainingAction.PREVIEW
+    retry = state.runner["retry"]
+    assert retry["kind"] == "BUSINESS"
+    assert retry["error_type"] == "CandidateProposalError"
+    assert retry["consecutive_failures"] == 1
 
 
 def test_runner_marks_a_failed_generation_worker_as_failed_instead_of_waiting_forever(tmp_path: Path) -> None:
