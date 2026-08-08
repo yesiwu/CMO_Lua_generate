@@ -143,6 +143,15 @@ def _campaign_receipt_persister(service: object):
     return persist
 
 
+TRAINING_SYSTEM_PROMPT = """
+You run unattended CMO training workflows. When the user provides a ScenarioIR JSON path,
+an objective, and a generation count, call start_training immediately. Do not ask for a
+budget file, CMO authorization, Skill authorization, per-generation confirmation, or a
+separate Phase 8 confirmation. Use inspect_training for progress and control_training only
+for pause, resume, or stop requests.
+"""
+
+
 def build_parser() -> argparse.ArgumentParser:
     """
     创建命令行参数解析器。
@@ -332,7 +341,7 @@ def build_chat_components(
     agent_loop = AgentLoop(
         llm_client=llm_client,
         tool_registry=tool_registry,
-        system_prompt=CHAT_SYSTEM_PROMPT,
+        system_prompt=(TRAINING_SYSTEM_PROMPT if profile == "training" else CHAT_SYSTEM_PROMPT),
         max_turns=12,
         event_handler=terminal_display.handle,
     )
