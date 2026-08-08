@@ -13,6 +13,7 @@ from cmo_lua_agent.training.models import (
     TrainingStatus,
 )
 from cmo_lua_agent.training.store import TrainingStore
+from cmo_lua_agent.training.failures import FailureClassifier, FailureKind
 
 
 class CampaignDriver(Protocol):
@@ -32,9 +33,17 @@ class CampaignDriver(Protocol):
 class TrainingRunner:
     """Advance exactly one persisted action at a time, without approval callbacks."""
 
-    def __init__(self, store: TrainingStore, driver: CampaignDriver) -> None:
+    def __init__(
+        self,
+        store: TrainingStore,
+        driver: CampaignDriver,
+        *,
+        repair_coordinator: object | None = None,
+    ) -> None:
         self._store = store
         self._driver = driver
+        self._repair = repair_coordinator
+        self._failures = FailureClassifier()
 
     def run(self) -> TrainingState:
         """Run all immediately schedulable generation actions under one workflow lock."""
@@ -46,6 +55,29 @@ class TrainingRunner:
                     return after
 
     def run_once(self) -> TrainingState:
+        try:
+            return self._run_once()
+        except Exception as exc:
+            record = self._failures.classify(exc)
+            self._store.append_event({
+                "event": "workflow_failure",
+                "kind": record.kind.value,
+                "error_type": record.error_type,
+                "message": record.message,
+            })
+            if record.kind is FailureKind.CODE and self._repair is not None:
+                self._store.transition(status=TrainingStatus.REPAIRING)
+                result = self._repair.repair(
+                    workflow_id=self._store.load_state().workflow_id,
+                    record=record,
+                    test_command="python -m pytest src/cmo_lua_agent/tests/training -q",
+                )
+                if getattr(result, "succeeded", False):
+                    return self._store.transition(status=TrainingStatus.RUNNING)
+                return self._store.transition(status=TrainingStatus.FAILED, action=TrainingAction.IDLE)
+            raise
+
+    def _run_once(self) -> TrainingState:
         request = self._store.load_request()
         state = self._store.load_state()
         if state.status in {TrainingStatus.PAUSED, TrainingStatus.STOPPED, TrainingStatus.FAILED}:

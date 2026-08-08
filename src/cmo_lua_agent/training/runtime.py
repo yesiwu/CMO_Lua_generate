@@ -16,6 +16,7 @@ from cmo_lua_agent.training.models import TrainingRequest
 from cmo_lua_agent.training.models import TrainingAction, TrainingStatus
 from cmo_lua_agent.training.runner import TrainingRunner
 from cmo_lua_agent.training.store import TrainingStore
+from cmo_lua_agent.training.repair import CodeRepairCoordinator
 
 
 class ProductionCampaignDriver:
@@ -84,7 +85,11 @@ def run_workflow(*, project_root: Path, workflow_id: str) -> TrainingStatus:
         app_config=config,
         llm_client=ClaudeClient(config.llm),
     )
-    runner = TrainingRunner(TrainingStore(root, workflow_id), ProductionCampaignDriver(service))
+    runner = TrainingRunner(
+        TrainingStore(root, workflow_id),
+        ProductionCampaignDriver(service),
+        repair_coordinator=CodeRepairCoordinator(project_root=root),
+    )
     runner.reconcile()
     while True:
         state = runner.run()

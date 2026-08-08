@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 
 from cmo_lua_agent.training.models import (
     TrainingAction,
@@ -153,3 +154,23 @@ def test_restarted_runner_does_not_repeat_a_persisted_execute(tmp_path: Path) ->
     assert driver.calls == [
         "prepare", "preview:0", "execute:0", "reconcile", "inspect:0", "phase8:0",
     ]
+
+
+def test_runner_marks_code_failure_for_repair_without_repeating_action(tmp_path: Path) -> None:
+    class BrokenDriver(FakeCampaignDriver):
+        def prepare(self, request: TrainingRequest) -> str:
+            raise ImportError("cannot import Worker")
+
+    class Repairs:
+        def repair(self, **kwargs):
+            return SimpleNamespace(succeeded=False)
+
+    runner = TrainingRunner(
+        _store(tmp_path, generations=1),
+        BrokenDriver(),
+        repair_coordinator=Repairs(),
+    )
+
+    state = runner.run_once()
+
+    assert state.status is TrainingStatus.FAILED
