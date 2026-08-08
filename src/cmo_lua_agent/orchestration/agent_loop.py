@@ -92,7 +92,7 @@ class AgentLoop:
         llm_client: ClaudeClient,
         tool_registry: ToolRegistry,
         system_prompt: str,
-        max_turns: int = 10,
+        max_turns: int | None = None,
         event_handler: EventHandler | None = None,
     ) -> None:
         """
@@ -119,7 +119,7 @@ class AgentLoop:
             ValueError:
                 max_turns 小于 1。
         """
-        if max_turns < 1:
+        if max_turns is not None and max_turns < 1:
             raise ValueError("max_turns 必须大于等于 1")
 
         self._llm_client = llm_client
@@ -166,7 +166,11 @@ class AgentLoop:
         )
 
         try:
-            for turn in range(1, self._max_turns + 1):
+            turn = 0
+            # Completion is driven by the model's final response or a
+            # concrete guard outcome, never by an arbitrary request-turn cap.
+            while True:
+                turn += 1
                 completed_turns = turn
 
                 response = self._request_model(messages=messages, turn=turn)

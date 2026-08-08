@@ -119,10 +119,27 @@ def test_repeated_identical_failure_ends_with_actionable_summary() -> None:
 
     assert "连续失败两次" in result
     assert len(registry.calls) == 2
-    assert messages[-1] == {"role": "assistant", "content": result}
     assert events[-1].type is AgentEventType.AGENT_NEEDS_INPUT
+    assert messages[-1] == {"role": "assistant", "content": result}
 
 
+def test_default_loop_has_no_fixed_turn_ceiling() -> None:
+    tool_calls = [
+        _response(_tool_use(f"call-{index}", "generate_cmo_lua", {"json_path": "a.json"}))
+        for index in range(1, 12)
+    ]
+    client = ScriptedClient([
+        *tool_calls,
+        _response(SimpleNamespace(type="text", text="done"), stop_reason="end_turn"),
+    ])
+    registry = FakeRegistry({"generate_cmo_lua": [ToolResult('{"success": true}')] * 11})
+
+    result = AgentLoop(client, registry, "test").run([
+        {"role": "user", "content": "complete a long task"},
+    ])
+
+    assert result == "done"
+    assert len(client.requests) == 12
 def test_three_discovery_turns_end_without_max_turn_exception() -> None:
     client = ScriptedClient(
         [
@@ -185,7 +202,10 @@ def test_explicit_json_path_does_not_trigger_discovery_budget() -> None:
 
 def test_turn_budget_ends_with_summary_instead_of_raising() -> None:
     client = ScriptedClient(
-        [_response(_tool_use("call-1", "generate_cmo_lua", {"json_path": "a.json"}))]
+        [
+            _response(_tool_use("call-1", "generate_cmo_lua", {"json_path": "a.json"})),
+            _response(SimpleNamespace(type="text", text="completed"), stop_reason="end_turn"),
+        ]
     )
     registry = FakeRegistry({"generate_cmo_lua": [ToolResult('{"success": true}')]})
     loop = AgentLoop(client, registry, "test", max_turns=1)
@@ -193,5 +213,5 @@ def test_turn_budget_ends_with_summary_instead_of_raising() -> None:
 
     result = loop.run(messages)
 
-    assert "1 回合预算" in result
-    assert messages[-1] == {"role": "assistant", "content": result}
+    assert result == "completed"
+    assert messages[-1]["content"][0].text == result
