@@ -178,6 +178,7 @@ class ProductionEvolutionCampaignService:
         budget: dict[str, object],
         minimum_improvement_delta: int,
         no_improvement_patience: int,
+        phase8_mode: str = "per_generation",
     ) -> dict[str, Any]:
         """
         初始化一个进化推演任务：
@@ -221,6 +222,7 @@ class ProductionEvolutionCampaignService:
             ),
             minimum_improvement_delta=minimum_improvement_delta,
             no_improvement_patience=no_improvement_patience,
+            phase8_mode=phase8_mode,
         )
         # 构建内核业务服务实例
         service = self._build_core(spec, package)
@@ -276,6 +278,7 @@ class ProductionEvolutionCampaignService:
             },
             minimum_improvement_delta=1,
             no_improvement_patience=generation_count + 1,
+            phase8_mode="after_all_generations",
         )
 
     def _build_core(self, spec: EvolutionCampaignSpec, package: object) -> EvolutionCampaignService:

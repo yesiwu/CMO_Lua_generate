@@ -14,6 +14,7 @@ from cmo_lua_agent.training.models import (
 from cmo_lua_agent.training.runner import TrainingRunner
 from cmo_lua_agent.training.runtime import ProductionCampaignDriver
 from cmo_lua_agent.training.store import TrainingStore
+from cmo_lua_agent.evolution.production_service import ProductionEvolutionCampaignService
 
 
 class FakeCampaignDriver:
@@ -116,6 +117,25 @@ def test_production_driver_prepares_unbounded_deferred_phase8_campaign() -> None
         "generation_objective": request.objective,
         "generation_count": 7,
     }]
+
+
+def test_production_service_defers_phase8_for_training_campaigns() -> None:
+    calls: list[dict[str, object]] = []
+
+    class Service(ProductionEvolutionCampaignService):
+        def prepare_campaign_request(self, **kwargs):
+            calls.append(kwargs)
+            return {"campaign_id": kwargs["campaign_id"]}
+
+    service = object.__new__(Service)
+    service.prepare_training_campaign(
+        campaign_id="training-001-campaign",
+        input_package_id="scenario.json",
+        generation_objective="improve",
+        generation_count=3,
+    )
+
+    assert calls[0]["phase8_mode"] == "after_all_generations"
 
 
 def test_production_driver_regenerates_a_failed_preview_after_restart() -> None:
@@ -228,3 +248,18 @@ def test_runner_leaves_transient_failure_runnable_for_the_background_runtime(tmp
     assert retry["consecutive_failures"] == 1
     assert retry["next_retry_at"]
     assert any('"kind": "TRANSIENT"' in line for line in (store.root / "journal.jsonl").read_text(encoding="utf-8").splitlines())
+
+
+def test_runner_marks_a_failed_generation_worker_as_failed_instead_of_waiting_forever(tmp_path: Path) -> None:
+    class FailedWorkerDriver(FakeCampaignDriver):
+        def inspect_generation(self, _campaign_id: str, _generation_index: int) -> dict[str, str]:
+            return {"status": "failed"}
+
+    runner = TrainingRunner(_store(tmp_path, generations=1), FailedWorkerDriver())
+    for _ in range(4):
+        runner.run_once()
+
+    state = runner.run_once()
+
+    assert state.status is TrainingStatus.FAILED
+    assert state.action is TrainingAction.IDLE

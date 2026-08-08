@@ -165,6 +165,8 @@ class TrainingRunner:
             return self._store.transition(action=TrainingAction.SUMMARIZE)
         if state.action is TrainingAction.SUMMARIZE:
             inspected = self._driver.inspect_generation(state.campaign_id, generation_index)
+            if self._worker_failed(inspected):
+                return self._mark_worker_failed(state, generation_index, inspected)
             if inspected.get("status") != "completed":
                 return self._store.transition(action=TrainingAction.WAIT_WORKER)
             completed = tuple(sorted((*state.completed_generations, generation_index)))
@@ -176,10 +178,35 @@ class TrainingRunner:
             )
         if state.action is TrainingAction.WAIT_WORKER:
             inspected = self._driver.inspect_generation(state.campaign_id, generation_index)
+            if self._worker_failed(inspected):
+                return self._mark_worker_failed(state, generation_index, inspected)
             if inspected.get("status") == "completed":
                 return self._store.transition(action=TrainingAction.SUMMARIZE)
             return state
         return state
+
+    @staticmethod
+    def _worker_failed(inspected: dict[str, object]) -> bool:
+        return str(inspected.get("status", "")).lower() in {
+            "failed",
+            "cancelled_incomplete",
+        }
+
+    def _mark_worker_failed(
+        self,
+        state: TrainingState,
+        generation_index: int,
+        inspected: dict[str, object],
+    ) -> TrainingState:
+        self._store.append_event({
+            "event": "generation_worker_failed",
+            "generation_index": generation_index,
+            "worker_status": inspected.get("status"),
+        })
+        return self._store.transition(
+            status=TrainingStatus.FAILED,
+            action=TrainingAction.IDLE,
+        )
 
     def reconcile(self) -> TrainingState:
         state = self._store.load_state()
