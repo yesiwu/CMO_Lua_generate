@@ -63,6 +63,10 @@ def test_agent_allows_empty_proposals_once():
     c=_Client(_response()); response=ComparativeLearningAgent(c).analyze(_bundle()); assert response.proposals==() and c.calls==1
 
 
+def test_agent_normalizes_plain_string_percentage_confidence() -> None:
+    assert ComparativeLearningAgent._confidence("85") == 0.85
+
+
 def test_agent_binds_ordered_comparisons_to_frozen_candidate_ids() -> None:
     analysis = {k: [] for k in (
         "observed_strategy_differences", "observed_execution_differences",

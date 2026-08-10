@@ -213,6 +213,8 @@ class ComparativeLearningAgent:
             return float(text)
         if re.fullmatch(r"(?:\d{1,2}|100)%", text):
             return float(text[:-1]) / 100
+        if re.fullmatch(r"(?:\d{1,2}|100)", text):
+            return float(text) / 100
         return None
 
 
@@ -257,6 +259,7 @@ _SYSTEM = (
     "recommended_pattern, counter_conditions, supporting_candidate_ids, "
     "contradicting_candidate_ids, model_confidence. applicable_conditions, counter_conditions, "
     "supporting_candidate_ids, and contradicting_candidate_ids must each be JSON arrays of strings. "
+    "model_confidence must be a JSON number from 0.0 to 1.0, never a percentage or confidence level. "
     "Allowed experience_key values are naval_air_anti_surface.target_deconfliction, "
     "naval_air_anti_surface.target_concentration, naval_air_anti_surface.salvo_timing, "
     "naval_air_anti_surface.fire_quantity, naval_air_anti_surface.aircraft_route, "
