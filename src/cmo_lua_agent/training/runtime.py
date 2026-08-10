@@ -18,6 +18,7 @@ from cmo_lua_agent.training.models import TrainingAction, TrainingStatus
 from cmo_lua_agent.training.runner import TrainingRunner
 from cmo_lua_agent.training.store import TrainingStore
 from cmo_lua_agent.training.repair import CodeRepairCoordinator
+from cmo_lua_agent.training.fixture import FixtureCampaignDriver
 
 
 class ProductionCampaignDriver:
@@ -86,15 +87,21 @@ class ProductionCampaignDriver:
 def run_workflow(*, project_root: Path, workflow_id: str) -> TrainingStatus:
     """Run or resume one persisted workflow until it completes or needs intervention."""
     root = Path(project_root).resolve()
-    config = load_config()
-    service = create_production_evolution_campaign_service(
-        project_root=root,
-        app_config=config,
-        llm_client=ClaudeClient(config.llm),
-    )
+    store = TrainingStore(root, workflow_id)
+    execution_mode = store.load_request().execution_mode if store.root.is_dir() else "PRODUCTION_CMO"
+    if execution_mode == "FAKE_FIXTURE":
+        driver = FixtureCampaignDriver()
+    else:
+        config = load_config()
+        service = create_production_evolution_campaign_service(
+            project_root=root,
+            app_config=config,
+            llm_client=ClaudeClient(config.llm),
+        )
+        driver = ProductionCampaignDriver(service)
     runner = TrainingRunner(
-        TrainingStore(root, workflow_id),
-        ProductionCampaignDriver(service),
+        store,
+        driver,
         repair_coordinator=CodeRepairCoordinator(project_root=root),
     )
     runner.reconcile()

@@ -62,6 +62,7 @@ class TrainingRequest:
     generation_count: int | None
     auto_code_repair: bool
     phase8_mode: str
+    execution_mode: str
     authorized_by_request: bool
     created_at: str
 
@@ -74,6 +75,7 @@ class TrainingRequest:
         objective: str,
         generation_count: int,
         session_id: str | None = None,
+        execution_mode: str = "PRODUCTION_CMO",
     ) -> "TrainingRequest":
         if not workflow_id or any(token in workflow_id for token in ("/", "\\", "..")):
             raise ValueError("invalid_training_workflow_id")
@@ -83,6 +85,8 @@ class TrainingRequest:
             raise ValueError("training_objective_required")
         if generation_count < 1:
             raise ValueError("training_generation_count_must_be_positive")
+        if execution_mode not in {"PRODUCTION_CMO", "FAKE_FIXTURE"}:
+            raise ValueError("invalid_training_execution_mode")
         return cls(
             schema_version="1.0",
             workflow_id=workflow_id,
@@ -93,6 +97,7 @@ class TrainingRequest:
             generation_count=generation_count,
             auto_code_repair=True,
             phase8_mode="after_all_generations",
+            execution_mode=execution_mode,
             authorized_by_request=True,
             created_at=_utc_now(),
         )

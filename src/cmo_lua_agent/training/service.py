@@ -35,6 +35,7 @@ class TrainingService:
         objective: str,
         generation_count: int,
         session_id: str | None = None,
+        execution_mode: str = "PRODUCTION_CMO",
     ) -> dict[str, object]:
         resolved = self._resolver.resolve(input_path)
         workflow_id = self._workflow_id_factory()
@@ -44,6 +45,7 @@ class TrainingService:
             objective=objective,
             generation_count=generation_count,
             session_id=session_id,
+            execution_mode=execution_mode,
         )
         TrainingStore(self._root, workflow_id).create(request)
         pid = self._processes.start(workflow_id)
