@@ -41,7 +41,9 @@ class TrainingReportWriter:
                 f"- Workflow: `{state.workflow_id}`",
                 f"- Phase 8 status: {state.phase8.status.value}",
                 f"- Phase 8 job: `{state.phase8.job_id or ''}`",
-                "- Frozen experience IDs: recorded by the Phase 8 artifact when present.",
+                "",
+                "## Frozen experience IDs",
+                *[f"- `{experience_id}`" for experience_id in self._experience_ids(state)],
                 "",
             )),
         )
@@ -61,6 +63,22 @@ class TrainingReportWriter:
             row = json.loads(line)
             values.append(str(row.get("event", "unknown")))
         return values
+
+    def _experience_ids(self, state: TrainingState) -> list[str]:
+        if not state.campaign_id:
+            return ["none"]
+        project_root = self._store.root.parents[2]
+        root = project_root / "runs" / "evolution" / state.campaign_id / "generations"
+        experience_ids: set[str] = set()
+        for generation_index in state.completed_generations:
+            path = root / f"generation_{generation_index:03d}" / "generation-result.json"
+            if not path.is_file():
+                continue
+            value = json.loads(path.read_text(encoding="utf-8"))
+            phase7 = value.get("phase7", {})
+            if isinstance(phase7, dict):
+                experience_ids.update(str(item) for item in phase7.get("experience_ids", ()) if item)
+        return sorted(experience_ids) or ["none"]
 
     def _write(self, name: str, content: str) -> None:
         (self._store.root / name).write_text(content, encoding="utf-8", newline="\n")
