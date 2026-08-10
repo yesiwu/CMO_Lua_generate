@@ -276,6 +276,37 @@ def test_runner_leaves_transient_failure_runnable_for_the_background_runtime(tmp
     assert any('"kind": "TRANSIENT"' in line for line in (store.root / "journal.jsonl").read_text(encoding="utf-8").splitlines())
 
 
+def test_runner_resumes_completed_worker_after_a_temporary_worker_file_lock(tmp_path: Path) -> None:
+    class TemporarilyLockedWorkerDriver(FakeCampaignDriver):
+        def __init__(self) -> None:
+            super().__init__()
+            self._locked = True
+
+        def inspect_generation(self, campaign_id: str, generation_index: int) -> dict[str, str]:
+            self.calls.append(f"inspect:{generation_index}")
+            if self._locked:
+                self._locked = False
+                raise PermissionError(
+                    13,
+                    "Permission denied",
+                    r"D:\\project\\runs\\evolution\\campaign\\workers\\g000_phase6.json",
+                )
+            return {"status": "completed"}
+
+    driver = TemporarilyLockedWorkerDriver()
+    runner = TrainingRunner(_store(tmp_path, generations=1), driver)
+    runner.run_once()  # prepare
+    runner.run_once()  # preview
+    runner.run_once()  # execute
+
+    retrying = runner.run_once()
+    resumed = runner.run_once()
+
+    assert retrying.runner["retry"]["error_type"] == "PermissionError"
+    assert resumed.completed_generations == (0,)
+    assert driver.calls == ["prepare", "preview:0", "execute:0", "inspect:0", "inspect:0"]
+
+
 def test_runner_retries_a_failed_candidate_preview_by_regenerating_it(tmp_path: Path) -> None:
     class InvalidCandidateDriver(FakeCampaignDriver):
         def preview(self, campaign_id: str, generation_index: int) -> None:
