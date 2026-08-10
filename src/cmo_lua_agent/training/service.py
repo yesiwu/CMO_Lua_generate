@@ -50,10 +50,16 @@ class TrainingService:
         return {"workflow_id": workflow_id, "pid": pid}
 
     def inspect(self, workflow_id: str) -> dict[str, object]:
+        return self._inspect(workflow_id, recover_runner=True)
+
+    def _inspect(self, workflow_id: str, *, recover_runner: bool) -> dict[str, object]:
         store = TrainingStore(self._root, workflow_id)
         request = store.load_request()
         state = store.load_state()
-        return {
+        replacement_pid = None
+        if recover_runner and state.status is TrainingStatus.RUNNING and self._process_is_running(workflow_id) is False:
+            replacement_pid = self._processes.start(workflow_id)
+        status: dict[str, object] = {
             "workflow_id": workflow_id,
             "generation_count": request.generation_count,
             "status": state.status.value,
@@ -65,6 +71,9 @@ class TrainingService:
             "phase8_status": state.phase8.status.value,
             "retry": state.runner.get("retry"),
         }
+        if replacement_pid is not None:
+            status["runner_pid"] = replacement_pid
+        return status
 
     def control(self, workflow_id: str, action: str) -> dict[str, object]:
         store = TrainingStore(self._root, workflow_id)
@@ -80,8 +89,8 @@ class TrainingService:
                 self._processes.start(workflow_id)
         else:
             raise ValueError("invalid_training_control_action")
-        return self.inspect(workflow_id)
+        return self._inspect(workflow_id, recover_runner=False)
 
-    def _process_is_running(self, workflow_id: str) -> bool:
+    def _process_is_running(self, workflow_id: str) -> bool | None:
         checker = getattr(self._processes, "is_running", None)
-        return bool(checker(workflow_id)) if callable(checker) else False
+        return bool(checker(workflow_id)) if callable(checker) else None

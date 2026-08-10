@@ -91,3 +91,29 @@ def test_service_inspect_exposes_persisted_transient_retry(tmp_path: Path) -> No
     TrainingStore(tmp_path, "training-001").transition(runner={"retry": {"kind": "TRANSIENT"}})
 
     assert service.inspect("training-001")["retry"] == {"kind": "TRANSIENT"}
+
+
+def test_service_inspect_relaunches_a_known_dead_running_workflow(tmp_path: Path) -> None:
+    launches: list[str] = []
+
+    class ProcessManager:
+        def start(self, workflow_id: str) -> int:
+            launches.append(workflow_id)
+            return len(launches)
+
+        def is_running(self, _workflow_id: str) -> bool:
+            return False
+
+    service = TrainingService(
+        project_root=tmp_path,
+        input_resolver=SimpleNamespace(resolve=lambda _path: SimpleNamespace(reference="scenario.json")),
+        process_manager=ProcessManager(),
+        workflow_id_factory=lambda: "training-001",
+    )
+    service.start(input_path="scenario.json", objective="improve", generation_count=1)
+    TrainingStore(tmp_path, "training-001").transition(status=TrainingStatus.RUNNING)
+
+    status = service.inspect("training-001")
+
+    assert launches == ["training-001", "training-001"]
+    assert status["runner_pid"] == 2
