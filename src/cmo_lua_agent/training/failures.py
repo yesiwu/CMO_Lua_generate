@@ -35,6 +35,11 @@ class FailureClassifier:
             marker in lowered for marker in ("timeout", "connection error", "connection reset", "temporarily unavailable")
         ):
             kind = FailureKind.TRANSIENT
+        elif isinstance(error, PermissionError) and ("\\workers\\" in lowered or "/workers/" in lowered):
+            # Worker state is atomically replaced by a separate process.  On
+            # Windows, a reader can briefly lose the replace race; retry the
+            # persisted action instead of treating its completed result as bad input.
+            kind = FailureKind.TRANSIENT
         elif isinstance(error, (FileNotFoundError, json.JSONDecodeError)) or any(
             marker in lowered for marker in ("scenario", "json", "input path", "not found")
         ):
