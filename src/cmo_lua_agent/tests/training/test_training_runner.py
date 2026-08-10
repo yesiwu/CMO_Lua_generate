@@ -78,6 +78,31 @@ def test_runner_completes_one_generation_without_user_approval(tmp_path: Path) -
     assert driver.calls == ["prepare", "preview:0", "execute:0", "inspect:0", "phase8:0"]
 
 
+def test_runner_completes_phase8_when_no_experience_is_promotable(tmp_path: Path) -> None:
+    class NoPromotableExperienceDriver(FakeCampaignDriver):
+        def run_phase8(self, campaign_id: str, completed_generations: tuple[int, ...]) -> dict[str, str]:
+            self.calls.append(f"phase8:{','.join(map(str, completed_generations))}")
+            return {"status": "NO_PROMOTABLE_EXPERIENCE", "phase8_run_id": "training-001_phase8"}
+
+    state = TrainingRunner(_store(tmp_path, generations=1), NoPromotableExperienceDriver()).run()
+
+    assert state.status is TrainingStatus.COMPLETED
+    assert state.phase8 == Phase8Progress(Phase8Status.COMPLETED, "training-001_phase8")
+
+
+def test_runner_keeps_workflow_failed_when_phase8_returns_a_failure(tmp_path: Path) -> None:
+    class FailedPhase8Driver(FakeCampaignDriver):
+        def run_phase8(self, campaign_id: str, completed_generations: tuple[int, ...]) -> dict[str, str]:
+            self.calls.append(f"phase8:{','.join(map(str, completed_generations))}")
+            return {"status": "failed"}
+
+    state = TrainingRunner(_store(tmp_path, generations=1), FailedPhase8Driver()).run()
+
+    assert state.status is TrainingStatus.FAILED
+    assert state.stage is TrainingStage.PHASE8
+    assert state.phase8 == Phase8Progress(Phase8Status.FAILED, "")
+
+
 def test_runner_drives_requested_generations_without_count_budget(tmp_path: Path) -> None:
     driver = FakeCampaignDriver()
 

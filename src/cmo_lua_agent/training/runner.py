@@ -147,18 +147,20 @@ class TrainingRunner:
                     state.campaign_id,
                     state.completed_generations,
                 )
-                if result.get("status") != "completed":
+                phase8_job_id = str(result.get("job_id") or result.get("phase8_run_id") or "")
+                if not self._phase8_finished(result):
                     return self._store.transition(
+                        status=TrainingStatus.FAILED,
                         stage=TrainingStage.PHASE8,
                         action=TrainingAction.IDLE,
-                        phase8=Phase8Progress(Phase8Status.FAILED, str(result.get("job_id") or "")),
+                        phase8=Phase8Progress(Phase8Status.FAILED, phase8_job_id),
                     )
                 self._store.append_event({"event": "phase8_completed", "campaign_id": state.campaign_id})
                 return self._store.transition(
                     status=TrainingStatus.COMPLETED,
                     stage=TrainingStage.REPORT,
                     action=TrainingAction.IDLE,
-                    phase8=Phase8Progress(Phase8Status.COMPLETED, str(result.get("job_id") or "")),
+                    phase8=Phase8Progress(Phase8Status.COMPLETED, phase8_job_id),
                 )
             return self._store.transition(
                 status=TrainingStatus.COMPLETED,
@@ -200,6 +202,10 @@ class TrainingRunner:
                 return self._store.transition(action=TrainingAction.SUMMARIZE)
             return state
         return state
+
+    @staticmethod
+    def _phase8_finished(result: dict[str, object]) -> bool:
+        return result.get("status") in {"completed", "NO_PROMOTABLE_EXPERIENCE", "pending_review"}
 
     @staticmethod
     def _worker_failed(inspected: dict[str, object]) -> bool:
