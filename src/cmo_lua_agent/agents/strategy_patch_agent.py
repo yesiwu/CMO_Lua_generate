@@ -1,4 +1,4 @@
-"""One-candidate constrained patch generator."""
+"""LLM agent that generates one constrained candidate patch."""
 
 from __future__ import annotations
 

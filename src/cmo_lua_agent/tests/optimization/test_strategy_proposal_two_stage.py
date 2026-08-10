@@ -16,7 +16,7 @@ from cmo_lua_agent.optimization.candidate_intent_conformance import (
     CandidateIntentConformanceValidator,
 )
 from cmo_lua_agent.optimization.proposal_models import CandidateIntent, CandidateProposalError, ProposalContractError
-from cmo_lua_agent.optimization.strategy_proposal_agent import StrategyProposalAgent
+from cmo_lua_agent.agents.strategy_proposal_agent import StrategyProposalAgent
 
 
 def _context() -> StrategyProposalContext:

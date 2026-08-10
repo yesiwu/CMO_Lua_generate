@@ -19,7 +19,7 @@ from cmo_lua_agent.optimization.proposal_models import (
     ProposalContractError,
 )
 from cmo_lua_agent.optimization.strategy_patch import build_patchable_leaf_catalog
-from cmo_lua_agent.optimization.strategy_proposal_agent import StrategyProposalAgent
+from cmo_lua_agent.agents.strategy_proposal_agent import StrategyProposalAgent
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[4]

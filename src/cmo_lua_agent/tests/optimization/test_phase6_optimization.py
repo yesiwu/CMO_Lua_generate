@@ -14,7 +14,7 @@ from cmo_lua_agent.optimization.candidate_models import CandidateFailureReason, 
 from cmo_lua_agent.optimization.candidate_set_validator import CandidateSetValidator
 from cmo_lua_agent.optimization.optimization_generation_workflow import OptimizationGenerationWorkflow
 from cmo_lua_agent.optimization.phase6_models import BootstrapSkillSnapshot, EvaluationIdentity, PlanningRequest, StrategyProposalContext
-from cmo_lua_agent.optimization.strategy_proposal_agent import StrategyProposalAgent
+from cmo_lua_agent.agents.strategy_proposal_agent import StrategyProposalAgent
 from cmo_lua_agent.scoring.native_score_compiler import CmoNativeScoreCompilation
 
 

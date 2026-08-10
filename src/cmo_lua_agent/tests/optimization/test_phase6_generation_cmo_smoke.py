@@ -19,7 +19,7 @@ from cmo_lua_agent.optimization.candidate_evaluation_workflow import CandidateEv
 from cmo_lua_agent.optimization.optimization_generation_workflow import OptimizationGenerationWorkflow
 from cmo_lua_agent.optimization.phase6_models import PlanningRequest
 from cmo_lua_agent.optimization.scenario_reset_probe import ScenarioResetProbe
-from cmo_lua_agent.optimization.strategy_proposal_agent import StrategyProposalAgent
+from cmo_lua_agent.agents.strategy_proposal_agent import StrategyProposalAgent
 from cmo_lua_agent.scoring.baseline import compile_score_baseline
 
 pytestmark = pytest.mark.cmo_integration

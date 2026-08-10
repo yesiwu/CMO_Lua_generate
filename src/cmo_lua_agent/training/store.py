@@ -55,6 +55,9 @@ class TrainingStore:
 
     def load_request(self) -> TrainingRequest:
         value = self._read_json(self._request_path)
+        # Workflows created before execution-mode selection always ran real CMO.
+        # Default in memory so historical request artifacts remain immutable.
+        value.setdefault("execution_mode", "PRODUCTION_CMO")
         return TrainingRequest(**value)
 
     def load_state(self) -> TrainingState:

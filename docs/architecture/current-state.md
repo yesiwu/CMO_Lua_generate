@@ -254,9 +254,9 @@ Pause/Stop、恢复规则和 Phase 6/7/8 调用边界的 Fake 工程验收，不
 
 ## Phase 9C Two-Stage Strategy Proposal
 
-- The formal proposal implementation remains
-  `optimization/strategy_proposal_agent.py`; the untracked agent draft is not
-  imported or registered.
+- The formal proposal implementation is
+  `agents/strategy_proposal_agent.py`, with its intent and patch agents beside
+  it in the same flat package.
 - Preview uses one constrained intent-planning JSON call, then one scalar Patch
   request for each fixed candidate in order. Each candidate may make one local
   structured repair request, so a preview consumes 5 to 9 proposal calls.

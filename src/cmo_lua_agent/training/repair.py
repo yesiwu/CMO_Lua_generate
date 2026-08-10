@@ -7,6 +7,7 @@ from pathlib import Path
 import subprocess
 from typing import Callable
 
+from cmo_lua_agent.agents.system_repair_agent import SystemRepairAgent
 from cmo_lua_agent.training.failures import FailureKind, FailureRecord
 
 
@@ -25,11 +26,15 @@ class CodeRepairCoordinator:
         self,
         *,
         project_root: Path,
+        system_repair_agent: object | None = None,
         repair_command: Callable[[str], str] | None = None,
         test_runner: Callable[[str], bool] | None = None,
     ) -> None:
         self._root = Path(project_root).resolve()
-        self._repair_command = repair_command or self._run_codex
+        self._agent = system_repair_agent or SystemRepairAgent(
+            project_root=self._root,
+            backend=repair_command,
+        )
         self._test_runner = test_runner or self._run_tests
 
     def repair(
@@ -51,7 +56,7 @@ class CodeRepairCoordinator:
         snapshot = self._snapshot_repair_scope()
         dirty_paths = self._dirty_paths()
         try:
-            summary = self._repair_command(prompt)
+            summary = self._agent.repair(prompt)
         except Exception as exc:
             return self._write_report(report_path, False, f"Repair backend failed: {type(exc).__name__}: {exc}")
         if not self._test_runner(test_command):
@@ -156,16 +161,6 @@ class CodeRepairCoordinator:
             check=True,
         )
         return completed.stdout
-
-    def _run_codex(self, prompt: str) -> str:
-        completed = subprocess.run(
-            ["codex", "exec", "--full-auto", prompt],
-            cwd=self._root,
-            text=True,
-            capture_output=True,
-            check=True,
-        )
-        return completed.stdout.strip()
 
     def _run_tests(self, command: str) -> bool:
         completed = subprocess.run(

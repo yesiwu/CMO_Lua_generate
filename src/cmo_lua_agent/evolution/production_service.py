@@ -62,7 +62,7 @@ from cmo_lua_agent.tools.list_curated_skills_tool import ListCuratedSkillsTool
 from cmo_lua_agent.tools.view_curated_skill_tool import ViewCuratedSkillTool
 from cmo_lua_agent.tools.tool_base.registry import ToolRegistry
 # 策略提案Agent：基于经验库生成新的策略候选StrategySpec
-from cmo_lua_agent.optimization.strategy_proposal_agent import StrategyProposalAgent
+from cmo_lua_agent.agents.strategy_proposal_agent import StrategyProposalAgent
 
 
 @dataclass(frozen=True, slots=True)
@@ -388,6 +388,19 @@ class ProductionEvolutionCampaignService:
     def inspect_generation(self, campaign_id: str, generation_index: int):
         """查询指定某一代的详细结果"""
         return self._service(campaign_id).inspect_generation(campaign_id, generation_index)
+
+    def wait_for_generation(
+        self,
+        *,
+        campaign_id: str,
+        generation_index: int,
+        operation_id: str,
+        timeout_seconds: float,
+    ) -> dict[str, Any]:
+        """Wait for one in-process generation worker through the public runtime API."""
+        service = self._service(campaign_id)
+        service.wait_for_worker(operation_id, timeout_seconds)
+        return service.inspect_generation(campaign_id, generation_index)
 
     def reconcile_campaign(self, campaign_id: str) -> dict[str, Any]:
         """Reconcile the persisted generation currently owned by a restarted runner."""

@@ -1,4 +1,4 @@
-"""One-call planner that turns an objective into four bounded candidate intents."""
+"""LLM agent that turns an objective into four bounded candidate intents."""
 
 from __future__ import annotations
 

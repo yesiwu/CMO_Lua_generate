@@ -24,7 +24,7 @@ from cmo_lua_agent.optimization.phase6_models import (
     PlanningRequest,
     StrategyProposalContext,
 )
-from cmo_lua_agent.optimization.strategy_proposal_agent import (
+from cmo_lua_agent.agents.strategy_proposal_agent import (
     StrategyProposalAgent,
 )
 from cmo_lua_agent.tests.optimization.test_phase6_optimization import (

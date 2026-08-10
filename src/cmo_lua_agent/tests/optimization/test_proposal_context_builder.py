@@ -6,8 +6,8 @@ from types import SimpleNamespace
 
 from cmo_lua_agent.contract.baseline_strategy_builder import BaselineStrategyBuilder
 from cmo_lua_agent.optimization.proposal_context_builder import ProposalTacticalContextBuilder
-from cmo_lua_agent.optimization.candidate_intent_planner import CandidateIntentPlanner
-from cmo_lua_agent.optimization.candidate_patch_generator import CandidatePatchGenerator
+from cmo_lua_agent.agents.strategy_intent_agent import CandidateIntentPlanner
+from cmo_lua_agent.agents.strategy_patch_agent import CandidatePatchGenerator
 from cmo_lua_agent.optimization.phase6_models import BootstrapSkillSnapshot, StrategyProposalContext
 from cmo_lua_agent.optimization.proposal_models import (
     AcceptedCandidateSummary,

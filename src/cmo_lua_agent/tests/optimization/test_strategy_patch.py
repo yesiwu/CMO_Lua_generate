@@ -13,9 +13,9 @@ from cmo_lua_agent.optimization.candidate_set_validator import CandidateSetValid
 from cmo_lua_agent.optimization.phase6_models import StrategyCandidate
 from cmo_lua_agent.optimization.phase6_models import BootstrapSkillSnapshot, StrategyProposalContext
 from cmo_lua_agent.optimization.proposal_models import CandidateIntent, CandidatePatch, CandidateProposalError, ProposalContractError, StrategyPatchOperation
-from cmo_lua_agent.optimization.strategy_proposal_agent import StrategyProposalAgent
+from cmo_lua_agent.agents.strategy_proposal_agent import StrategyProposalAgent
 from cmo_lua_agent.optimization.strategy_patch import StrategyPatchAssembler, build_patchable_leaf_catalog
-from cmo_lua_agent.optimization.candidate_patch_generator import _repair_alternatives
+from cmo_lua_agent.agents.strategy_patch_agent import _repair_alternatives
 
 
 def _scenario() -> ScenarioDefinition:

@@ -10,10 +10,8 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
-import time
 from typing import Any
 
-from cmo_lua_agent.evolution.control_plane import EvolutionCampaignService
 from cmo_lua_agent.evolution.production_service import (
     create_production_evolution_campaign_service,
 )
@@ -35,12 +33,7 @@ def _service(root: Path, campaign_id: str):
         app_config=config,
         llm_client=ClaudeClient(config.llm),
     )
-    campaign_root = root / "runs" / "evolution" / campaign_id
-    spec = EvolutionCampaignService._spec_from_dict(
-        _json(campaign_root / "campaign-spec.json")
-    )
-    package = service._package_loader.load(spec.scenario_ref)
-    service._services[campaign_id] = service._build_core(spec, package)
+    service.load_campaign(campaign_id)
     return service
 
 
@@ -122,16 +115,15 @@ def main(argv: list[str] | None = None) -> int:
         campaign_id=args.campaign_id,
         generation_index=args.generation,
     )
-    deadline = time.monotonic() + args.timeout_seconds
     campaign_root = root / "runs" / "evolution" / args.campaign_id
-    store, _ = service._services[args.campaign_id]._load(args.campaign_id)
-    while time.monotonic() < deadline:
-        current = store.get_worker(worker.operation_id)
-        if current is not None and current.status != "running":
-            _print({"campaign_root": str(campaign_root), "worker": current})
-            return 0 if current.status == "completed" else 1
-        time.sleep(5)
-    raise TimeoutError("generation_worker_poll_timeout")
+    generation = service.wait_for_generation(
+        campaign_id=args.campaign_id,
+        generation_index=args.generation,
+        operation_id=worker.operation_id,
+        timeout_seconds=args.timeout_seconds,
+    )
+    _print({"campaign_root": str(campaign_root), "generation": generation})
+    return 0 if generation["status"] == "completed" else 1
 
 
 if __name__ == "__main__":

@@ -11,7 +11,7 @@ from cmo_lua_agent.evolution.novelty import CandidateNoveltyValidator
 from cmo_lua_agent.evolution.production_models import FrozenCandidateSet
 from cmo_lua_agent.evolution.production_preview_builder import ProductionPreviewBuilder
 from cmo_lua_agent.optimization.proposal_models import CandidateProposalError
-from cmo_lua_agent.optimization.strategy_proposal_agent import StrategyProposalAgent
+from cmo_lua_agent.agents.strategy_proposal_agent import StrategyProposalAgent
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[4]

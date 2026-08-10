@@ -28,7 +28,7 @@ from cmo_lua_agent.optimization.phase6_models import (
     StrategyProposalContext,
 )
 # 策略生成Agent，用于产出4条候选策略
-from cmo_lua_agent.optimization.strategy_proposal_agent import StrategyProposalAgent
+from cmo_lua_agent.agents.strategy_proposal_agent import StrategyProposalAgent
 from cmo_lua_agent.generation.scored_lua_assembly import SCORED_RENDERER_VERSION
 from cmo_lua_agent.learning.skill_evolution.active_loader import (
     ActiveSkillLoader,

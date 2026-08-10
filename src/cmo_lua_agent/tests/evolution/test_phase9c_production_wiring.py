@@ -23,6 +23,7 @@ from cmo_lua_agent.hooks.permission_hook import ApprovalReceipt
 from cmo_lua_agent.optimization.bootstrap_skill_loader import BootstrapSkillLoader
 from cmo_lua_agent.optimization.phase6_models import StrategyCandidate
 import cmo_lua_agent.main as main_module
+import cmo_lua_agent.evolution.formal_candidate_evaluator as formal_evaluator_module
 from cmo_lua_agent.main import (
     _campaign_receipt_persister,
     build_chat_components,
@@ -285,6 +286,68 @@ def test_formal_candidate_evaluator_preflight_requires_both_executables(
         "cmo_batch_runner": str(runner.resolve()),
         "cmo_executable": str(command.resolve()),
     }
+
+
+def test_formal_candidate_evaluator_uses_campaign_repair_allowance(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured = {}
+
+    class Workflow:
+        def __init__(self, **_kwargs) -> None:
+            pass
+
+        def evaluate(self, request) -> None:
+            captured["request"] = request
+            request.candidate_dir.mkdir(parents=True, exist_ok=True)
+            (request.candidate_dir / "candidate_outcome.json").write_text(
+                json.dumps({"candidate_id": request.candidate_id}),
+                encoding="utf-8",
+            )
+
+    monkeypatch.setattr(formal_evaluator_module, "CandidateEvaluationWorkflow", Workflow)
+    monkeypatch.setattr(
+        formal_evaluator_module,
+        "CampaignAuthorizedCandidateRunner",
+        lambda **_kwargs: object(),
+    )
+    evaluator = FormalCandidateEvaluator(
+        json_client=object(),
+        cmo_runner_path=tmp_path / "runner.exe",
+        cmo_executable_path=tmp_path / "command.exe",
+    )
+    scenario_asset = SimpleNamespace(asset_id="scenario", sha256="checksum")
+    scenario = SimpleNamespace(scenario_id="scenario")
+    strategy = SimpleNamespace(scenario_id="scenario")
+    package = SimpleNamespace(
+        scenario_asset=scenario_asset,
+        manual_template_root=None,
+        scenario=scenario,
+        runtime=object(),
+        native_score_compilation=object(),
+        allowed_strategy_paths=("/attacks/0/fire_quantity",),
+    )
+    context = SimpleNamespace(
+        control_action=lambda: None,
+        spec=SimpleNamespace(
+            budget=SimpleNamespace(
+                max_repair_attempts_per_candidate=2,
+                per_candidate_timeout_seconds=30,
+            )
+        ),
+    )
+
+    evaluator(
+        candidate_id="candidate_01",
+        strategy=strategy,
+        candidate_dir=tmp_path / "candidate",
+        generation_index=0,
+        context=context,
+        package=package,
+    )
+
+    assert captured["request"].max_repairs == 2
 
 
 def test_campaign_receipt_persister_issues_grant_only_for_execute() -> None:

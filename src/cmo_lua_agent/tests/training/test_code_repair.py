@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import subprocess
+from types import SimpleNamespace
 
 from cmo_lua_agent.training.failures import FailureKind, FailureRecord
 from cmo_lua_agent.training.repair import CodeRepairCoordinator
@@ -49,6 +50,29 @@ def test_repair_coordinator_runs_repair_then_verifies_and_writes_log(tmp_path: P
     assert calls[1] == "python -m pytest src/cmo_lua_agent/tests/training -q"
     assert "ImportError" in calls[0]
     assert (tmp_path / "runs" / "training" / "training-001" / "code-repair-report.md").is_file()
+
+
+def test_repair_coordinator_delegates_adaptive_change_generation_to_agent(
+    tmp_path: Path,
+) -> None:
+    _init_repository(tmp_path)
+    prompts: list[str] = []
+    agent = SimpleNamespace(repair=lambda prompt: prompts.append(prompt) or "no change")
+    coordinator = CodeRepairCoordinator(
+        project_root=tmp_path,
+        system_repair_agent=agent,
+        test_runner=lambda _command: True,
+    )
+
+    result = coordinator.repair(
+        workflow_id="training-001",
+        record=_record(),
+        test_command="python -m pytest test_worker.py -q",
+    )
+
+    assert result.succeeded is True
+    assert len(prompts) == 1
+    assert "ImportError" in prompts[0]
 
 
 def test_repair_coordinator_commits_verified_clean_source_changes(tmp_path: Path) -> None:

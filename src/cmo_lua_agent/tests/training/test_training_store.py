@@ -51,6 +51,25 @@ def test_training_store_creates_minimal_resumable_workflow_files(
     }
 
 
+def test_training_store_loads_legacy_request_without_execution_mode(
+    tmp_path: Path,
+) -> None:
+    store = TrainingStore(tmp_path, "training-001")
+    store.create(_request())
+    request_path = store.root / "request.json"
+    legacy_value = json.loads(request_path.read_text(encoding="utf-8"))
+    legacy_value.pop("execution_mode")
+    request_path.write_text(
+        json.dumps(legacy_value, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+    loaded = store.load_request()
+
+    assert loaded.execution_mode == "PRODUCTION_CMO"
+    assert "execution_mode" not in json.loads(request_path.read_text(encoding="utf-8"))
+
+
 def test_training_store_transitions_state_with_monotonic_revision(tmp_path: Path) -> None:
     store = TrainingStore(tmp_path, "training-001")
     initial = store.create(_request())

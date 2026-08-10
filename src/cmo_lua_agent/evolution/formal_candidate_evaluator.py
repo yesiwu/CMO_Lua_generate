@@ -82,7 +82,7 @@ class FormalCandidateEvaluator:
             strategy=strategy,
             runtime=package.runtime,
             native_score_compilation=package.native_score_compilation,
-            max_repairs=0,
+            max_repairs=context.spec.budget.max_repair_attempts_per_candidate,
             timeout_seconds=context.spec.budget.per_candidate_timeout_seconds,
             candidate_dir=Path(candidate_dir),
             allowed_strategy_paths=package.allowed_strategy_paths,

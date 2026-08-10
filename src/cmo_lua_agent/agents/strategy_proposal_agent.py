@@ -17,8 +17,8 @@ from __future__ import annotations
 from dataclasses import replace
 
 from cmo_lua_agent.contract.strategy_validator import StrategyValidator
-from cmo_lua_agent.optimization.candidate_intent_planner import CandidateIntentPlanner, IntentJsonClient
-from cmo_lua_agent.optimization.candidate_patch_generator import CandidatePatchGenerator
+from cmo_lua_agent.agents.strategy_intent_agent import CandidateIntentPlanner, IntentJsonClient
+from cmo_lua_agent.agents.strategy_patch_agent import CandidatePatchGenerator
 from cmo_lua_agent.optimization.candidate_intent_conformance import (
     CandidateIntentConformanceValidator,
     check_candidate_role_feasibility,
