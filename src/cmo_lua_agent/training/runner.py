@@ -15,6 +15,7 @@ from cmo_lua_agent.training.models import (
 )
 from cmo_lua_agent.training.store import TrainingStore
 from cmo_lua_agent.training.failures import FailureClassifier, FailureKind
+from cmo_lua_agent.training.reporting import TrainingReportWriter
 
 
 class CampaignDriver(Protocol):
@@ -156,17 +157,21 @@ class TrainingRunner:
                         phase8=Phase8Progress(Phase8Status.FAILED, phase8_job_id),
                     )
                 self._store.append_event({"event": "phase8_completed", "campaign_id": state.campaign_id})
-                return self._store.transition(
+                completed = self._store.transition(
                     status=TrainingStatus.COMPLETED,
                     stage=TrainingStage.REPORT,
                     action=TrainingAction.IDLE,
                     phase8=Phase8Progress(Phase8Status.COMPLETED, phase8_job_id),
                 )
-            return self._store.transition(
+                self._write_reports(completed)
+                return completed
+            completed = self._store.transition(
                 status=TrainingStatus.COMPLETED,
                 stage=TrainingStage.REPORT,
                 action=TrainingAction.IDLE,
             )
+            self._write_reports(completed)
+            return completed
 
         generation_index = state.current_generation
         if state.action in {TrainingAction.VALIDATE_INPUT, TrainingAction.PREVIEW}:
@@ -202,6 +207,9 @@ class TrainingRunner:
                 return self._store.transition(action=TrainingAction.SUMMARIZE)
             return state
         return state
+
+    def _write_reports(self, state: TrainingState) -> None:
+        TrainingReportWriter(self._store).write(state)
 
     @staticmethod
     def _phase8_finished(result: dict[str, object]) -> bool:

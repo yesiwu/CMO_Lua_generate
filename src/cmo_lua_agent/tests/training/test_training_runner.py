@@ -78,6 +78,16 @@ def test_runner_completes_one_generation_without_user_approval(tmp_path: Path) -
     assert driver.calls == ["prepare", "preview:0", "execute:0", "inspect:0", "phase8:0"]
 
 
+def test_runner_writes_final_reports_for_a_completed_workflow(tmp_path: Path) -> None:
+    store = _store(tmp_path, generations=1)
+
+    TrainingRunner(store, FakeCampaignDriver()).run()
+
+    assert (store.root / "training-report.md").read_text(encoding="utf-8")
+    assert (store.root / "skill-generation-report.md").read_text(encoding="utf-8")
+    assert "Status: COMPLETED" in (store.root / "code-repair-report.md").read_text(encoding="utf-8")
+
+
 def test_runner_completes_phase8_when_no_experience_is_promotable(tmp_path: Path) -> None:
     class NoPromotableExperienceDriver(FakeCampaignDriver):
         def run_phase8(self, campaign_id: str, completed_generations: tuple[int, ...]) -> dict[str, str]:
