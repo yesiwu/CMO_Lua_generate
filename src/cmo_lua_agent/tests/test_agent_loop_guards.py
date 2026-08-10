@@ -126,20 +126,20 @@ def test_repeated_identical_failure_ends_with_actionable_summary() -> None:
 def test_default_loop_has_no_fixed_turn_ceiling() -> None:
     tool_calls = [
         _response(_tool_use(f"call-{index}", "generate_cmo_lua", {"json_path": "a.json"}))
-        for index in range(1, 12)
+        for index in range(1, 14)
     ]
     client = ScriptedClient([
         *tool_calls,
         _response(SimpleNamespace(type="text", text="done"), stop_reason="end_turn"),
     ])
-    registry = FakeRegistry({"generate_cmo_lua": [ToolResult('{"success": true}')] * 11})
+    registry = FakeRegistry({"generate_cmo_lua": [ToolResult('{"success": true}')] * 13})
 
     result = AgentLoop(client, registry, "test").run([
         {"role": "user", "content": "complete a long task"},
     ])
 
     assert result == "done"
-    assert len(client.requests) == 12
+    assert len(client.requests) == 14
 def test_three_discovery_turns_end_without_max_turn_exception() -> None:
     client = ScriptedClient(
         [
