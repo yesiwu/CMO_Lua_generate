@@ -71,6 +71,11 @@ class LuaSynthesisResult:
 
 # 底层确定性合成服务：不接触LLM，只做校验→编译→渲染→落盘
 class LuaSynthesisService:
+    """将受控策略输入转换为受限 Lua 合成请求的 Agent 服务。
+
+输出仍需经过生成/预检层验证；本类不绕过模板约束，也不把模型文本直接当作可执行 CMO
+脚本。
+    """
     def __init__(self) -> None:
         self._validator = StrategyValidator()                  # Phase1策略合法性校验
         self._compiler = ExecutionPlanCompiler()               # Phase2 策略转执行计划
@@ -211,7 +216,7 @@ def _strict_strategy(value: object) -> StrategySpec:
             not isinstance(sortie["air_tactics"], dict)
             or set(sortie["air_tactics"]) != {"launch_delay_seconds", "ingress_altitude_m", "popup_altitude_m", "popup_range_nm", "attack_range_nm"}
         ):
-            raise ValueError("air_tactics fields are invalid")
+            raise ValueError("air_tactics 字段不合法")
         if not isinstance(sortie["route"], list) or not all(
             isinstance(point, dict) and set(point) == {"latitude", "longitude"}
             for point in sortie["route"]

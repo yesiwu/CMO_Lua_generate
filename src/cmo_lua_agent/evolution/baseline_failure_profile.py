@@ -1,4 +1,8 @@
-"""Build the optional rolling-baseline failure profile from formal artifacts."""
+"""从正式产物构建可选的滚动基线失败画像。
+
+该读取器只消费已审核的机器接口，供后续候选方案比较识别重复失败模式；缺失、
+不完整或证据无效时返回 ``None``，由调用方按无失败画像继续，而不猜测历史结果。
+"""
 
 from __future__ import annotations
 
@@ -11,7 +15,7 @@ from cmo_lua_agent.evolution.production_models import BaselineFailureProfile
 
 
 class BaselineFailureProfileBuilder:
-    """Read only the three reviewed Phase 3 machine interfaces."""
+    """只读取三个经过审核的 Phase 3 机器接口。"""
 
     _FILES = (
         "execution-summary.json",

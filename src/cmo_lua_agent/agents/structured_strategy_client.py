@@ -23,6 +23,7 @@ class StructuredJsonClient(Protocol):
 
 # 上层策略专用结构化客户端，封装统一系统约束提示
 class StructuredStrategyClient:
+    """把底层 JSON 客户端适配为策略 Agent 使用的受限结构化调用接口。"""
     def __init__(self, client: StructuredJsonClient) -> None:
         # 注入实现了结构化输出协议的底层LLM客户端
         self._client = client

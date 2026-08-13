@@ -44,6 +44,7 @@ def test_three_generation_training_is_queryable_restartable_and_aggregates_phase
         input_resolver=type("Resolver", (), {"resolve": lambda _self, _path: type("Input", (), {"reference": "scenario.json"})()})(),
         process_manager=type("Process", (), {"start": lambda _self, workflow_id: launches.append(workflow_id) or 1})(),
         workflow_id_factory=lambda: "training-acceptance",
+        baseline_builder=lambda _workflow_id: "abc123",
     )
     service.start(input_path="scenario.json", objective="improve", generation_count=3)
     store = TrainingStore(tmp_path, "training-acceptance")

@@ -1,4 +1,8 @@
-"""Production knowledge snapshot assembly for Phase 9C previews."""
+"""为 Phase 9C 预览组装生产知识快照。
+
+快照在一代开始时冻结可见经验与任务范围内的 Curated Skill，传给提案链路；
+执行期间不重新查询知识库，以保证本代输入可复现。聚合后的新经验只影响下一代。
+"""
 
 from __future__ import annotations
 
@@ -31,7 +35,7 @@ class _GenerationExperienceRetriever:
 
 
 class ProductionKnowledgeSnapshotProvider:
-    """Freeze production experience and mission-scoped curated Skill visibility."""
+    """冻结生产经验及当前任务范围内可见的 Curated Skill。"""
 
     _SKILL_ID = "cmo_naval_air_strategy_patterns"
 

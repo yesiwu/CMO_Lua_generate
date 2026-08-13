@@ -67,6 +67,7 @@ def build_patchable_leaf_catalog(*, baseline: StrategySpec, scenario: ScenarioDe
 
 
 class StrategyPatchAssembler:
+    """将受限标量 Patch 组装为完整策略，并保留可验证的变更路径。"""
     def __init__(self, *, baseline: StrategySpec, catalog: tuple[PatchableLeaf, ...]) -> None:
         self._baseline = baseline
         self._catalog = {leaf.path: leaf for leaf in catalog}

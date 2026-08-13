@@ -43,6 +43,7 @@ from cmo_lua_agent.tools.read_file_tool import (
     ReadFileTool,
 )
 from cmo_lua_agent.tools.list_directory_tool import ListDirectoryTool
+from cmo_lua_agent.tools.search_workspace_tool import SearchWorkspaceTool
 from cmo_lua_agent.tools.list_skills_tool import (
     ListSkillsTool,
 )
@@ -137,7 +138,7 @@ def build_tool_registry(
         for tool in training_tools(service=training_service):
             registry.register(tool)
         return registry
-    if chat_profile != "standard":
+    if chat_profile not in {"standard", "all"}:
         raise ValueError("unknown_chat_profile")
 
 
@@ -146,6 +147,8 @@ def build_tool_registry(
             workdir=workdir
         )
     )
+
+    registry.register(SearchWorkspaceTool(workdir=workdir))
 
     registry.register(
         EditFileTool(
@@ -232,5 +235,17 @@ def build_tool_registry(
             cmo_runner=cmo_runner,
         )
     )
+
+    if chat_profile == "all":
+        # 主 AgentLoop 同时拥有普通场景、长期训练和 Campaign 高层工具。这里仍要求
+        # 两项服务显式注入，避免依赖缺失时悄悄退化成能力不完整的“主入口”。
+        if training_service is None:
+            raise ValueError("all_chat_profile_requires_training_service")
+        if evolution_campaign_service is None:
+            raise ValueError("all_chat_profile_requires_campaign_service")
+        for tool in training_tools(service=training_service):
+            registry.register(tool)
+        for tool in campaign_tools(service=evolution_campaign_service):
+            registry.register(tool)
 
     return registry

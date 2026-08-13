@@ -1,2 +1,5 @@
-"""Persistent orchestration for unattended multi-generation training."""
+"""无人值守多代训练的持久化编排包。
 
+公开入口由 ``service`` 提供，后台 ``runner`` 使用 ``store`` 保存最小恢复状态；
+训练完成后统一进入 Phase 8 聚合，避免在单代运行中混入新经验。
+"""

@@ -16,6 +16,7 @@ from cmo_lua_agent.optimization.phase6_models import EvaluationIdentity, Leaderb
 
 
 class CandidateComparator:
+    """按正式评分与有效性规则比较候选，提供稳定排序而不预测 CMO 得分。"""
     def compare(self, *, outcomes: Iterable[tuple[CandidateOutcome, EvaluationIdentity, bool]]) -> tuple[LeaderboardEntry, ...]:
         """
         批量处理一批候选结果，完成分类、打分排序、生成排行榜条目

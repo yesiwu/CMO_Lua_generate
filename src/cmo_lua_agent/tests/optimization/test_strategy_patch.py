@@ -261,7 +261,7 @@ def test_fake_proposal_cannot_repair_a_hand_forged_fire_delay_patch() -> None:
     assert client.calls == 1
     assert agent.last_usage.repair_calls == 0
     assert client.prompt is not None
-    assert "different from its current_value" in client.prompt["candidate_instruction"]  # type: ignore[index]
+    assert "不同于 current_value" in client.prompt["candidate_instruction"]  # type: ignore[index]
     paths = {
         item["path"] for item in client.prompt["patchable_leaves"]  # type: ignore[index]
     }

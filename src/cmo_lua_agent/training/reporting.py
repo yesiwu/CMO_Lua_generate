@@ -1,4 +1,8 @@
-"""Small deterministic reports written when a training workflow reaches a terminal state."""
+"""训练 Workflow 到达终态时写入的简洁确定性报告。
+
+报告从已持久化请求、状态和事件日志重建，不依赖模型总结；这样即使后台进程重启，
+最终交付给用户的训练、Phase 8 与代码修复记录仍可复核。
+"""
 
 from __future__ import annotations
 
@@ -9,10 +13,17 @@ from cmo_lua_agent.training.store import TrainingStore
 
 
 class TrainingReportWriter:
+    """从已持久化事实生成终态报告，不承担训练状态推进职责。"""
+
     def __init__(self, store: TrainingStore) -> None:
         self._store = store
 
     def write(self, state: TrainingState) -> None:
+        """写入训练、Skill 聚合与缺省代码修复报告。
+
+        经验 ID 从每代正式结果读取，而不是从内存缓存读取，保证后台进程重启后报告内容
+        与 Campaign 产物一致。
+        """
         request = self._store.load_request()
         events = self._events()
         self._write(
@@ -47,14 +58,9 @@ class TrainingReportWriter:
                 "",
             )),
         )
-        repair = self._store.root / "code-repair-report.md"
-        if not repair.is_file():
-            self._write(
-                "code-repair-report.md",
-                "# Code repair\n\n- Status: COMPLETED\n- No code repair was required for this workflow.\n",
-            )
 
     def _events(self) -> list[str]:
+        """按写入顺序读取事件日志，日志缺失时返回空列表以支持早期失败报告。"""
         journal = self._store.root / "journal.jsonl"
         if not journal.is_file():
             return []
@@ -65,6 +71,7 @@ class TrainingReportWriter:
         return values
 
     def _experience_ids(self, state: TrainingState) -> list[str]:
+        """收集已完成代正式结果中的 Phase 7 经验 ID，不触发新的经验查询或聚合。"""
         if not state.campaign_id:
             return ["none"]
         project_root = self._store.root.parents[2]
@@ -81,4 +88,5 @@ class TrainingReportWriter:
         return sorted(experience_ids) or ["none"]
 
     def _write(self, name: str, content: str) -> None:
+        """以统一 UTF-8 与换行格式写入报告文件。"""
         (self._store.root / name).write_text(content, encoding="utf-8", newline="\n")

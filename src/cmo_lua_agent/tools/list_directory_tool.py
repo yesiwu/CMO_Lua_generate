@@ -8,6 +8,7 @@ from typing import Any
 
 from cmo_lua_agent.tools.tool_base.base import BaseTool, ToolResult
 from cmo_lua_agent.tools.tool_base.context import ToolContext
+from cmo_lua_agent.tools.workspace_policy import WorkspacePathError, WorkspacePathPolicy
 
 
 class ListDirectoryTool(BaseTool):
@@ -36,12 +37,10 @@ class ListDirectoryTool(BaseTool):
 
     def __init__(self, workdir: Path) -> None:
         self._workdir = workdir.resolve()
+        self._paths = WorkspacePathPolicy(self._workdir)
 
     def _resolve_path(self, raw_path: str) -> Path:
-        candidate = Path(raw_path).expanduser()
-        if candidate.is_absolute():
-            return candidate.resolve()
-        return (self._workdir / candidate).resolve()
+        return self._paths.resolve_directory(raw_path)
 
     def execute(
         self,
@@ -64,7 +63,10 @@ class ListDirectoryTool(BaseTool):
                 context,
             )
 
-        path = self._resolve_path(raw_path)
+        try:
+            path = self._resolve_path(raw_path)
+        except WorkspacePathError as exc:
+            return self._failure(exc.code, exc.message, context)
         if context is not None:
             context.progress.tool_started("正在列出目录")
 
@@ -79,10 +81,7 @@ class ListDirectoryTool(BaseTool):
             )
 
         try:
-            children = sorted(
-                path.iterdir(),
-                key=lambda item: (not item.is_dir(), item.name.casefold()),
-            )
+            children = self._paths.visible_children(raw_path)
         except PermissionError as exc:
             return self._failure(
                 "directory_access_denied",

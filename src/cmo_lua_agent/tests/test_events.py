@@ -30,6 +30,8 @@ def test_event_type_values_are_stable() -> None:
     assert AgentEventType.LLM_STARTED.value == "llm_started"
     assert AgentEventType.TEXT_DELTA.value == "text_delta"
     assert AgentEventType.LLM_COMPLETED.value == "llm_completed"
+    assert AgentEventType.CONTEXT_COMPACTION_STARTED.value == "context_compaction_started"
+    assert AgentEventType.CONTEXT_COMPACTION_COMPLETED.value == "context_compaction_completed"
 
     assert AgentEventType.TOOL_STARTED.value == "tool_started"
     assert AgentEventType.TOOL_COMPLETED.value == "tool_completed"

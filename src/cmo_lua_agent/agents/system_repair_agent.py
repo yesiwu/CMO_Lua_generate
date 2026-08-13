@@ -1,35 +1,39 @@
-"""Adaptive source-code repair agent used by persistent training workflows."""
+"""旧名称兼容层；正式实现已经迁移到 ``CodeRepairAgent``。
+
+保留本模块是为了不破坏已有导入和注入测试。新生产链路不再启动本地 Codex CLI。
+"""
 
 from __future__ import annotations
 
-from pathlib import Path
-import subprocess
 from typing import Callable
+
+from cmo_lua_agent.agents.code_repair_agent import CodeRepairAgent
 
 
 class SystemRepairAgent:
-    """Ask a Codex-compatible backend to make the requested source change."""
+    """兼容旧 ``repair(context)->str`` 接口的轻量适配器。"""
 
     def __init__(
         self,
         *,
-        project_root: Path,
+        project_root,
+        llm_client: object | None = None,
         backend: Callable[[str], str] | None = None,
     ) -> None:
-        self._root = Path(project_root).resolve()
-        self._backend = backend or self._run_codex
+        if backend is None and llm_client is None:
+            raise ValueError("system_repair_llm_client_required")
+        self._backend = backend
+        self._agent = (
+            CodeRepairAgent(project_root=project_root, llm_client=llm_client)
+            if llm_client is not None
+            else None
+        )
 
     def repair(self, prompt: str) -> str:
+        """执行修复提示并返回后端摘要；空提示直接拒绝，其他验证由协调器承担。"""
         if not isinstance(prompt, str) or not prompt.strip():
             raise ValueError("system_repair_prompt_required")
-        return self._backend(prompt)
-
-    def _run_codex(self, prompt: str) -> str:
-        completed = subprocess.run(
-            ["codex", "exec", "--full-auto", prompt],
-            cwd=self._root,
-            text=True,
-            capture_output=True,
-            check=True,
-        )
-        return completed.stdout.strip()
+        if self._backend is not None:
+            return self._backend(prompt)
+        assert self._agent is not None
+        return self._agent.repair(prompt)

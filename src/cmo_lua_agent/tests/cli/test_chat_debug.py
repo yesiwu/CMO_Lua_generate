@@ -111,6 +111,74 @@ def test_agent_failure_closes_stream_and_allows_next_turn_to_start() -> None:
     display.stop()
 
 
+def test_context_compaction_has_independent_activity_and_completion_summary() -> None:
+    output = StringIO()
+    state = UIState()
+    display = TerminalDisplay(
+        state,
+        console=Console(file=output, force_terminal=False, width=120),
+    )
+
+    display.handle(
+        AgentEvent(
+            type=AgentEventType.CONTEXT_COMPACTION_STARTED,
+            message="正在压缩上下文",
+            data={
+                "estimated_tokens_before": 812_400,
+                "context_window_tokens": 1_000_000,
+                "target_tokens": 600_000,
+            },
+        )
+    )
+
+    assert state.current_activity == "正在智能压缩上下文 · 预计 812,400 / 1,000,000 tokens"
+
+    display.handle(
+        AgentEvent(
+            type=AgentEventType.CONTEXT_COMPACTION_COMPLETED,
+            message="上下文压缩完成",
+            data={
+                "estimated_tokens_before": 812_400,
+                "estimated_tokens_after": 598_200,
+                "retained_message_count": 12,
+                "duration_seconds": 0.15,
+            },
+        )
+    )
+
+    assert state.current_activity == "正在请求模型"
+    rendered = output.getvalue()
+    assert "上下文压缩完成" in rendered
+    assert "812,400 → 598,200 tokens" in rendered
+    assert "保留最近 12 条消息" in rendered
+
+
+def test_context_compaction_reports_semantic_fallback() -> None:
+    output = StringIO()
+    state = UIState()
+    display = TerminalDisplay(
+        state,
+        console=Console(file=output, force_terminal=False, width=120),
+    )
+
+    display.handle(
+        AgentEvent(
+            type=AgentEventType.CONTEXT_COMPACTION_COMPLETED,
+            message="上下文压缩完成",
+            data={
+                "estimated_tokens_before": 900_000,
+                "estimated_tokens_after": 590_000,
+                "retained_message_count": 12,
+                "strategy": "deterministic_fallback",
+                "fallback_reason": "ConnectionError",
+            },
+        )
+    )
+
+    assert "智能压缩失败，已使用确定性降级压缩" in output.getvalue()
+    assert "ConnectionError" in output.getvalue()
+
+
 def test_agent_needs_input_is_not_rendered_as_agent_failure() -> None:
     output = StringIO()
     state = UIState()

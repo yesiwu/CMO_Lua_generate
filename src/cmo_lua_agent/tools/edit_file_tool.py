@@ -10,6 +10,7 @@ from typing import Any
 
 from cmo_lua_agent.tools.tool_base.base import BaseTool, ToolResult
 from cmo_lua_agent.tools.tool_base.context import ToolContext
+from cmo_lua_agent.tools.workspace_policy import WorkspacePathError, WorkspacePathPolicy
 
 
 class EditFileTool(BaseTool):
@@ -57,6 +58,7 @@ class EditFileTool(BaseTool):
 
     def __init__(self, *, workdir: Path) -> None:
         self._workdir = Path(workdir).resolve(strict=False)
+        self._paths = WorkspacePathPolicy(self._workdir)
 
     def execute(
         self,
@@ -102,14 +104,10 @@ class EditFileTool(BaseTool):
         raw_path = arguments.get("path")
         if not isinstance(raw_path, str) or not raw_path.strip():
             raise _EditError("invalid_path", "path 必须是非空字符串")
-        candidate = Path(raw_path).expanduser()
-        path = (
-            candidate.resolve(strict=False)
-            if candidate.is_absolute()
-            else (self._workdir / candidate).resolve(strict=False)
-        )
-        if not path.is_relative_to(self._workdir):
-            raise _EditError("path_outside_workspace", "只能修改工作区内的文件")
+        try:
+            path = self._paths.resolve_file(raw_path)
+        except WorkspacePathError as exc:
+            raise _EditError(exc.code, exc.message) from exc
         if path.suffix.lower() not in self._TEXT_SUFFIXES:
             raise _EditError("unsupported_file_type", "只允许修改受支持的文本文件")
         if not path.is_file():

@@ -329,7 +329,11 @@ class ProductionEvolutionCampaignService:
         return service
 
     def load_campaign(self, campaign_id: str) -> EvolutionCampaignService:
-        """Recreate a Campaign core from its persisted specification and input package."""
+        """按持久化 spec 重建 Campaign 内核，供重启后的公开 API 继续使用。
+
+服务缓存只是性能优化；磁盘中的 Campaign spec 和输入包才是恢复依据，因此缓存丢失
+不能改变本代的 baseline、执行模式或下游 Artifact 目录。
+        """
         root = self._campaigns_root / campaign_id
         spec = EvolutionCampaignService.load_spec(root)
         package = self._package_loader.load(spec.scenario_ref)
@@ -397,7 +401,11 @@ class ProductionEvolutionCampaignService:
         operation_id: str,
         timeout_seconds: float,
     ) -> dict[str, Any]:
-        """Wait for one in-process generation worker through the public runtime API."""
+        """经公开 Campaign API 等待一个 Worker，再读取该代持久化结果。
+
+手工脚本只能使用该接口，不能访问 ``_services`` 或 CampaignStore 私有方法；这样
+脚本与 Training Runtime 始终走同一条恢复和状态读取链路。
+        """
         service = self._service(campaign_id)
         service.wait_for_worker(operation_id, timeout_seconds)
         return service.inspect_generation(campaign_id, generation_index)
@@ -416,7 +424,11 @@ class ProductionEvolutionCampaignService:
         campaign_id: str,
         completed_generations: tuple[int, ...],
     ) -> dict[str, object]:
-        """Freeze this workflow's Phase 7 experience ids and aggregate them once."""
+        """冻结本 Workflow 已完成代的 Phase 7 经验 ID，并统一聚合一次。
+
+只从已完成 Generation 的正式结果读取 experience_ids。聚合期间不再启动新的代，
+从而使本轮 Phase 8 的输入集合稳定；没有可升级经验是正常完成结果，而非训练失败。
+        """
         experience_ids: list[str] = []
         for generation_index in completed_generations:
             generation = self.inspect_generation(campaign_id, generation_index)

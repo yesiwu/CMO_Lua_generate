@@ -127,7 +127,7 @@ def test_agent_rejects_scalar_where_string_array_is_required(field: str):
         "contradicting_candidate_ids": [], "model_confidence": .2,
     }
     row[field] = "not-an-array"
-    with pytest.raises(ValueError, match="must be an array of strings"):
+    with pytest.raises(ValueError, match="必须是字符串数组"):
         ComparativeLearningAgent(_Client(_response([row]))).analyze(_bundle())
 
 

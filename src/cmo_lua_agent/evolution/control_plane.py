@@ -165,6 +165,11 @@ class GenerationWorkerContext:
 
 
 class CampaignPermissionBroker:
+    """单代 CMO 尝试的授权与槽位门卫。
+
+由 Generation Worker 在真正执行外部 CMO 前使用。它只校验并记录当前 Preview/审批/
+attempt slot 是否匹配；不生成候选、不执行 CMO，也不把用户授权改写成新的业务结果。
+    """
     """
     CMO仿真尝试唯一准入网关
     所有CMO启动请求必须经过本代理校验，统一实施多层安全与配额限制
@@ -177,6 +182,7 @@ class CampaignPermissionBroker:
         self._production_lock_held = production_lock_held
 
     def authorize_cmo_attempt(self, *, attempt_input_checksum: str) -> str:
+        """校验当前授权后登记一次 CMO 尝试，返回可追溯 operation_id。"""
         """
         授权单次CMO仿真尝试，全部校验通过后在账本注册操作并占用算力配额
         :return: operation_id 本次CMO操作唯一标识
@@ -282,6 +288,11 @@ class CampaignPermissionBroker:
 
 
 class GenerationWorkerManager:
+    """管理一代后台 Worker 的启动、等待和持久化终结状态。
+
+Worker 的内存线程不是恢复真相；CampaignStore 中的 worker/control/operation 记录才是。
+因此重启后的 CampaignService 会先对账，不会盲目重新执行状态未知的 CMO 尝试。
+    """
     """
     进程内世代Worker线程管理器
     线程运行时内存状态由本类持有；权威持久化状态始终保存在CampaignStore
@@ -293,6 +304,7 @@ class GenerationWorkerManager:
         self._production_locks: dict[str, CmoInstanceLock] = {} # 持有CMO独占锁缓存
 
     def start_or_get(self, *, store: CampaignStore, spec: EvolutionCampaignSpec, preview: GenerationPreview, executor: GenerationExecutor) -> WorkerState:
+        """幂等地取得本代 Worker；已有 operation 时不创建第二个并发执行器。"""
         """
         启动世代Worker；如果已有运行/历史完成Worker，直接返回，避免重复启动
         """
@@ -413,6 +425,12 @@ class GenerationWorkerManager:
 
 
 class EvolutionCampaignService:
+    """Campaign 的持久化状态机与 Worker 控制内核。
+
+上游是 ProductionEvolutionCampaignService（以及其公开 Chat/Training API），下游是
+PreviewBuilder 和 GenerationExecutor。它负责 Preview、授权、Worker、暂停/恢复/停止
+与 Artifact 对账；不在这里实现 LLM 提示、CMO 细节或 Training 的跨代调度。
+    """
     """
     推演演化顶层服务
     对话侧6个campaign工具唯一调用边界，对外暴露最小可控API
@@ -424,6 +442,7 @@ class EvolutionCampaignService:
         self._workers = GenerationWorkerManager(synchronous_fake_workers=synchronous_fake_workers)
 
     def prepare_campaign(self, spec: EvolutionCampaignSpec) -> dict[str, Any]:
+        """初始化 Campaign 根目录与控制状态；已存在时保持幂等，不覆盖历史 Artifact。"""
         """新建一套推演任务，初始化持久化目录与状态，对应工具 prepare_evolution_campaign"""
         root = self._campaign_root(spec.campaign_id)
         if root.exists():
@@ -437,6 +456,7 @@ class EvolutionCampaignService:
         return self.inspect_campaign(spec.campaign_id)
 
     def preview_generation(self, *, campaign_id: str, generation_index: int, regenerate_preview: bool = False) -> GenerationPreview:
+        """生成或读取一代 Preview；只有显式 regenerate 才会使旧预览失效。"""
         """
         生成/读取世代预览快照，对应工具 preview_evolution_generation
         包含候选策略、策略差异快照；预览重新生成时自动作废旧审批单
@@ -683,6 +703,7 @@ class EvolutionCampaignService:
         generation_index: int,
         approval_id: str | None = None,
     ) -> WorkerState:
+        """启动或复用一代 Worker；返回 operation 状态，不在 API 调用内阻塞等待 CMO。"""
         """启动世代Worker，对应工具 execute_evolution_generation；要求存在有效审批单"""
         store, spec = self._load(campaign_id)
         active = store.get_active_worker(campaign_id=campaign_id, generation_index=generation_index)
@@ -844,6 +865,7 @@ class EvolutionCampaignService:
         campaign_id: str,
         generation_index: int,
     ) -> dict[str, Any]:
+        """根据落盘 Artifact 对账一代状态，供重启后的 TrainingRunner 安全恢复。"""
         """Reconcile a generation interrupted after its worker process disappeared."""
         store, _ = self._load(campaign_id)
         workers = [

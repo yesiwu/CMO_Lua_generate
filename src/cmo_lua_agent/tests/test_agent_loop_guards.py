@@ -102,12 +102,13 @@ def test_directory_read_recovers_once_with_list_directory() -> None:
     assert [event.type for event in events].count(AgentEventType.TOOL_STARTED) == 2
 
 
-def test_repeated_identical_failure_ends_with_actionable_summary() -> None:
+def test_repeated_identical_failure_returns_replan_signal_to_model() -> None:
     failure = ToolResult('{"success": false, "error": {"message": "文件不存在"}}', is_error=True)
     client = ScriptedClient(
         [
             _response(_tool_use("call-1", "read_file", {"path": "missing.txt"})),
             _response(_tool_use("call-2", "read_file", {"path": "missing.txt"})),
+            _response(SimpleNamespace(type="text", text="文件不存在，我需要用户提供正确路径。"), stop_reason="end_turn"),
         ]
     )
     registry = FakeRegistry({"read_file": [failure, failure]})
@@ -117,10 +118,14 @@ def test_repeated_identical_failure_ends_with_actionable_summary() -> None:
 
     result = loop.run(messages)
 
-    assert "连续失败两次" in result
+    assert result == "文件不存在，我需要用户提供正确路径。"
     assert len(registry.calls) == 2
-    assert events[-1].type is AgentEventType.AGENT_NEEDS_INPUT
-    assert messages[-1] == {"role": "assistant", "content": result}
+    assert events[-1].type is AgentEventType.AGENT_COMPLETED
+    repeated_result = client.requests[2][-1]["content"][0]
+    repeated_payload = json.loads(repeated_result["content"])
+    assert repeated_payload["error"] == "repeated_identical_failure"
+    assert repeated_payload["tool"] == "read_file"
+    assert "重新分析" in repeated_payload["instruction"]
 
 
 def test_default_loop_has_no_fixed_turn_ceiling() -> None:
@@ -140,25 +145,49 @@ def test_default_loop_has_no_fixed_turn_ceiling() -> None:
 
     assert result == "done"
     assert len(client.requests) == 14
-def test_three_discovery_turns_end_without_max_turn_exception() -> None:
+def test_multiple_discovery_turns_can_continue_to_a_final_answer() -> None:
     client = ScriptedClient(
         [
             _response(_tool_use("call-1", "list_directory", {"path": "one"})),
             _response(_tool_use("call-2", "list_directory", {"path": "two"})),
             _response(_tool_use("call-3", "list_directory", {"path": "three"})),
+            _response(_tool_use("call-4", "list_directory", {"path": "four"})),
+            _response(SimpleNamespace(type="text", text="探索完成。"), stop_reason="end_turn"),
         ]
     )
     registry = FakeRegistry(
-        {"list_directory": [ToolResult("{}"), ToolResult("{}"), ToolResult("{}")]}
+        {"list_directory": [ToolResult("{}"), ToolResult("{}"), ToolResult("{}"), ToolResult("{}")]}
     )
     loop = AgentLoop(client, registry, "test")
     messages = [{"role": "user", "content": "探索"}]
 
     result = loop.run(messages)
 
-    assert "连续进行了目录、Skill 或文件探索" in result
-    assert len(client.requests) == 3
-    assert messages[-1] == {"role": "assistant", "content": result}
+    assert result == "探索完成。"
+    assert len(client.requests) == 5
+
+
+def test_success_clears_same_call_failure_streak() -> None:
+    failure = ToolResult('{"success": false, "error": {"message": "临时拒绝访问"}}', is_error=True)
+    client = ScriptedClient(
+        [
+            _response(_tool_use("call-1", "read_file", {"path": "main.py"})),
+            _response(_tool_use("call-2", "read_file", {"path": "main.py"})),
+            _response(_tool_use("call-3", "read_file", {"path": "main.py"})),
+            _response(SimpleNamespace(type="text", text="已读取。"), stop_reason="end_turn"),
+        ]
+    )
+    registry = FakeRegistry(
+        {"read_file": [failure, ToolResult("source"), failure]}
+    )
+
+    result = AgentLoop(client, registry, "test").run(
+        [{"role": "user", "content": "读取 main.py"}]
+    )
+
+    assert result == "已读取。"
+    third_result = client.requests[3][-1]["content"][0]
+    assert json.loads(third_result["content"])["error"]["message"] == "临时拒绝访问"
 
 
 def test_explicit_json_path_does_not_trigger_discovery_budget() -> None:

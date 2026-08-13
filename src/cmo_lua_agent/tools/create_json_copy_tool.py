@@ -10,6 +10,7 @@ from typing import Any
 from cmo_lua_agent.tools.edit_file_tool import _EditError
 from cmo_lua_agent.tools.tool_base.base import BaseTool, ToolResult
 from cmo_lua_agent.tools.tool_base.context import ToolContext
+from cmo_lua_agent.tools.workspace_policy import WorkspacePathError, WorkspacePathPolicy
 
 
 class CreateJsonCopyTool(BaseTool):
@@ -46,6 +47,7 @@ class CreateJsonCopyTool(BaseTool):
 
     def __init__(self, *, workdir: Path) -> None:
         self._workdir = Path(workdir).resolve(strict=False)
+        self._paths = WorkspacePathPolicy(self._workdir)
 
     def execute(self, arguments: dict[str, Any], context: ToolContext | None = None) -> ToolResult:
         if context is not None:
@@ -72,10 +74,10 @@ class CreateJsonCopyTool(BaseTool):
     def _path(self, raw: Any, *, must_exist: bool) -> Path:
         if not isinstance(raw, str) or not raw.strip():
             raise _EditError("invalid_path", "路径必须是非空字符串")
-        candidate = Path(raw).expanduser()
-        path = candidate.resolve(strict=False) if candidate.is_absolute() else (self._workdir / candidate).resolve(strict=False)
-        if not path.is_relative_to(self._workdir):
-            raise _EditError("path_outside_workspace", "只能访问工作区内的 JSON 文件")
+        try:
+            path = self._paths.resolve_file(raw)
+        except WorkspacePathError as exc:
+            raise _EditError(exc.code, exc.message) from exc
         if path.suffix.lower() != ".json":
             raise _EditError("unsupported_file_type", "只允许 .json 文件")
         if must_exist and not path.is_file():
@@ -112,6 +114,7 @@ class CreateJsonCopyTool(BaseTool):
 
     @staticmethod
     def _create(path: Path, content: str) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
         descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
         try:
             with os.fdopen(descriptor, "w", encoding="utf-8", newline="\n") as stream:

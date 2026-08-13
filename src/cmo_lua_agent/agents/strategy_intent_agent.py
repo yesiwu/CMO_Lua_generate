@@ -1,4 +1,8 @@
-"""LLM agent that turns an objective into four bounded candidate intents."""
+"""候选意图 Agent：把本代目标转化为四个受约束的候选方案意图。
+
+该模块接收 Phase 6 的策略上下文，调用结构化 LLM 客户端生成候选意图；下游
+``strategy_patch_agent`` 再据此生成可验证补丁。它只负责意图，不直接修改策略或执行 CMO。
+"""
 
 from __future__ import annotations
 
@@ -29,6 +33,7 @@ _LEGACY_ROLE_SPECS = (
 
 
 class CandidateIntentPlanner:
+    """调用结构化 LLM 规划候选意图；不生成完整 StrategySpec，也不管理预算。"""
     def __init__(self, client: IntentJsonClient) -> None:
         self._client = client
         self.last_call_count = 0
@@ -127,6 +132,8 @@ def _supported_dimensions(context: StrategyProposalContext) -> set[str]:
     return values
 
 
-_SYSTEM = """You are CandidateIntentPlanner. Return exactly one JSON object with an intents array of four items.
-Each item has only objective and strategy_dimensions. strategy_dimensions are preferred dimensions, not a checklist that every patch must implement exactly.
-Do not include candidate IDs, roles, patches, strategies, Lua, CMO commands, scores, or extra fields. Choose only supplied dimensions. The system assigns fixed candidate roles and validates all patches later."""
+_SYSTEM = """你是 CandidateIntentPlanner。只能返回一个 JSON 对象，其中 intents 数组必须恰好包含四项。
+每项只能包含 objective 和 strategy_dimensions。strategy_dimensions 表示偏好的维度，
+不是每个 Patch 都必须逐项实现的清单。
+不得包含 candidate ID、角色、Patch、完整策略、Lua、CMO 命令、分数或额外字段。
+只能从输入提供的维度中选择；候选固定角色由系统分配，所有 Patch 会在后续由系统校验。"""

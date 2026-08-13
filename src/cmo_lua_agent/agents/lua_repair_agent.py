@@ -56,6 +56,11 @@ class LuaRepairResult:
 
 # Phase4 修复核心Agent：仅生成结构化补丁，不执行Lua、不发起CMO仿真
 class LuaRepairAgent:
+    """基于受限错误证据提出 Lua 候选修复，不直接写入正式 Campaign 状态。
+
+候选评估链调用它取得结构化修复建议，再由确定性校验和 CMO 重跑决定是否接受；它不修
+Python 源码，后者属于 SystemRepairAgent/CodeRepairCoordinator。
+    """
     def __init__(self, client: StructuredJsonClient, *, patch_registry: RuntimePatchRegistry | None = None) -> None:
         # 封装LLM结构化输出客户端，强制规范JSON返回
         self._client = StructuredStrategyClient(client)
@@ -106,7 +111,7 @@ class LuaRepairAgent:
                 self._registry.validate(proposal=proposal, plan=request.plan)
                 return LuaRepairResult(
                     repair_kind=route.kind,
-                    diagnosis="registered runtime patch proposal",
+                    diagnosis="已登记的运行时补丁提案",
                     patch=proposal,
                     change_summary=(),
                     affected_operations=(proposal.operation_id,),
@@ -122,7 +127,7 @@ class LuaRepairAgent:
             patches = _strategy_patches(payload, request.allowed_strategy_paths)
             return LuaRepairResult(
                 repair_kind=route.kind,
-                diagnosis="restricted strategy patch proposal",
+                diagnosis="受限策略补丁提案",
                 patch=patches,
                 change_summary=tuple(str(x) for x in payload["change_summary"]),
                 affected_operations=(),

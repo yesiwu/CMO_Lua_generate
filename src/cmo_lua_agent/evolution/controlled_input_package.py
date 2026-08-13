@@ -50,6 +50,11 @@ class ControlledCampaignInputPackage:
 
 
 class ControlledCampaignInputPackageLoader:
+    """加载并固定 Campaign 所需的场景、基线与运行契约输入包。
+
+ProductionEvolutionCampaignService 在 prepare/load 时调用它；加载结果供 Preview 与
+Executor 共用，避免各阶段各自读取不同版本的外部输入。
+    """
     PACKAGE_ID = "red_blue_6v4_liaoning_v1"
     ASSET_ID = "red_blue_6v4_liaoning_scen_v1"
     _ALLOWED_PATHS = (

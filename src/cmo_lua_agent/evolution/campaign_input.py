@@ -1,4 +1,8 @@
-"""Load the controlled 6v4 campaign input from ScenarioIR."""
+"""从 ScenarioIR 装载受控的 6v4 Campaign 输入。
+
+此处是生产训练输入的单一入口：组装场景、基线策略、运行时配置和计分基线，
+并记录来源校验和。它显式拒绝旧基线覆盖，避免新旧训练链路在同一代中混用。
+"""
 
 from __future__ import annotations
 
@@ -17,7 +21,7 @@ from cmo_lua_agent.scoring.baseline import compile_score_baseline
 
 @dataclass(frozen=True, slots=True)
 class CampaignInputBundle:
-    """The deterministic input bundle for the controlled 6v4 campaign."""
+    """受控 6v4 Campaign 的确定性输入包，供预览与正式执行共同使用。"""
 
     project_root: Path
     baseline_root: Path
@@ -33,7 +37,7 @@ class CampaignInputBundle:
 
 
 class CampaignInputLoader:
-    """Load the production 6v4 input without consulting legacy assets."""
+    """装载生产 6v4 输入，且不回退查询旧版资产。"""
 
     def load_6v4(
         self,

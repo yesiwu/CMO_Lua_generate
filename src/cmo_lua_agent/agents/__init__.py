@@ -1,6 +1,8 @@
 """Public entry points for adaptive decision agents."""
 
 from cmo_lua_agent.agents.comparative_learning_agent import ComparativeLearningAgent
+from cmo_lua_agent.agents.code_repair_agent import CodeRepairAgent, RepairAgentResult, RepairAgentStatus
+from cmo_lua_agent.agents.context_summary_agent import ContextSummaryAgent
 from cmo_lua_agent.agents.lua_repair_agent import LuaRepairAgent
 from cmo_lua_agent.agents.lua_synthesis_agent import LuaSynthesisAgent
 from cmo_lua_agent.agents.skill_author_agent import SkillAuthorAgent
@@ -18,4 +20,8 @@ __all__ = [
     "CandidatePatchGenerator",
     "StrategyProposalAgent",
     "SystemRepairAgent",
+    "CodeRepairAgent",
+    "RepairAgentResult",
+    "RepairAgentStatus",
+    "ContextSummaryAgent",
 ]

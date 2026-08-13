@@ -101,7 +101,7 @@ def test_proposal_agent_prompts_for_intents_then_scalar_patches() -> None:
     assert len(client.systems) == 5
     assert "CandidateIntentPlanner" in client.systems[0]
     assert "CandidatePatchGenerator" in client.systems[1]
-    assert "full strategy" in client.systems[1]
+    assert "完整替换 Patch" in client.systems[1]
 
 
 def test_candidate_set_rejects_reordered_or_forbidden_changes() -> None:

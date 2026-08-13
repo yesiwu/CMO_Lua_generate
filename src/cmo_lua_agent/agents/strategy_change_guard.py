@@ -16,6 +16,11 @@ from cmo_lua_agent.contract.strategy_models import StrategySpec, strategy_spec_f
 # 单条策略修改补丁：仅支持标量替换操作
 @dataclass(frozen=True, slots=True)
 class RestrictedStrategyPatch:
+    """一条受限的标量替换补丁。
+
+    ``expected_object_id`` 将数组位置与稳定对象身份绑定，防止候选策略在重排后仍按旧索引
+    修改到错误目标；具体白名单判断与应用由 ``StrategyChangeGuard`` 完成。
+    """
     op: str                  # 操作类型，仅允许 "replace"
     path: str                # JSON指针路径，格式如 /attacks/0/fire_quantity
     expected_object_id: str  # 目标条目唯一ID，防条目错位
@@ -24,12 +29,22 @@ class RestrictedStrategyPatch:
 
 # 策略修改安全校验器：管控所有补丁合法性、执行替换
 class StrategyChangeGuard:
+    """限制策略 Patch 的可修改范围，保护 Scenario/稳定标识等不可变边界。
+
+    上游 LLM 或修复 Agent 只能提出 Patch；本类对路径、对象身份与标量类型进行确定性
+    校验后才返回新的 ``StrategySpec``，从不原地修改调用方传入的策略对象。
+    """
     def apply(
         self, *,
         current: StrategySpec,                # 原始待修改策略
         patches: tuple[RestrictedStrategyPatch, ...], # LLM生成的补丁列表
         allowed_paths: tuple[str, ...]       # 白名单：允许修改的字段路径
     ) -> tuple[StrategySpec, tuple[str, ...]]:
+        """应用白名单内的替换补丁，返回新策略及实际变更路径。
+
+        任一补丁不满足安全约束即失败，不会部分提交此前补丁；调用方据此决定是否继续
+        预检、渲染或将无效提案交回修复链路。
+        """
         # 深度拷贝原始策略字典，不污染原对象
         payload = deepcopy(current.to_dict())
         # 记录本次实际修改过的路径，用于日志/差异对比

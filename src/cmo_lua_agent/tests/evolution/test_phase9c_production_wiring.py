@@ -90,13 +90,13 @@ def test_novelty_error_exposes_a_repairable_candidate_contract() -> None:
     assert error.related_changed_paths == ("/attacks/2/delay_seconds",)
 
 
-def test_chat_parser_exposes_explicit_standard_and_campaign_profiles() -> None:
+def test_chat_parser_defaults_to_all_and_keeps_debug_profiles() -> None:
     parser = build_parser()
 
     standard = parser.parse_args(["chat"])
     campaign = parser.parse_args(["chat", "--profile", "campaign"])
 
-    assert standard.profile == "standard"
+    assert standard.profile == "all"
     assert campaign.profile == "campaign"
 
 
@@ -250,6 +250,74 @@ def test_main_constructs_only_the_selected_chat_profile(
     assert (
         registry_calls[0]["evolution_campaign_service"] is production_service
     ) is expects_production
+
+
+def test_main_default_chat_constructs_all_tool_dependencies(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """默认 chat 必须进入全功能主 AgentLoop，而不是旧 standard 子集。"""
+
+    calls = {"production": 0, "application": 0, "training": 0}
+    production_service = SimpleNamespace(persist_permission_grant=lambda *_: "approval")
+    training_service = object()
+
+    monkeypatch.setattr(main_module, "ClaudeClient", lambda _config: object())
+    monkeypatch.setattr(main_module, "UIState", lambda **_kwargs: object())
+    monkeypatch.setattr(
+        main_module,
+        "TerminalDisplay",
+        lambda **_kwargs: SimpleNamespace(
+            stop=lambda: None,
+            start=lambda: None,
+            handle=lambda _event: None,
+        ),
+    )
+
+    class Hooks:
+        def register(self, _hook):
+            return None
+
+    monkeypatch.setattr(main_module, "HookManager", Hooks)
+    monkeypatch.setattr(main_module, "PermissionHook", lambda **_kwargs: object())
+    monkeypatch.setattr(main_module, "TerminalApprover", lambda **_kwargs: object())
+
+    def production_factory(**_kwargs):
+        calls["production"] += 1
+        return production_service
+
+    def standard_application(_workdir):
+        calls["application"] += 1
+        return object()
+
+    def training_factory(**_kwargs):
+        calls["training"] += 1
+        return training_service
+
+    registry_calls = []
+    monkeypatch.setattr(
+        main_module,
+        "create_production_evolution_campaign_service",
+        production_factory,
+    )
+    monkeypatch.setattr(main_module, "create_application", standard_application)
+    monkeypatch.setattr(main_module, "create_tool_services", lambda _app: object())
+    monkeypatch.setattr(main_module, "TrainingService", training_factory)
+    monkeypatch.setattr(
+        main_module,
+        "build_tool_registry",
+        lambda **kwargs: registry_calls.append(kwargs) or object(),
+    )
+    monkeypatch.setattr(main_module, "AgentLoop", lambda **_kwargs: object())
+    config = SimpleNamespace(llm=SimpleNamespace(model_id="fixture"))
+
+    build_chat_components(config=config, workdir=tmp_path)
+
+    assert calls == {"production": 1, "application": 1, "training": 1}
+    assert registry_calls[0]["chat_profile"] == "all"
+    assert registry_calls[0]["evolution_campaign_service"] is production_service
+    assert registry_calls[0]["training_service"] is training_service
+    assert registry_calls[0]["cmo_lua_services"] is not None
 
 
 def test_test_factory_rejects_non_fixture_overrides(tmp_path: Path) -> None:

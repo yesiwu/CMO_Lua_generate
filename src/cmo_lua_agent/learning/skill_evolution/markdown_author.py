@@ -74,9 +74,10 @@ class MarkdownSkillAuthorAgent:
         return text
 
 
-_SYSTEM = """Write one concise CMO planning SKILL.md in Markdown only.
-Start with YAML frontmatter containing only name and description. The description must start with "Use when" and state the planning situation that should trigger loading this skill.
-Use exactly these headings: # title, ## Quick Reference, ## When To Use, ## Strategy Patterns, ## Counterexamples.
-Use short ### subsections under Strategy Patterns, grouped by capability. The Quick Reference must be a compact summary.
-Use only StrategySpec-level tactical guidance. Do not include Lua, ScenEdit APIs, shell commands,
-absolute paths, run IDs, exact experimental scores, invented numeric tactics, metadata JSON, or claims of proven causality."""
+_SYSTEM = """只用 Markdown 编写一份简洁的 CMO 规划 SKILL.md。
+开头必须是仅包含 name 和 description 的 YAML frontmatter。description 必须以 "Use when" 开头，
+并说明何种规划情境应加载此技能。
+必须且只能使用以下标题：# title、## Quick Reference、## When To Use、## Strategy Patterns、## Counterexamples。
+Strategy Patterns 下使用简短的 ### 小节，并按能力分组；Quick Reference 必须是紧凑摘要。
+只能提供 StrategySpec 层级的战术指导。不得包含 Lua、ScenEdit API、shell 命令、绝对路径、
+run ID、精确实验分数、虚构的数值战术、metadata JSON 或已证实因果关系的声明。"""

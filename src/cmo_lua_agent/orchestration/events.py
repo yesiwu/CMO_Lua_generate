@@ -27,6 +27,8 @@ class AgentEventType(str, Enum):
     AGENT_STARTED = "agent_started"
 
     LLM_STARTED = "llm_started"
+    CONTEXT_COMPACTION_STARTED = "context_compaction_started"
+    CONTEXT_COMPACTION_COMPLETED = "context_compaction_completed"
     TEXT_DELTA = "text_delta"
     LLM_COMPLETED = "llm_completed"
 
@@ -48,6 +50,8 @@ class AgentEventType(str, Enum):
             AgentEventType.AGENT_STARTED: "Agent 开始处理",
 
             AgentEventType.LLM_STARTED: "正在请求模型",
+            AgentEventType.CONTEXT_COMPACTION_STARTED: "正在压缩上下文",
+            AgentEventType.CONTEXT_COMPACTION_COMPLETED: "上下文压缩完成",
             AgentEventType.TEXT_DELTA: "模型文本输出",
             AgentEventType.LLM_COMPLETED: "模型调用完成",
 

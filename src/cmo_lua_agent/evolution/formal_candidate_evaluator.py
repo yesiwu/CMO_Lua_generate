@@ -19,6 +19,11 @@ from cmo_lua_agent.generation.manual_template_assembly import (
 
 
 class FormalCandidateEvaluator:
+    """正式候选评估适配器：将冻结策略交给 Phase 6/CMO 评估链。
+
+它处理候选 Lua 修复额度和运行证据收集，但不选择 Champion 或推进 Training 的代数；
+这些结论分别属于 Campaign Policy 和 TrainingRunner。
+    """
     def __init__(
         self,
         *,

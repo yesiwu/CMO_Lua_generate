@@ -1,4 +1,8 @@
-"""Classify workflow failures before deciding whether automated code repair is appropriate."""
+"""在决定是否适合自动修复代码前，对 Workflow 失败进行分类。
+
+分类结果驱动 Training Runner 的重试、停止或源码修复分流；证据不足时保守地交由
+人工处理，避免把场景、模型或基础设施故障误改为 Python 源码问题。
+"""
 
 from __future__ import annotations
 
@@ -23,7 +27,7 @@ class FailureRecord:
 
 
 class FailureClassifier:
-    """Use deterministic exception and message evidence; ambiguous errors stay non-repairable."""
+    """使用确定性的异常与消息证据；无法确认的错误保持不可自动修复。"""
 
     def classify(self, error: BaseException) -> FailureRecord:
         message = str(error)
@@ -36,9 +40,8 @@ class FailureClassifier:
         ):
             kind = FailureKind.TRANSIENT
         elif isinstance(error, PermissionError) and ("\\workers\\" in lowered or "/workers/" in lowered):
-            # Worker state is atomically replaced by a separate process.  On
-            # Windows, a reader can briefly lose the replace race; retry the
-            # persisted action instead of treating its completed result as bad input.
+            # Worker 状态由独立进程原子替换。Windows 上读取方可能短暂输掉文件
+            # 替换竞争；重试已持久化的操作，避免把已完成结果误判为无效输入。
             kind = FailureKind.TRANSIENT
         elif isinstance(error, (FileNotFoundError, json.JSONDecodeError)) or any(
             marker in lowered for marker in ("scenario", "json", "input path", "not found")

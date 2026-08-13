@@ -1,4 +1,7 @@
-"""Serializable terminal result for the complete scenario workflow."""
+"""完整场景 Workflow 的可序列化终态结果。
+
+Workflow任务结束后，总结“最后结果是什么”。
+"""
 
 from __future__ import annotations
 
@@ -16,7 +19,7 @@ from cmo_lua_agent.orchestration.workflow_state import (
 
 @dataclass(frozen=True, slots=True)
 class ScenarioWorkflowResult:
-    """Final structured outcome of one JSON-to-Lua workflow run."""
+    """一次 JSON-to-Lua Workflow 运行的最终结构化结果。"""
 
     success: bool
     state: WorkflowState
@@ -82,6 +85,7 @@ class ScenarioWorkflowResult:
                 )
 
     def to_dict(self) -> dict[str, Any]:
+        """转换为 CLI、日志与 JSON 输出可复用的稳定字典。"""
         return {
             "success": self.success,
             "state": self.state.to_dict(),

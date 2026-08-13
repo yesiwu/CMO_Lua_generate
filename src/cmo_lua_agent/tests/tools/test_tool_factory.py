@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 
 from cmo_lua_agent.bootstrap import (
     create_application,
@@ -17,6 +18,7 @@ from cmo_lua_agent.tools.edit_file_tool import EditFileTool
 from cmo_lua_agent.tools.create_file_tool import CreateFileTool
 from cmo_lua_agent.tools.create_json_copy_tool import CreateJsonCopyTool
 from cmo_lua_agent.tools.query_cmo_database_tool import QueryCmoDatabaseTool
+from cmo_lua_agent.tools.search_workspace_tool import SearchWorkspaceTool
 from cmo_lua_agent.tools.tool_base.factory import (
     build_tool_registry,
 )
@@ -55,6 +57,7 @@ def test_factory_registers_cmolua_tools_when_services_are_provided(
     assert isinstance(registry.get("create_json_copy"), CreateJsonCopyTool)
     assert isinstance(registry.get("query_cmo_database"), QueryCmoDatabaseTool)
     assert isinstance(registry.get("list_directory"), ListDirectoryTool)
+    assert isinstance(registry.get("search_workspace"), SearchWorkspaceTool)
     assert registry.get("list_skills") is not None
     assert registry.get("load_skill") is not None
     assert registry.get("list_curated_skills") is not None
@@ -77,3 +80,41 @@ def test_factory_registers_cmolua_tools_when_services_are_provided(
     } <= definition_names
     assert "search_cmo_skill" not in definition_names
     assert "read_cmo_skill" not in definition_names
+
+
+def test_all_profile_registers_standard_training_and_campaign_tools(
+    tmp_path: Path,
+) -> None:
+    """防止主聊天入口因 profile 分流而漏掉训练或 Campaign 能力。"""
+
+    _create_cmolua_dependency_tree(tmp_path)
+    application = create_application(tmp_path)
+    training_service = SimpleNamespace()
+    campaign_service = SimpleNamespace()
+
+    registry = build_tool_registry(
+        workdir=tmp_path,
+        hook_manager=HookManager(),
+        cmo_runner_path=tmp_path / "CmoBatchRunner.exe",
+        cmo_config_path=tmp_path / "batch-config.json",
+        cmo_lua_services=create_tool_services(application),
+        chat_profile="all",
+        evolution_campaign_service=campaign_service,
+        training_service=training_service,
+    )
+
+    names = {definition["name"] for definition in registry.get_definitions()}
+    assert {
+        "read_file",
+        "generate_cmo_lua",
+        "execute_cmo",
+        "start_training",
+        "inspect_training",
+        "control_training",
+        "prepare_evolution_campaign",
+        "preview_evolution_generation",
+        "execute_evolution_generation",
+        "inspect_evolution_campaign",
+        "inspect_evolution_generation",
+        "control_evolution_campaign",
+    } <= names

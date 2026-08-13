@@ -24,6 +24,7 @@ class AppliedRuntimePatch:
 
 # 运行时补丁应用工具类
 class RuntimePatchApplier:
+    """将白名单 Runtime Patch 应用于候选执行上下文，不允许自由修改运行时脚本。"""
     # 系统唯一允许的运行时补丁类型
     PATCH_KIND = "retry_missing_contact_once"
 

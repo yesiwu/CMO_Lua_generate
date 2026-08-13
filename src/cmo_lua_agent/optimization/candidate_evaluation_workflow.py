@@ -52,6 +52,11 @@ class CandidateRepairAgent(Protocol):
 
 # Phase5 核心单候选评估流水线
 class CandidateEvaluationWorkflow:
+    """单候选的生成、预检、CMO 评估与受限 Lua 修复工作流。
+
+由 Phase 6 适配器调用并返回标准 CandidateOutcome；它不负责跨候选排名或 Campaign
+控制，因此单个候选失败不会在此处改变整代的 Champion/停止决策。
+    """
     def __init__(self, *,
                  cmo_runner: CandidateRunner,          # CMO仿真执行实例
                  repair_agent: CandidateRepairAgent,  # Phase4修复代理实例

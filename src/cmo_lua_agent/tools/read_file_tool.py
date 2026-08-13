@@ -8,6 +8,8 @@ from typing import Any
 
 from cmo_lua_agent.tools.tool_base.base import BaseTool, ToolResult
 from cmo_lua_agent.tools.tool_base.context import ToolContext
+from cmo_lua_agent.tools.workspace_artifacts import WorkspaceArtifactStore
+from cmo_lua_agent.tools.workspace_policy import WorkspacePathError, WorkspacePathPolicy
 
 
 class ReadFileTool(BaseTool):
@@ -15,32 +17,51 @@ class ReadFileTool(BaseTool):
 
     name = "read_file"
     description = "读取文本文件。目录请使用 list_directory 列出内容。"
+    _BINARY_SUFFIXES = frozenset(
+        {
+            ".7z", ".avi", ".bin", ".bmp", ".db", ".dll", ".doc",
+            ".docx", ".exe", ".gif", ".gz", ".ico", ".jpeg", ".jpg",
+            ".mp3", ".mp4", ".pdf", ".png", ".pyc", ".sqlite", ".tar",
+            ".wav", ".webp", ".xls", ".xlsx", ".zip",
+        }
+    )
 
     input_schema = {
         "type": "object",
         "properties": {
             "path": {
                 "type": "string",
-                "description": "要读取的文件路径，可为绝对路径。",
+                "description": "工作区内要读取的文件路径；不得包含隐藏路径组成部分。",
             },
             "limit": {
                 "type": "integer",
                 "minimum": 1,
                 "description": "最多读取的行数。",
             },
+            "start_line": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "开始行号，从 1 开始。",
+            },
+            "end_line": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "结束行号（含该行）。",
+            },
         },
         "required": ["path"],
         "additionalProperties": False,
     }
 
-    def __init__(self, workdir: Path) -> None:
+    def __init__(self, workdir: Path, *, max_inline_chars: int = 12_000) -> None:
         self._workdir = workdir.resolve()
+        self._paths = WorkspacePathPolicy(self._workdir)
+        self._artifacts = WorkspaceArtifactStore(
+            self._workdir, max_inline_chars=max_inline_chars
+        )
 
     def _safe_path(self, raw_path: str) -> Path:
-        candidate = Path(raw_path).expanduser()
-        if candidate.is_absolute():
-            return candidate.resolve()
-        return (self._workdir / candidate).resolve()
+        return self._paths.resolve_file(raw_path)
 
     def execute(
         self,
@@ -49,6 +70,8 @@ class ReadFileTool(BaseTool):
     ) -> str | ToolResult:
         raw_path = arguments.get("path")
         limit = arguments.get("limit")
+        start_line = arguments.get("start_line", 1)
+        end_line = arguments.get("end_line")
 
         if not isinstance(raw_path, str) or not raw_path.strip():
             return self._failure(
@@ -65,8 +88,35 @@ class ReadFileTool(BaseTool):
                 message="limit 必须是大于 0 的整数。",
                 context=context,
             )
+        if (
+            not isinstance(start_line, int)
+            or isinstance(start_line, bool)
+            or start_line < 1
+            or (
+                end_line is not None
+                and (
+                    not isinstance(end_line, int)
+                    or isinstance(end_line, bool)
+                    or end_line < start_line
+                )
+            )
+        ):
+            return self._failure(
+                code="invalid_line_range",
+                message="start_line 和 end_line 必须组成从 1 开始的有效行区间。",
+                context=context,
+            )
+        if limit is not None and end_line is not None:
+            return self._failure(
+                code="conflicting_line_range",
+                message="limit 与 end_line 不能同时提供。",
+                context=context,
+            )
 
-        path = self._safe_path(raw_path)
+        try:
+            path = self._safe_path(raw_path)
+        except WorkspacePathError as exc:
+            return self._failure(code=exc.code, message=exc.message, context=context)
         if context is not None:
             context.progress.tool_started("正在读取文件")
 
@@ -77,9 +127,22 @@ class ReadFileTool(BaseTool):
                 context=context,
                 suggested_tool="list_directory",
             )
+        if path.suffix.casefold() in self._BINARY_SUFFIXES:
+            return self._failure(
+                code="binary_file_not_supported",
+                message=f"不支持读取二进制文件：{path}",
+                context=context,
+            )
 
         try:
-            lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+            raw = path.read_bytes()
+            if b"\x00" in raw[:8192]:
+                return self._failure(
+                    code="binary_file_not_supported",
+                    message=f"不支持读取二进制文件：{path}",
+                    context=context,
+                )
+            lines = raw.decode("utf-8").splitlines()
         except FileNotFoundError:
             return self._failure(
                 code="file_not_found",
@@ -92,6 +155,12 @@ class ReadFileTool(BaseTool):
                 message=f"无法读取文件：{path} ({exc})",
                 context=context,
             )
+        except UnicodeDecodeError:
+            return self._failure(
+                code="binary_file_not_supported",
+                message=f"文件不是 UTF-8 文本，不能作为文本读取：{path}",
+                context=context,
+            )
         except OSError as exc:
             return self._failure(
                 code="file_read_failed",
@@ -99,15 +168,19 @@ class ReadFileTool(BaseTool):
                 context=context,
             )
 
-        if limit is not None and limit < len(lines):
-            remaining = len(lines) - limit
-            lines = lines[:limit]
-            lines.append(f"... ({remaining} more lines)")
+        start_index = start_line - 1
+        if limit is not None:
+            end_index = start_index + limit
+        elif end_line is not None:
+            end_index = end_line
+        else:
+            end_index = len(lines)
+        lines = lines[start_index:end_index]
 
         result = "\n".join(lines)
         if context is not None:
             context.progress.tool_completed("文件读取完成", detail=f"{len(lines)} 行")
-        return result
+        return self._artifacts.inline_or_store(result, kind="read")
 
     @staticmethod
     def _failure(

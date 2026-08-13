@@ -1,4 +1,8 @@
-"""Small background-process supervisor for a persistent training workflow."""
+"""Training Workflow 后台进程启动器。
+
+TrainingService 调用本模块启动 ``training.runtime``。它只保存 pid 和日志路径；
+真正可恢复的执行位置仍在 TrainingStore，因此 pid 丢失时可以重新启动而不丢代数。
+"""
 
 from __future__ import annotations
 
@@ -13,7 +17,7 @@ from cmo_lua_agent.training.store import TrainingStore
 
 
 class TrainingProcessManager:
-    """Launch one hidden runtime process and retain only resumable PID metadata."""
+    """启动隐藏 Runtime 子进程，并保留用于健康检查的最小 PID 元数据。"""
 
     def __init__(
         self,
@@ -27,6 +31,11 @@ class TrainingProcessManager:
         self._python = python_executable or sys.executable
 
     def start(self, workflow_id: str) -> int:
+        """启动指定 Workflow 的后台调度进程，并将 stdout/stderr 追加至 runner.log。
+
+请求文件必须已存在；该顺序避免启动一个没有任何可恢复状态的新进程。返回值仅用于
+观察进程，不是 Workflow 正确性的来源。
+        """
         store = TrainingStore(self._project_root, workflow_id)
         if not store.root.is_dir():
             raise ValueError("training_workflow_not_found")
@@ -62,6 +71,7 @@ class TrainingProcessManager:
         return int(process.pid)
 
     def process_metadata(self, workflow_id: str) -> dict[str, object]:
+        """读取诊断用进程元数据；其缺失不影响 Workflow 从 Store 恢复。"""
         path = TrainingStore(self._project_root, workflow_id).root / "runner-process.json"
         if not path.is_file():
             return {}
@@ -69,6 +79,7 @@ class TrainingProcessManager:
         return dict(value) if isinstance(value, dict) else {}
 
     def is_running(self, workflow_id: str) -> bool:
+        """按保存的 PID 做进程存活探测；失败后由上层重新启动并从 Store 恢复。"""
         pid = self.process_metadata(workflow_id).get("pid")
         if not isinstance(pid, int) or pid < 1:
             return False
@@ -80,6 +91,7 @@ class TrainingProcessManager:
 
     @staticmethod
     def _write_json(path: Path, value: dict[str, object]) -> None:
+        """使用同目录临时文件原子替换进程元数据，避免健康检查读到半写入 JSON。"""
         temporary = path.with_suffix(path.suffix + ".tmp")
         temporary.write_text(json.dumps(value, sort_keys=True) + "\n", encoding="utf-8")
         os.replace(temporary, path)

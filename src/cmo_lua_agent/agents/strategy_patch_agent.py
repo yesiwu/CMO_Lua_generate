@@ -1,4 +1,9 @@
-"""LLM agent that generates one constrained candidate patch."""
+"""候选补丁 Agent：根据已冻结的候选意图生成一个受约束策略补丁。
+
+上游 ``strategy_intent_agent`` 负责确定候选方案意图；本模块仅把该意图映射到
+允许修改的策略叶节点，并以结构化响应交给提案协调器校验。解析或契约失败时，
+会要求模型返回完整替代响应，而不会直接落盘或执行 CMO。
+"""
 
 from __future__ import annotations
 
@@ -20,6 +25,7 @@ class PatchJsonClient(Protocol):
 
 
 class CandidatePatchGenerator:
+    """根据已冻结的意图与战术上下文生成标量 Patch，供确定性组装器验证。"""
     def __init__(self, client: PatchJsonClient) -> None:
         self._client = client
 
@@ -140,18 +146,17 @@ def _repair_instruction(
     if error is None:
         return None
     return (
-        "Return one complete replacement Patch. Preserve legal initial changes where possible, "
-        "fix every hard validation error, and use the role-quality warnings as preferences. "
-        "changes must contain every corrected change, not only incremental additions. "
-        "Every replacement value must differ from that path's current_value in patchable_leaves; "
-        "remove or replace any no-op change. For a no-op, select a value from repair_alternatives."
+        "返回一份完整替换用的 Patch。尽可能保留合法的初始变更，修复全部硬校验错误，"
+        "并将角色质量告警作为偏好处理。changes 必须包含全部修正后的变更，不能只返回增量。"
+        "每个替换值都必须不同于 patchable_leaves 中对应路径的 current_value；"
+        "删除或替换任何无效果变更。若出现无效果变更，请从 repair_alternatives 选择值。"
     )
 
 
 def _repair_alternatives(
     catalog: tuple[PatchableLeaf, ...], error: ProposalContractError | None,
 ) -> list[dict[str, object]]:
-    """Bounded deterministic alternatives for a no-op repair; never invent values."""
+    """为无效果修复提供受限、确定性的备选值；不得由模型凭空编造。"""
     if error is None or error.code != "no_effective_change":
         return []
     noops = error.diagnostics.get("no_effective_changes")
@@ -190,32 +195,33 @@ def _repair_alternatives(
 
 def _candidate_instruction(intent: CandidateIntent) -> str:
     noops = (
-        " Select every path from patchable_leaves and set every selected path to a value "
-        "different from its current_value. Do not repeat a Baseline value."
+        " 从 patchable_leaves 中选择的每条路径都必须设置为不同于 current_value 的值。"
+        "不得重复 Baseline 值。"
     )
     if intent.candidate_id == "candidate_02":
         return (
-            "Prefer 5 to 8 unique changes across at least 3 operations and 3 semantic dimensions, "
-            "including surface and sortie operations when useful. These are quality goals, not hard "
-            "schema requirements."
+            "优先产生 5 到 8 项不同变更，覆盖至少 3 个操作和 3 个语义维度；合适时同时覆盖"
+            " surface 与 sortie 操作。这些是质量目标，不是硬性 schema 要求。"
             + noops
         )
     if intent.candidate_id == "candidate_03":
         return (
-            "Prefer one or two changes focused on one operation and one semantic dimension so the "
-            "result remains easy to interpret. This is a quality preference, not a hard schema rule."
+            "优先只做一到两项变更，并集中于一个操作和一个语义维度，使结果便于解释。"
+            "这是质量偏好，不是硬性 schema 规则。"
             + noops
         )
     return (
-        "Use role preferences to make the experiment useful, while keeping every change inside "
-        "the offered executable leaves. Every change must set its path to a value different from "
-        "its current_value in patchable_leaves. Do not repeat a Baseline value."
+        "使用角色偏好让实验具备价值，同时确保每项变更都在提供的可执行叶子范围内。"
+        "每项变更都必须将路径设置为不同于 patchable_leaves 中 current_value 的值。"
+        "不得重复 Baseline 值。"
     )
 
 
-_SYSTEM = """You are CandidatePatchGenerator. Return exactly one JSON object with proposal_summary and changes.
-changes is a non-empty JSON array of {path, value}; replace only listed scalar leaves. Do not output a full strategy, Lua, CMO commands, scoring, IDs, markdown, or extra fields.
-Respect the exact candidate ID, change-count bounds, allowed leaf constraints, and any previous structured error. When repairing, return a complete replacement Patch whose changes array contains every corrected change, never only an incremental delta."""
+_SYSTEM = """你是 CandidatePatchGenerator。只能返回一个包含 proposal_summary 和 changes 的 JSON 对象。
+changes 必须是非空 JSON 数组，元素为 {path, value}；只能替换列出的标量叶子节点。
+不得输出完整策略、Lua、CMO 命令、计分、ID、Markdown 或额外字段。
+必须遵守精确的 candidate ID、变更数量边界、允许叶子约束及此前的结构化错误信息。
+修复时必须返回完整替换 Patch，changes 数组要包含全部修正后的变更，不能只返回增量。"""
 
 
 def _catalog_by_dimension(catalog: tuple[PatchableLeaf, ...]) -> dict[str, list[dict[str, object]]]:

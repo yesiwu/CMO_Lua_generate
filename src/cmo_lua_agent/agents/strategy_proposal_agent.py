@@ -1,15 +1,9 @@
-"""The sole formal coordinator for constrained Phase 6 strategy proposals.
+"""Phase 6 策略提案的唯一正式协调器。
 
-production_service.py    [agent_loop_json_client.py])提供 限制使用工具
-
-[optimization/strategy_proposal_agent.py]本身没有大段 LLM Prompt，它只是协调器。
-实际提示词分散在三个位置：
-四个候选方案意图的 Prompt
-[candidate_intent_planner.py (line 130)]
-_SYSTEM = You are CandidateIntentPlanner...
-它的动态上下文在：
-candidate_intent_planner.py (line 45)
-包含目标、Bootstrap Skill、经验卡、角色约束、Tactical Context 等。
+``production_service`` 创建本类，将策略上下文依次交给 ``strategy_intent_agent``
+生成候选意图、交给 ``strategy_patch_agent`` 生成受限补丁，再由本模块完成角色、
+补丁和策略约束校验。它聚合调用用量与审计信息，但不直接执行 CMO、不写入生产资产；
+校验失败会转换为提案错误交由上游工作流恢复。
 """
 
 from __future__ import annotations
@@ -39,7 +33,7 @@ from cmo_lua_agent.optimization.strategy_dimensions import semantic_dimensions
 
 
 class StrategyProposalAgent:
-    """Coordinates exactly one intent call and bounded per-candidate patch calls."""
+    """协调一次意图生成及每个候选方案有限次数的补丁生成。"""
 
     def __init__(self, client: IntentJsonClient, *, intent_client: IntentJsonClient | None = None) -> None:
         self._planner = CandidateIntentPlanner(intent_client or client)
@@ -190,7 +184,11 @@ class StrategyProposalAgent:
         accepted: tuple[AcceptedCandidateSummary, ...],
         prior_error: ProposalContractError,
     ) -> StrategyCandidate:
-        """Regenerate only one named candidate; never invokes the intent planner."""
+        """只重新生成指定候选方案，绝不再次调用意图规划器。
+
+        新候选方案仍沿用已冻结的四项意图；此设计使单候选方案修复不会改变其他候选
+        方案的比较基线，也不会因额外意图调用扩大本代 LLM 决策范围。
+        """
         patch_calls = repair_calls = 0
         catalog = build_patchable_leaf_catalog(
             baseline=context.baseline,
@@ -242,7 +240,7 @@ class StrategyProposalAgent:
         intent: CandidateIntent,
         accepted: tuple[AcceptedCandidateSummary, ...],
     ) -> StrategyCandidate:
-        """Generate one new candidate without invoking the intent planner."""
+        """在不调用意图规划器的前提下生成一个新的指定候选方案。"""
         catalog = build_patchable_leaf_catalog(
             baseline=context.baseline,
             scenario=context.scenario,
@@ -433,7 +431,11 @@ def _patch_context(intent, patch) -> dict[str, object]:
 
 
 def _accepted_summary(candidate: StrategyCandidate, dimensions: tuple[str, ...]) -> AcceptedCandidateSummary:
-    """Keep only accepted coverage facts for later Patch prompts."""
+    """仅保留已接受的覆盖事实，供后续 Patch Prompt 使用。
+
+    该投影刻意丢弃原始提案文本和无效候选方案，避免把未验证的模型结论带入
+    下一次补丁生成。
+    """
     operation_keys = tuple(sorted({
         "/".join(path.strip("/").split("/")[:2])
         for path in candidate.intended_difference

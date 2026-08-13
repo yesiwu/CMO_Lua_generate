@@ -354,6 +354,31 @@ class TerminalDisplay:
             self._assistant_stream_open = False
             return
 
+        if event.type is AgentEventType.CONTEXT_COMPACTION_STARTED:
+            return
+
+        if event.type is AgentEventType.CONTEXT_COMPACTION_COMPLETED:
+            before = self._to_int(event.data.get("estimated_tokens_before"), default=0)
+            after = self._to_int(event.data.get("estimated_tokens_after"), default=0)
+            retained = self._to_int(event.data.get("retained_message_count"), default=0)
+            strategy = self._to_str(event.data.get("strategy"))
+            fallback_reason = self._to_str(event.data.get("fallback_reason"))
+            if strategy == "deterministic_fallback":
+                reason = f" · 原因 {fallback_reason}" if fallback_reason else ""
+                self._console.print(
+                    "⚠ 智能压缩失败，已使用确定性降级压缩 · "
+                    f"{before:,} → {after:,} tokens · 保留最近 {retained} 条消息{reason}",
+                    style="bold yellow",
+                )
+            else:
+                label = "智能压缩完成" if strategy == "semantic" else "上下文压缩完成"
+                self._console.print(
+                    f"✓ {label} · "
+                    f"{before:,} → {after:,} tokens · 保留最近 {retained} 条消息",
+                    style="bold green",
+                )
+            return
+
         if event.type is AgentEventType.TEXT_DELTA:
             text = event.message or self._to_str(event.data.get("text"))
             if not text:
@@ -526,6 +551,20 @@ class TerminalDisplay:
             self._handle_agent_completed(
                 event
             )
+            return
+
+        if event_type is AgentEventType.CONTEXT_COMPACTION_STARTED:
+            before = self._to_int(data.get("estimated_tokens_before"), default=0)
+            window = self._to_int(data.get("context_window_tokens"), default=0)
+            self._state.is_running = True
+            self._state.current_activity = (
+                f"正在智能压缩上下文 · 预计 {before:,} / {window:,} tokens"
+            )
+            return
+
+        if event_type is AgentEventType.CONTEXT_COMPACTION_COMPLETED:
+            # 完成记录由永久输出负责；Live 区立即切换成下一项真实活动。
+            self._state.current_activity = "正在请求模型"
             return
 
         if event_type is AgentEventType.AGENT_NEEDS_INPUT:

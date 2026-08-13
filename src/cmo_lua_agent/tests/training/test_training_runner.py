@@ -12,6 +12,8 @@ from cmo_lua_agent.training.models import (
     TrainingStatus,
 )
 from cmo_lua_agent.training.runner import TrainingRunner
+from cmo_lua_agent.training.recovery import ErrorEnvelope, RecoveryDecision, RecoveryRouter
+from cmo_lua_agent.training.repair import RepairSnapshot
 from cmo_lua_agent.training.runtime import ProductionCampaignDriver
 from cmo_lua_agent.training.store import TrainingStore
 from cmo_lua_agent.evolution.production_service import ProductionEvolutionCampaignService
@@ -85,7 +87,7 @@ def test_runner_writes_final_reports_for_a_completed_workflow(tmp_path: Path) ->
 
     assert (store.root / "training-report.md").read_text(encoding="utf-8")
     assert (store.root / "skill-generation-report.md").read_text(encoding="utf-8")
-    assert "Status: COMPLETED" in (store.root / "code-repair-report.md").read_text(encoding="utf-8")
+    assert not (store.root / "code-repair-report.md").exists()
 
 
 def test_runner_completes_phase8_when_no_experience_is_promotable(tmp_path: Path) -> None:
@@ -246,7 +248,9 @@ def test_runner_marks_code_failure_for_repair_without_repeating_action(tmp_path:
 
     state = runner.run_once()
 
-    assert state.status is TrainingStatus.FAILED
+    assert state.status is TrainingStatus.RUNNING
+    assert state.action is TrainingAction.VALIDATE_INPUT
+    assert state.runner["recovery"]["attempts"] == 1
 
 
 def test_runner_records_verified_repair_commit_before_retrying(tmp_path: Path) -> None:
@@ -283,7 +287,10 @@ def test_runner_leaves_transient_failure_runnable_for_the_background_runtime(tmp
     assert retry["kind"] == "TRANSIENT"
     assert retry["consecutive_failures"] == 1
     assert retry["next_retry_at"]
+    assert state.runner["recovery"]["action"] == "RETRY"
+    assert state.runner["recovery"]["attempts"] == 1
     assert any('"kind": "TRANSIENT"' in line for line in (store.root / "journal.jsonl").read_text(encoding="utf-8").splitlines())
+    assert any('"event": "recovery_incident"' in line for line in (store.root / "journal.jsonl").read_text(encoding="utf-8").splitlines())
 
 
 def test_runner_resumes_completed_worker_after_a_temporary_worker_file_lock(tmp_path: Path) -> None:
@@ -338,6 +345,220 @@ def test_runner_retries_a_failed_candidate_preview_by_regenerating_it(tmp_path: 
     assert retry["kind"] == "BUSINESS"
     assert retry["error_type"] == "CandidateProposalError"
     assert retry["consecutive_failures"] == 1
+    assert state.runner["recovery"]["action"] == "DOMAIN_REPAIR"
+
+
+def test_runner_stops_same_action_after_three_failed_recoveries(tmp_path: Path) -> None:
+    class UnavailableDriver(FakeCampaignDriver):
+        def prepare(self, request: TrainingRequest) -> str:
+            raise ConnectionError("Connection reset")
+
+    store = _store(tmp_path, generations=1)
+    runner = TrainingRunner(store, UnavailableDriver())
+
+    runner.run_once()
+    runner.run_once()
+    state = runner.run_once()
+
+    assert state.status is TrainingStatus.STOPPED
+    assert state.action is TrainingAction.IDLE
+    assert state.runner["recovery"]["attempts"] == 3
+    assert (store.root / "recovery-report.md").is_file()
+
+
+def test_runner_passes_error_context_and_original_action_replay_to_code_repair(
+    tmp_path: Path,
+) -> None:
+    class BrokenOnceDriver(FakeCampaignDriver):
+        def __init__(self) -> None:
+            super().__init__()
+            self.broken = True
+
+        def prepare(self, request: TrainingRequest) -> str:
+            if self.broken:
+                self.broken = False
+                raise AttributeError("missing adapter")
+            return super().prepare(request)
+
+    captured: dict[str, object] = {}
+
+    class Repairs:
+        def repair(self, **kwargs):
+            captured.update(kwargs)
+            kwargs["replay_task"]()
+            return SimpleNamespace(succeeded=True, commit_id="abc123")
+
+    store = _store(tmp_path, generations=1)
+    state = TrainingRunner(
+        store,
+        BrokenOnceDriver(),
+        repair_coordinator=Repairs(),
+    ).run_once()
+
+    assert captured["envelope"].error_type == "AttributeError"
+    assert "missing adapter" in captured["repair_context"]
+    assert state.status is TrainingStatus.RUNNING
+    assert state.campaign_id == "training-001-campaign"
+    assert state.action is TrainingAction.PREVIEW
+    assert state.last_good_commit == "abc123"
+    assert state.runner["recovery"] == {"status": "IDLE"}
+
+
+def test_runner_puts_unknown_diagnosis_files_into_repair_context(tmp_path: Path) -> None:
+    class StrangeDriver(FakeCampaignDriver):
+        def prepare(self, request: TrainingRequest) -> str:
+            raise RuntimeError("strange adapter incident")
+
+    source = tmp_path / "src" / "cmo_lua_agent" / "training" / "runtime.py"
+    source.parent.mkdir(parents=True, exist_ok=True)
+    source.write_text("KNOWN_SOURCE_MARKER = True\n", encoding="utf-8")
+    captured: dict[str, object] = {}
+
+    class Repairs:
+        def repair(self, **kwargs):
+            captured.update(kwargs)
+            return SimpleNamespace(succeeded=False)
+
+    router = RecoveryRouter(
+        unknown_diagnoser=lambda _envelope: RecoveryDecision(
+            "CODE",
+            "CODE_REPAIR",
+            "未知适配器故障",
+            ["src/cmo_lua_agent/training/runtime.py"],
+        )
+    )
+    TrainingRunner(
+        _store(tmp_path, generations=1),
+        StrangeDriver(),
+        repair_coordinator=Repairs(),
+        recovery_router=router,
+    ).run_once()
+
+    assert "KNOWN_SOURCE_MARKER" in captured["repair_context"]
+
+
+def test_reconcile_restores_interrupted_repair_and_restarts_same_incident(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "src" / "cmo_lua_agent" / "worker.py"
+    source.parent.mkdir(parents=True)
+    source.write_text("VALUE = 'before'\n", encoding="utf-8")
+    store = _store(tmp_path, generations=1)
+    snapshot = RepairSnapshot(
+        project_root=tmp_path,
+        archive_path=store.root / "repair-snapshot.zip",
+    )
+    snapshot.create()
+    source.write_text("VALUE = 'interrupted'\n", encoding="utf-8")
+    envelope = ErrorEnvelope(
+        workflow_id="training-001",
+        stage="PREPARE",
+        generation=0,
+        task="VALIDATE_INPUT",
+        subtask=None,
+        error_type="AttributeError",
+        message="missing adapter",
+        traceback="AttributeError: missing adapter",
+        stdout_path=None,
+        stderr_path=None,
+        related_files=[],
+    )
+    store.transition(
+        status=TrainingStatus.REPAIRING,
+        runner={
+            "recovery": {
+                "status": "REPAIRING",
+                "attempts": 1,
+                "category": "CODE",
+                "action": "CODE_REPAIR",
+                "stage": "PREPARE",
+                "task": "VALIDATE_INPUT",
+                "generation": 0,
+                "envelope": envelope.to_dict(),
+                "snapshot_path": snapshot.path.relative_to(tmp_path).as_posix(),
+            }
+        },
+    )
+    captured: dict[str, object] = {}
+
+    class Repairs:
+        def repair(self, **kwargs):
+            captured.update(kwargs)
+            return SimpleNamespace(succeeded=False, summary="still broken")
+
+    runner = TrainingRunner(store, FakeCampaignDriver(), repair_coordinator=Repairs())
+
+    reconciled = runner.reconcile()
+    assert source.read_text(encoding="utf-8") == "VALUE = 'before'\n"
+    assert reconciled.status is TrainingStatus.RUNNING
+    assert reconciled.runner["recovery"]["status"] == "FAILED"
+    assert reconciled.runner["recovery"]["attempts"] == 2
+
+    runner.run_once()
+
+    assert captured["attempt"] == 2
+    assert captured["envelope"].message == "missing adapter"
+
+
+def test_code_repair_reconciles_existing_preview_without_generating_it_again(
+    tmp_path: Path,
+) -> None:
+    class PreviewPersistedDriver(FakeCampaignDriver):
+        def preview(self, campaign_id: str, generation_index: int) -> None:
+            self.calls.append(f"preview:{generation_index}")
+            raise AttributeError("preview adapter bug")
+
+        def inspect_generation(self, campaign_id: str, generation_index: int):
+            self.calls.append(f"inspect:{generation_index}")
+            return {"preview": {"checksum": "persisted"}, "status": "ready"}
+
+    class Repairs:
+        def repair(self, **kwargs):
+            kwargs["replay_task"]()
+            return SimpleNamespace(succeeded=True, commit_id="abc123", summary="fixed")
+
+    store = _store(tmp_path, generations=1)
+    driver = PreviewPersistedDriver()
+    runner = TrainingRunner(store, driver, repair_coordinator=Repairs())
+    runner.run_once()  # prepare
+
+    state = runner.run_once()
+
+    assert state.action is TrainingAction.EXECUTE
+    assert driver.calls == ["prepare", "preview:0", "reconcile", "inspect:0"]
+
+
+def test_reconcile_finishes_pending_push_for_committed_repair(tmp_path: Path) -> None:
+    store = _store(tmp_path, generations=1)
+    store.transition(
+        status=TrainingStatus.REPAIRING,
+        runner={
+            "recovery": {
+                "status": "COMMITTED",
+                "action": "CODE_REPAIR",
+                "attempts": 1,
+                "commit_id": "abc123",
+                "push_completed": False,
+            }
+        },
+    )
+    calls: list[str] = []
+
+    class Repairs:
+        def resume_committed(self, *, workflow_id: str, commit_id: str):
+            calls.append(f"{workflow_id}:{commit_id}")
+            return SimpleNamespace(succeeded=True, commit_id=commit_id, summary="push completed")
+
+    state = TrainingRunner(
+        store,
+        FakeCampaignDriver(),
+        repair_coordinator=Repairs(),
+    ).reconcile()
+
+    assert calls == ["training-001:abc123"]
+    assert state.status is TrainingStatus.RUNNING
+    assert state.last_good_commit == "abc123"
+    assert state.runner["recovery"] == {"status": "IDLE"}
 
 
 def test_runner_marks_a_failed_generation_worker_as_failed_instead_of_waiting_forever(tmp_path: Path) -> None:

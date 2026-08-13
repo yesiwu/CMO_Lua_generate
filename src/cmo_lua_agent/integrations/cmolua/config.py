@@ -1,4 +1,11 @@
 
+
+"""CMOLua 集成配置。
+
+集中解析并只读校验外部 Skill、生成器、数据库及输出目录；不在此导入外部程序、连接
+数据库或写 Artifact，确保配置错误在接入边界被清晰报告。
+"""
+
 from __future__ import annotations
 """
 

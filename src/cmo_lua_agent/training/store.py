@@ -1,4 +1,9 @@
-"""Atomic on-disk storage for Training Workflow scheduler state."""
+"""Training Workflow 的原子化磁盘状态存储。
+
+``request.json`` 保存用户启动时的不可变请求，``state.json`` 是恢复调度的机器
+真相，``journal.jsonl`` 只追加记录状态事件；summary/TODO 只是给人查看，不能反向
+驱动恢复。TrainingRunner 是主要调用者。
+"""
 
 from __future__ import annotations
 
@@ -22,7 +27,10 @@ from cmo_lua_agent.training.models import (
 
 
 class TrainingStore:
-    """Persist only Workflow scheduling truth beneath ``runs/training``."""
+    """在 ``runs/training`` 下保存单个 Workflow 的最小可恢复事实。
+
+不保存完整 CMO 输出或 Campaign 业务结果，避免与正式 Artifact 产生两份冲突真相。
+    """
 
     def __init__(self, project_root: Path, workflow_id: str) -> None:
         if not workflow_id or any(token in workflow_id for token in ("/", "\\", "..")):
@@ -34,13 +42,21 @@ class TrainingStore:
         self._summary_path = self.root / "summary.json"
         self._todo_path = self.root / "TODO.md"
 
-    def create(self, request: TrainingRequest) -> TrainingState:
+    def create(
+        self,
+        request: TrainingRequest,
+        *,
+        last_good_commit: str | None = None,
+    ) -> TrainingState:
+        """创建一套新的请求、初始状态和可读摘要；已存在的 Workflow 禁止覆盖。"""
         if request.workflow_id != self.root.name:
             raise ValueError("training_store_workflow_mismatch")
         if self.root.exists():
             raise ValueError("training_workflow_already_exists")
         self.root.mkdir(parents=True, exist_ok=False)
         state = TrainingState.initial(request)
+        if last_good_commit is not None:
+            state = replace(state, last_good_commit=last_good_commit)
         self._write_json(self._request_path, asdict(request))
         self._write_state(state)
         self.write_summary(state)
@@ -54,6 +70,7 @@ class TrainingStore:
         return state
 
     def load_request(self) -> TrainingRequest:
+        """读取启动请求，并兼容尚未包含 execution_mode 的历史 Artifact。"""
         value = self._read_json(self._request_path)
         # Workflows created before execution-mode selection always ran real CMO.
         # Default in memory so historical request artifacts remain immutable.
@@ -61,6 +78,11 @@ class TrainingStore:
         return TrainingRequest(**value)
 
     def load_state(self) -> TrainingState:
+        """读取当前调度真相并恢复为强类型状态。
+
+        该方法只解释 ``state.json``，不从摘要、TODO 或事件日志反推状态；因此恢复路径
+        始终以 Runner 最后一次原子写入的 revision 为准。
+        """
         value = self._read_json(self._state_path)
         phase8 = value.get("phase8", {})
         return TrainingState(
@@ -98,6 +120,11 @@ class TrainingStore:
         last_good_commit: str | None = None,
         runner: dict[str, Any] | None = None,
     ) -> TrainingState:
+        """原子写入下一份调度状态，并同步追加可审阅的状态事件。
+
+调用者只提交发生变化的字段；未提供的字段继承当前状态。每次 revision 递增，使
+恢复逻辑能区分“尚未执行”与“已经推进到下一步”。
+        """
         current = self.load_state()
         next_state = replace(
             current,
@@ -147,13 +174,18 @@ class TrainingStore:
         return next_state
 
     def lock(self) -> "TrainingWorkflowLock":
-        """Return the exclusive lock used by the one persistent Runner."""
+        """返回持久化 Runner 使用的排他锁。
+
+        锁的作用域仅为一个 Workflow，允许不同训练任务并行；它不替代 Campaign 内部
+        的 CMO 实例锁。
+        """
         return TrainingWorkflowLock(
             self.root / "runner.lock",
             workflow_id=self.root.name,
         )
 
     def append_event(self, value: dict[str, Any]) -> None:
+        """追加诊断事件；它是审阅轨迹，不取代 state.json 的当前调度事实。"""
         sequence = 1
         if self._journal_path.is_file():
             sequence = sum(1 for line in self._journal_path.read_text(encoding="utf-8").splitlines() if line.strip()) + 1
@@ -162,6 +194,7 @@ class TrainingStore:
             handle.write(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n")
 
     def write_summary(self, state: TrainingState) -> None:
+        """写入供用户快速查看的摘要；该文件不参与恢复决策。"""
         self._write_json(
             self._summary_path,
             {
@@ -175,6 +208,7 @@ class TrainingStore:
         )
 
     def write_todo(self, state: TrainingState) -> None:
+        """写入当前阶段和下一动作的人工可读提示；不作为状态机输入。"""
         self._write_text(
             self._todo_path,
             "\n".join(
@@ -191,6 +225,7 @@ class TrainingStore:
         )
 
     def _write_state(self, state: TrainingState) -> None:
+        """将强类型状态转换为稳定 JSON 表示后原子落盘。"""
         value = asdict(state)
         value["status"] = state.status.value
         value["stage"] = state.stage.value
@@ -215,6 +250,7 @@ class TrainingStore:
 
     @staticmethod
     def _write_text(path: Path, value: str) -> None:
+        # 先写同目录临时文件再替换，避免进程中断留下半个 JSON 让恢复流程无法解析。
         path.parent.mkdir(parents=True, exist_ok=True)
         temporary = path.with_suffix(path.suffix + ".tmp")
         temporary.write_text(value, encoding="utf-8", newline="\n")
@@ -222,11 +258,15 @@ class TrainingStore:
 
 
 class TrainingWorkflowLockError(RuntimeError):
-    """Raised when another runner already owns a Training Workflow."""
+    """另一 Runner 已持有同一 Training Workflow 的排他锁时抛出。"""
 
 
 class TrainingWorkflowLock:
-    """Small process-level lock with useful owner metadata for recovery."""
+    """带最小持有者元数据的进程级 Workflow 锁。
+
+    锁文件仅阻止同一 Workflow 的重复调度；其中的 PID 与实例 ID 用于诊断竞争，不把
+    进程内存状态当作可恢复数据。
+    """
 
     def __init__(self, path: Path, *, workflow_id: str) -> None:
         self._path = Path(path)
@@ -235,6 +275,7 @@ class TrainingWorkflowLock:
         self._held = False
 
     def acquire(self) -> None:
+        """以原子创建方式获取锁；已存在时保留原持有者文件并报告稳定错误码。"""
         self._path.parent.mkdir(parents=True, exist_ok=True)
         try:
             descriptor = os.open(
@@ -257,6 +298,7 @@ class TrainingWorkflowLock:
         self._held = True
 
     def release(self) -> None:
+        """仅删除当前实例成功持有的锁，重复释放保持无害。"""
         if self._held:
             try:
                 self._path.unlink()

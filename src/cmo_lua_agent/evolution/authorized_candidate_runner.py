@@ -12,6 +12,11 @@ from cmo_lua_agent.execution.dynamic_batch_job import DynamicBatchJobBuilder
 
 
 class CampaignAuthorizedCandidateRunner:
+    """在 Campaign 授权边界内执行单个候选的 CMO 调用适配器。
+
+它从 PermissionBroker 获取尝试资格并委托执行层；不自行增加额度或绕过 operation
+ledger，因此重启和审阅都能追踪每一次外部执行。
+    """
     def __init__(
         self,
         *,

@@ -271,7 +271,7 @@ def test_rejected_generation_cannot_be_completed(
 
     with pytest.raises(
         WorkflowTransitionError,
-        match="accepted Lua",
+        match="没有生成成功 Lua",
     ):
         context.complete()
 

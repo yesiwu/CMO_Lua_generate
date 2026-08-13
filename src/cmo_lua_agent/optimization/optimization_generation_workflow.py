@@ -48,6 +48,11 @@ class CandidateAcceptanceValidator(Protocol):
 
 # Phase6 单轮优化主工作流
 class OptimizationGenerationWorkflow:
+    """一代候选的确定性评估与结果汇总工作流。
+
+策略提案在 agents，跨代控制在 evolution；本类只编排已给定候选的评估，输出供 Campaign
+排序和 Phase 7 学习消费的正式结果。
+    """
     def __init__(self, *, project_root: Path, proposal_agent: StrategyProposalAgent,
                  candidate_evaluator: SingleCandidateEvaluator,
                  active_skill_loader: object | None = None,

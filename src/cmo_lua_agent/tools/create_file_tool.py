@@ -10,6 +10,7 @@ from typing import Any
 from cmo_lua_agent.tools.edit_file_tool import EditFileTool, _EditError
 from cmo_lua_agent.tools.tool_base.base import BaseTool, ToolResult
 from cmo_lua_agent.tools.tool_base.context import ToolContext
+from cmo_lua_agent.tools.workspace_policy import WorkspacePathError, WorkspacePathPolicy
 
 
 class CreateFileTool(BaseTool):
@@ -40,6 +41,7 @@ class CreateFileTool(BaseTool):
 
     def __init__(self, *, workdir: Path) -> None:
         self._workdir = Path(workdir).resolve(strict=False)
+        self._paths = WorkspacePathPolicy(self._workdir)
 
     def execute(
         self,
@@ -124,14 +126,10 @@ class CreateFileTool(BaseTool):
     ) -> Path:
         if not isinstance(raw_path, str) or not raw_path.strip():
             raise _EditError("invalid_path", f"{field_name} 必须是非空字符串")
-        candidate = Path(raw_path).expanduser()
-        path = (
-            candidate.resolve(strict=False)
-            if candidate.is_absolute()
-            else (self._workdir / candidate).resolve(strict=False)
-        )
-        if not path.is_relative_to(self._workdir):
-            raise _EditError("path_outside_workspace", "只能创建或读取工作区内的文件")
+        try:
+            path = self._paths.resolve_file(raw_path)
+        except WorkspacePathError as exc:
+            raise _EditError(exc.code, exc.message) from exc
         if path.suffix.lower() not in self._TEXT_SUFFIXES:
             raise _EditError("unsupported_file_type", "只允许受支持的文本文件")
         if must_exist:
@@ -143,6 +141,7 @@ class CreateFileTool(BaseTool):
 
     @staticmethod
     def _create_exclusive(path: Path, content: str) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
         descriptor = os.open(
             path,
             os.O_WRONLY | os.O_CREAT | os.O_EXCL,

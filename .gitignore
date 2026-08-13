@@ -11,6 +11,7 @@ __pycache__/
 venv/
 env/
 .pytest_cache/
+.pytest-tmp*/
 .mypy_cache/
 .ruff_cache/
 .coverage
@@ -30,6 +31,11 @@ dist/
 !/runs/.gitkeep
 /config/cmo-assets.local.json
 /data/asset-verifications/
+/data/experiences/records/
+/tmp_exp*.json
+/CMOLua-main/outputs/_tmp/
+/CMOLua-main/mcp/db/*.db3-shm
+/CMOLua-main/mcp/db/*.db3-wal
 
 # IDE, OS, and local agent metadata
 .vscode/

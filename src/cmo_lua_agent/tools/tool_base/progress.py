@@ -1,3 +1,9 @@
+"""与具体工具无关的进度事件协议。
+
+工具通过 Reporter 向 UI/日志发送状态，但回调异常会被隔离，不能反向让已经执行的工具
+失败。这保证展示层故障不会改变 CMO、文件或 Training 的业务结果。
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -35,7 +41,7 @@ class ToolProgressEvent:
 
 
 class ToolProgressReporter:
-    """Domain-neutral progress reporter; callback failures never affect tools."""
+    """领域无关的进度上报器；展示回调失败不会影响工具业务执行。"""
 
     def __init__(
         self,
@@ -79,6 +85,7 @@ class ToolProgressReporter:
         try:
             self._callback(event)
         except Exception:
+            # 进度只是观察通道；不能让终端/UI 回调异常覆盖工具已经产生的正式结果。
             return
 
     def tool_started(self, message: str, detail: str | None = None) -> None:

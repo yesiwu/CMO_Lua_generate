@@ -1,6 +1,26 @@
 # Runtime Entry Points and Ownership
 
-Updated: 2026-08-10
+Updated: 2026-08-12
+
+## Main chat entry
+
+`python -m cmo_lua_agent.main chat` uses profile `all` and is the only normal
+conversation entry. It assembles one `AgentLoop` with common workspace/scenario
+tools plus Training and Campaign high-level tools. The optional `standard`,
+`training`, and `campaign` profiles only isolate toolsets for debugging; they
+append a short scope rule to the same `MAIN_SYSTEM_PROMPT` and are not separate
+agents.
+
+Each plain `chat` launch creates a new empty chat session. Historical transcripts
+remain on disk and can be selected explicitly with `chat --resume`,
+`chat --session <session-id>`, or the in-chat `:use <session-id>` command. This
+keeps a new task free from stale conversational assumptions while preserving
+Training/Campaign recovery through their independent persistent state.
+
+Repository questions follow `search_workspace -> read_file`; dot-prefixed paths
+are never exposed to the main Agent. Complete chat history remains persisted.
+`ContextManager` leaves requests unchanged below 80% of the configured one-million
+token window and only then compacts a request copy toward 60%.
 
 This document is the routing map for new development. A lifecycle has one
 production entry point; lower layers must not create a parallel scheduler.
@@ -31,7 +51,8 @@ Ownership is deliberately split by responsibility:
 - `EvolutionCampaignService`: internal durable Campaign transitions and worker control.
 - `ProductionGenerationExecutor`: execute one frozen generation through Phase 6/7.
 - `CodeRepairCoordinator`: protect changes, verify/restore edits, and record repairs.
-- `SystemRepairAgent`: the adaptive Codex source-change decision used by that coordinator.
+- `CodeRepairAgent`: the self-developed LLM tool loop used by that coordinator;
+  it does not invoke a local Codex CLI.
 
 There is no per-request model-turn limit in this chain. Progress is bounded by
 the requested generation count, persisted state, explicit stop/pause, or a

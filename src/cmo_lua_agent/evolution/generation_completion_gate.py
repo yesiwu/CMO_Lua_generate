@@ -1,4 +1,8 @@
-"""Deterministic gate for generation-wide side effects."""
+"""一代全局副作用的确定性放行闸门。
+
+排序、学习聚合等代级动作只能在预期候选方案全部到达终态后执行；本模块只根据
+已记录的结果作判断，不触发执行、不修改状态，确保重试与恢复仍沿用同一规则。
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -21,13 +25,14 @@ _TERMINAL_STATES = frozenset(
 
 @dataclass(frozen=True, slots=True)
 class GenerationCompletionDecision:
+    """描述本代候选结果是否已足以作为完整正式结果的确定性判定。"""
     complete: bool
     code: str
     pending_candidate_ids: tuple[str, ...]
 
 
 class GenerationCompletionGate:
-    """Allow ranking and learning only after every expected object is terminal."""
+    """只有全部预期对象进入终态后，才允许排序和学习。"""
 
     def evaluate(
         self,

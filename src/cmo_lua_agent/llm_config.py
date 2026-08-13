@@ -33,6 +33,8 @@ class LlmConfig:
     max_tokens: int
     timeout_seconds: float
     max_retries: int
+    # DeepSeek 当前上下文窗口默认为 1M；兼容端点可通过环境变量覆盖。
+    context_window_tokens: int = 1_000_000
 
 
 @dataclass(frozen=True)
@@ -73,6 +75,9 @@ def load_config() -> AppConfig:
             os.getenv("LLM_TIMEOUT_SECONDS", "120")
         ),
         max_retries=int(os.getenv("LLM_MAX_RETRIES", "2")),
+        context_window_tokens=int(
+            os.getenv("LLM_CONTEXT_WINDOW_TOKENS", "1000000")
+        ),
     )
 
     return AppConfig(llm=llm_config)

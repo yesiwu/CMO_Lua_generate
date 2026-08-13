@@ -90,7 +90,7 @@ class ComparativeLearningAgent:
 
         # 校验顶层结构：根字典仅允许 analysis、proposals 两个字段
         if not isinstance(raw, Mapping) or set(raw) != {"candidate_comparisons", "cross_candidate_analysis", "proposals"}:
-            raise ValueError("comparative response schema is invalid")
+            raise ValueError("对比学习响应的结构不合法")
 
         comparisons_raw = raw["candidate_comparisons"]
         analysis_raw = raw["cross_candidate_analysis"]
@@ -107,27 +107,27 @@ class ComparativeLearningAgent:
         )
         # 校验analysis内部字段，不允许多字段、缺字段
         if not isinstance(analysis_raw, Mapping) or set(analysis_raw) != set(analysis_fields):
-            raise ValueError("analysis schema is invalid")
+            raise ValueError("分析结果的结构不合法")
         if not isinstance(comparisons_raw, list) or len(comparisons_raw) != len(expected_ids):
-            raise ValueError("candidate_comparisons must contain every candidate exactly once")
+            raise ValueError("candidate_comparisons 必须恰好包含每个候选方案一次")
         comparisons: list[CandidateComparison] = []
         for candidate_id, item in zip(expected_ids, comparisons_raw, strict=True):
-            # Candidate IDs come from frozen Python input order. Legacy wrapper
-            # IDs are ignored so a model cannot mis-bind an analysis.
+            # 候选方案 ID 由 Python 的冻结输入顺序决定；即使兼容旧包装格式中的 ID
+            # 不正确，也不能让模型把分析结果绑定到错误候选方案。
             candidate_analysis = item
             if isinstance(item, Mapping) and set(item) == {"candidate_id", "analysis"}:
                 candidate_analysis = item["analysis"]
             if not isinstance(candidate_analysis, Mapping):
-                raise ValueError("candidate comparison schema is invalid")
+                raise ValueError("候选方案对比项的结构不合法")
             if not isinstance(candidate_analysis, Mapping) or set(candidate_analysis) != set(analysis_fields):
-                raise ValueError("candidate comparison analysis schema is invalid")
+                raise ValueError("候选方案对比分析的结构不合法")
             comparisons.append(CandidateComparison(
                 candidate_id,
                 ComparativeAnalysis(*(tuple(str(value) for value in candidate_analysis[field]) for field in analysis_fields)),
             ))
         # 提案必须为列表，数量限制0~5条，控制假说规模，防止上下文爆炸
         if not isinstance(proposals_raw, list) or len(proposals_raw) > 5:
-            raise ValueError("proposals must contain 0..5 items")
+            raise ValueError("proposals 必须包含 0 到 5 项")
 
         # 组装标准化对比分析实体
         analysis = ComparativeAnalysis(*(tuple(str(item) for item in analysis_raw[field]) for field in analysis_fields))
@@ -150,12 +150,12 @@ class ComparativeLearningAgent:
             "contradicting_candidate_ids", "model_confidence",
         }
         if not isinstance(value, Mapping) or set(value) != fields:
-            raise ValueError("proposal contains forbidden or missing fields")
+            raise ValueError("经验提案包含缺失字段或不允许的字段")
 
         confidence = ComparativeLearningAgent._confidence(value["model_confidence"])
         # 置信度值域校验：必须是0~1之间数字
         if confidence is None:
-            raise ValueError("model_confidence must be within 0..1")
+            raise ValueError("model_confidence 必须位于 0 到 1 之间")
         # 推荐策略模板必须为对象（字典）
         pattern_value = value["recommended_pattern"]
         if isinstance(pattern_value, str) and pattern_value.strip():
@@ -163,11 +163,11 @@ class ComparativeLearningAgent:
         elif isinstance(pattern_value, Mapping):
             pattern = dict(pattern_value)
         else:
-            raise ValueError("recommended_pattern must be a non-empty object or string")
+            raise ValueError("recommended_pattern 必须是非空对象或字符串")
         try:
             stance = EvidenceStance(str(value["evidence_stance"]))
         except ValueError as exc:
-            raise ValueError("evidence_stance is invalid") from exc
+            raise ValueError("evidence_stance 不合法") from exc
 
         applicable_conditions = ComparativeLearningAgent._string_array(
             value["applicable_conditions"], "applicable_conditions"
@@ -194,7 +194,7 @@ class ComparativeLearningAgent:
         if not isinstance(value, list) or not all(
             isinstance(item, str) and item.strip() for item in value
         ):
-            raise ValueError(f"{field_name} must be an array of strings")
+            raise ValueError(f"{field_name} 必须是字符串数组")
         return tuple(item.strip() for item in value)
 
     @staticmethod
@@ -246,44 +246,41 @@ def _error_code(error: ValueError) -> str:
 
 
 _SYSTEM = (
-    "Return exactly one JSON object, with no Markdown or surrounding text. "
-    "The root object must contain exactly candidate_comparisons, cross_candidate_analysis, and proposals. "
-    "candidate_comparisons must contain one analysis object for every input candidate in response_contract.candidate_comparison_order. "
-    "Never output candidate_id in candidate_comparisons; Python binds each array position to the frozen order. "
-    "cross_candidate_analysis and every candidate comparison analysis must contain exactly "
-    "observed_strategy_differences, observed_execution_differences, "
-    "observed_outcome_differences, evidence_limitations, possible_random_factors, and "
-    "next_testable_hypotheses; every analysis field must be an array of strings. "
-    "proposals must be an array of zero to five objects. Each proposal must contain exactly: "
+    "只能返回一个 JSON 对象，不得包含 Markdown 或其他包裹文本。"
+    "根对象必须且只能包含 candidate_comparisons、cross_candidate_analysis 与 proposals。"
+    "candidate_comparisons 必须按 response_contract.candidate_comparison_order 中的顺序，为每个输入候选方案提供一个分析对象。"
+    "不得在 candidate_comparisons 中输出 candidate_id；Python 会按冻结顺序绑定数组位置。"
+    "cross_candidate_analysis 及每个候选方案的比较分析必须且只能包含 "
+    "observed_strategy_differences、observed_execution_differences、"
+    "observed_outcome_differences、evidence_limitations、possible_random_factors 与 "
+    "next_testable_hypotheses；每个分析字段必须是字符串数组。"
+    "proposals 必须是包含零到五个对象的数组。每个对象必须且只能包含："
     "experience_key, experience_type, evidence_stance, hypothesis, applicable_conditions, "
     "recommended_pattern, counter_conditions, supporting_candidate_ids, "
-    "contradicting_candidate_ids, model_confidence. applicable_conditions, counter_conditions, "
-    "supporting_candidate_ids, and contradicting_candidate_ids must each be JSON arrays of strings. "
-    "model_confidence must be a JSON number from 0.0 to 1.0, never a percentage or confidence level. "
-    "Allowed experience_key values are naval_air_anti_surface.target_deconfliction, "
+    "contradicting_candidate_ids、model_confidence。applicable_conditions、counter_conditions、"
+    "supporting_candidate_ids 与 contradicting_candidate_ids 均必须是 JSON 字符串数组。"
+    "model_confidence 必须是 0.0 到 1.0 的 JSON 数字，不能使用百分比或置信等级。"
+    "允许的 experience_key 值为 naval_air_anti_surface.target_deconfliction、"
     "naval_air_anti_surface.target_concentration, naval_air_anti_surface.salvo_timing, "
     "naval_air_anti_surface.fire_quantity, naval_air_anti_surface.aircraft_route, "
-    "naval_air_anti_surface.aircraft_early_loss, and naval_air_anti_surface.ammunition_reserve. "
-    "Allowed experience_type values are tactical_positive, tactical_negative, counterexample, "
-    "execution_failure, runtime_diagnostic, and evidence_limitation. recommended_pattern must be a JSON object, for example "
-    "{\"summary\": \"...\"}; it must never be a string. evidence_stance is support, contradict, or qualify. "
-    "For support, supporting_candidate_ids must be non-empty. For contradict, contradicting_candidate_ids must be non-empty. "
-    "For qualify, at least one candidate reference and at least one counter_condition are required. Otherwise return no proposal. "
-    "Do not output experience IDs, status, evidence references, environment details, scores, Lua, "
-    "CMO commands, or ranking changes. candidate_quality is a deterministic quality report and may be used "
-    "only to qualify the scope of a hypothesis. COMPLETE and DERIVED scoring evidence may support a normal "
-    "proposal. When scoring_evidence_status is MISSING or CONFLICTING but official_score is valid and the "
-    "candidate executed successfully, every proposal must use experience_type=evidence_limitation and must "
-    "be an explicitly testable black-box hypothesis. It may say only that changed StrategySpec fields may be "
-    "associated with an observed outcome. Do not state or invent missile quantities, platform-specific kills, "
-    "weapon release, damage attribution, or direct causal mechanisms unless that exact fact appears in the "
-    "input view. recommended_pattern must describe a controlled follow-up experiment, not a tactical "
-    "recommendation. State missing evidence and plausible alternatives in counter_conditions. Such a proposal "
-    "is not Skill-promotion evidence. DERIVED evidence must be described as reconstructed and lower confidence."
+    "naval_air_anti_surface.aircraft_early_loss 与 naval_air_anti_surface.ammunition_reserve。"
+    "允许的 experience_type 值为 tactical_positive、tactical_negative、counterexample、"
+    "execution_failure、runtime_diagnostic 与 evidence_limitation。recommended_pattern 必须是 JSON 对象，例如 "
+    "{\"summary\": \"...\"}，绝不能是字符串。evidence_stance 只能是 support、contradict 或 qualify。"
+    "当 evidence_stance 为 support 时，supporting_candidate_ids 不能为空；为 contradict 时，contradicting_candidate_ids 不能为空。"
+    "当 evidence_stance 为 qualify 时，至少需要一个候选方案引用和一个 counter_condition，否则不要输出该 proposal。"
+    "不得输出经验 ID、状态、证据引用、环境细节、分数、Lua、CMO 命令或排名变化。candidate_quality 是确定性的质量报告，"
+    "只能用于限定假设适用范围。COMPLETE 与 DERIVED 的计分证据可以支撑普通 proposal。"
+    "当 scoring_evidence_status 为 MISSING 或 CONFLICTING、但 official_score 有效且候选方案成功执行时，"
+    "每个 proposal 都必须使用 experience_type=evidence_limitation，并且必须是可明确验证的黑箱假设。"
+    "它只能说明变动过的 StrategySpec 字段可能与观察到的结果相关。除非输入视图中明确给出了相同事实，"
+    "不得陈述或虚构导弹数量、特定平台击杀、武器释放、毁伤归因或直接因果机制。recommended_pattern 必须描述受控的后续实验，"
+    "而非战术建议。请在 counter_conditions 中说明缺失证据和可能的替代解释。此类 proposal 不能作为 Skill 晋升证据。"
+    "DERIVED 证据必须说明为重建结果，并降低置信度。"
 )
 
 _REPAIR_SYSTEM = (
     _SYSTEM
-    + " This is a repair attempt. Return a complete replacement response. "
-    "candidate_comparisons is an ordered array of analysis objects only; never include candidate_id."
+    + "这是一次修复尝试；请返回完整的替换响应。"
+    "candidate_comparisons 只能是有序分析对象数组，绝不能包含 candidate_id。"
 )

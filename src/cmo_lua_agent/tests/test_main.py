@@ -42,21 +42,50 @@ def test_build_parser_保留_chat模式() -> None:
 
     assert args.command == "chat"
     assert isinstance(args.workdir, Path)
+    assert args.resume is False
+    assert args.session is None
 
 
-def test_chat_system_prompt_requires_json_path_before_generation() -> None:
-    prompt = main_module.CHAT_SYSTEM_PROMPT
+def test_chat_parser_supports_explicit_session_resume() -> None:
+    parser = main_module.build_parser()
 
-    assert "用户没有提供明确的 JSON 路径时，直接询问路径" in prompt
-    assert "优先调用 generate_cmo_lua" in prompt
-    assert "不得用 read_file 猜测 CMOLua-main 中的路径" in prompt
-    assert "优先调用 query_cmo_database 核验事实" in prompt
-    assert "选择仍须用户明确确认" in prompt
-    assert "必须等待用户明确同意后，才调用 edit_file" in prompt
-    assert "第二次终端人工审批" in prompt
-    assert "首次修复，默认使用 create_json_copy" in prompt
-    assert "后续修复应针对 create_json_copy 返回的副本使用 edit_file" in prompt
-    assert "只有用户明确输入“修改原文件”时才允许 edit_file 指向原文件" in prompt
+    recent = parser.parse_args(["chat", "--resume"])
+    named = parser.parse_args(["chat", "--session", "session-123"])
+
+    assert recent.resume is True
+    assert named.session == "session-123"
+
+
+def test_chat_parser_rejects_resume_and_named_session_together() -> None:
+    parser = main_module.build_parser()
+
+    with pytest.raises(SystemExit):
+        parser.parse_args(["chat", "--resume", "--session", "session-123"])
+
+
+def test_main_system_prompt_defines_general_tool_routing_and_authorization() -> None:
+    prompt = main_module.MAIN_SYSTEM_PROMPT
+
+    assert "先调用 search_workspace" in prompt
+    assert "read_file" in prompt
+    assert "点号开头" in prompt
+    assert "普通聊天" in prompt and "一次确认" in prompt
+    assert "start_training" in prompt and "视为持续授权" in prompt
+    assert "Phase 7" in prompt and "Phase 8" in prompt
+    assert "持久化状态" in prompt
+    assert "CodeRepairAgent" in prompt and "外层 Harness" in prompt
+
+
+@pytest.mark.parametrize("profile", ["standard", "training", "campaign"])
+def test_debug_profiles_append_scope_to_the_same_core_prompt(profile: str) -> None:
+    prompt = main_module.system_prompt_for_profile(profile)
+
+    assert prompt.startswith(main_module.MAIN_SYSTEM_PROMPT)
+    assert prompt != main_module.MAIN_SYSTEM_PROMPT
+
+
+def test_all_profile_uses_only_the_core_prompt() -> None:
+    assert main_module.system_prompt_for_profile("all") == main_module.MAIN_SYSTEM_PROMPT
 
 
 def test_build_parser_解析run模式新增参数(
@@ -248,11 +277,15 @@ def test_main_chat模式保留原来的Agent装配流程(
         agent_loop: object,
         display: object,
         session_store: ChatSessionStore,
+        resume: bool,
+        session_id: str | None,
     ) -> int:
         calls["run_chat"] = {
             "agent_loop": agent_loop,
             "display": display,
             "session_store": session_store,
+            "resume": resume,
+            "session_id": session_id,
         }
         return 7
 
@@ -303,6 +336,8 @@ def test_main_chat模式保留原来的Agent装配流程(
     assert calls["run_chat"]["agent_loop"] is agent_loop
     assert calls["run_chat"]["display"] is display
     assert isinstance(calls["run_chat"]["session_store"], ChatSessionStore)
+    assert calls["run_chat"]["resume"] is False
+    assert calls["run_chat"]["session_id"] is None
 
 
 def test_main_run模式不加载LLM配置(

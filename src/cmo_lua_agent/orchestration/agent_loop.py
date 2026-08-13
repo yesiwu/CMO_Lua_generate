@@ -20,7 +20,7 @@ Agent 核心循环实现。
 4. 识别 text 和 tool_use 内容块；
 5. 分发并执行工具；
 6. 封装 Anthropic tool_result；
-7. 限制最大循环轮数；
+7. 按可选墙钟期限控制特殊任务，普通聊天不设置任意工具轮数上限；
 8. 在失败时发出 AGENT_FAILED 事件。
 
 边界约束：
@@ -35,13 +35,16 @@ from __future__ import annotations
 
 import json
 import logging
-import re
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from time import perf_counter
 from typing import Any
 
 from cmo_lua_agent.llm.client import ClaudeClient
+from cmo_lua_agent.orchestration.context_manager import (
+    ContextCompactionNotice,
+    ContextManager,
+)
 from cmo_lua_agent.orchestration.events import AgentEvent, AgentEventType
 from cmo_lua_agent.tools.tool_base.registry import ToolRegistry
 from cmo_lua_agent.tools.tool_base.context import ToolContext
@@ -53,23 +56,35 @@ logger = logging.getLogger(__name__)
 EventHandler = Callable[[AgentEvent], None]
 
 _RECOVERY_TOOLS = frozenset({"read_file", "list_directory"})
-_DISCOVERY_TOOLS = frozenset(
-    {"list_directory", "list_skills", "load_skill", "read_file"}
-)
 _MAX_AUTOMATIC_RECOVERIES = 1
-_MAX_NONPRODUCTIVE_TURNS = 3
+
+
+class AgentLoopDeadlineExceeded(TimeoutError):
+    """单次 Agent 请求超过调用方给出的墙钟期限。"""
+
+
+@dataclass(frozen=True, slots=True)
+class AgentLoopPolicy:
+    """控制通用循环的终止策略；默认值保持普通聊天的既有保护行为。"""
+
+    use_chat_guards: bool = True
+    deadline_seconds: float | None = None
+
+    @classmethod
+    def code_repair(cls, *, deadline_seconds: float = 1800) -> "AgentLoopPolicy":
+        if deadline_seconds <= 0:
+            raise ValueError("deadline_seconds 必须大于 0")
+        return cls(use_chat_guards=False, deadline_seconds=deadline_seconds)
 
 
 @dataclass
 class _RunGuard:
-    """Keep a bounded, deterministic record of one outer user request."""
+    """记录一次用户请求内的工具失败，供模型收到结构化恢复提示。"""
 
     failures_by_call: dict[str, int] = field(default_factory=dict)
     attempted_tools: list[str] = field(default_factory=list)
     latest_error: str | None = None
     automatic_recoveries: int = 0
-    nonproductive_turns: int = 0
-    has_explicit_json_path: bool = False
 
 
 @dataclass
@@ -94,6 +109,8 @@ class AgentLoop:
         system_prompt: str,
         max_turns: int | None = None,
         event_handler: EventHandler | None = None,
+        run_policy: AgentLoopPolicy | None = None,
+        context_manager: ContextManager | None = None,
     ) -> None:
         """
         初始化 AgentLoop。
@@ -127,6 +144,8 @@ class AgentLoop:
         self._system_prompt = system_prompt
         self._max_turns = max_turns
         self._event_handler = event_handler
+        self._run_policy = run_policy or AgentLoopPolicy()
+        self._context_manager = context_manager
 
 ############核心#######
     def run(self, messages: list[dict[str, Any]]) -> str | None:
@@ -153,9 +172,7 @@ class AgentLoop:
         agent_started_at = perf_counter()
         completed_turns = 0
         safe_message_count = len(messages)
-        guard = _RunGuard(
-            has_explicit_json_path=self._has_explicit_json_path(messages)
-        )
+        guard = _RunGuard()
 
         self._emit(
             AgentEvent(
@@ -170,6 +187,11 @@ class AgentLoop:
             # Completion is driven by the model's final response or a
             # concrete guard outcome, never by an arbitrary request-turn cap.
             while True:
+                if (
+                    self._run_policy.deadline_seconds is not None
+                    and perf_counter() - agent_started_at >= self._run_policy.deadline_seconds
+                ):
+                    raise AgentLoopDeadlineExceeded("Agent 修复已达到单次运行期限")
                 turn += 1
                 completed_turns = turn
 
@@ -195,10 +217,18 @@ class AgentLoop:
                     )
                     return final_text
 
-                outcome = self._execute_tool_calls(
-                    content=response.content,
-                    guard=guard,
-                )
+                if self._run_policy.use_chat_guards:
+                    outcome = self._execute_tool_calls(
+                        content=response.content,
+                        guard=guard,
+                    )
+                else:
+                    outcome = _ToolExecutionOutcome(
+                        tool_results=self._execute_tool_calls_legacy(
+                            content=response.content
+                        ),
+                        tool_names=[],
+                    )
                 tool_results = outcome.tool_results
 
                 if not tool_results:
@@ -209,48 +239,6 @@ class AgentLoop:
 
                 messages.append({"role": "user", "content": tool_results})
                 safe_message_count = len(messages)
-
-                if outcome.stop_message:
-                    return self._finish_needs_input(
-                        messages=messages,
-                        guard=guard,
-                        turn=turn,
-                        duration_seconds=perf_counter() - agent_started_at,
-                        reason=outcome.stop_message,
-                    )
-
-                if outcome.tool_names and all(
-                    tool_name in _DISCOVERY_TOOLS
-                    for tool_name in outcome.tool_names
-                ):
-                    guard.nonproductive_turns += 1
-                else:
-                    guard.nonproductive_turns = 0
-
-                # 用户已给出 JSON 路径时，模型仍可在读取 Skill 后继续调用
-                # generate_cmo_lua；不能把模型的无效探索误判成用户缺少输入。
-                if (
-                    not guard.has_explicit_json_path
-                    and guard.nonproductive_turns >= _MAX_NONPRODUCTIVE_TURNS
-                ):
-                    return self._finish_needs_input(
-                        messages=messages,
-                        guard=guard,
-                        turn=turn,
-                        duration_seconds=perf_counter() - agent_started_at,
-                        reason=(
-                            "连续进行了目录、Skill 或文件探索，"
-                            "但尚未执行生成或 CMO 操作。"
-                        ),
-                    )
-
-            return self._finish_needs_input(
-                messages=messages,
-                guard=guard,
-                turn=completed_turns,
-                duration_seconds=perf_counter() - agent_started_at,
-                reason=f"已达到本次请求的 {self._max_turns} 回合预算。",
-            )
 
         except KeyboardInterrupt:
             # An interrupted tool call has no tool_result. Remove the
@@ -279,6 +267,22 @@ class AgentLoop:
         """
         发起一轮流式模型请求，并发送对应事件。
         """
+        llm_started_at = perf_counter()
+
+        tool_definitions = self._tool_registry.get_definitions()
+        outbound_messages = (
+            self._context_manager.build(
+                messages,
+                system_prompt=self._system_prompt,
+                tools=tool_definitions,
+                compaction_observer=lambda notice: self._emit_context_compaction(
+                    notice=notice,
+                    turn=turn,
+                ),
+            )
+            if self._context_manager is not None
+            else messages
+        )
         self._emit(
             AgentEvent(
                 type=AgentEventType.LLM_STARTED,
@@ -286,18 +290,18 @@ class AgentLoop:
                 data={"turn": turn, "max_turns": self._max_turns},
             )
         )
-
-        llm_started_at = perf_counter()
-
         response = self._llm_client.stream_message(
             system=self._system_prompt,
-            messages=messages,
-            tools=self._tool_registry.get_definitions(),
+            messages=outbound_messages,
+            tools=tool_definitions,
             on_text_delta=lambda text: self._emit_text_delta(text=text, turn=turn),
         )
 
         duration_seconds = perf_counter() - llm_started_at
         usage = getattr(response, "usage", None)
+        input_tokens = self._get_usage_value(usage, "input_tokens")
+        if self._context_manager is not None:
+            self._context_manager.observe_usage(input_tokens)
 
         self._emit(
             AgentEvent(
@@ -307,13 +311,44 @@ class AgentLoop:
                     "turn": turn,
                     "max_turns": self._max_turns,
                     "stop_reason": getattr(response, "stop_reason", None),
-                    "input_tokens": self._get_usage_value(usage, "input_tokens"),
+                    "input_tokens": input_tokens,
                     "output_tokens": self._get_usage_value(usage, "output_tokens"),
                     "duration_seconds": duration_seconds,
                 },
             )
         )
         return response
+
+    def _emit_context_compaction(
+        self,
+        *,
+        notice: ContextCompactionNotice,
+        turn: int,
+    ) -> None:
+        """把 ContextManager 的无界面通知转换为统一 AgentEvent。"""
+
+        event_type = (
+            AgentEventType.CONTEXT_COMPACTION_STARTED
+            if notice.phase == "started"
+            else AgentEventType.CONTEXT_COMPACTION_COMPLETED
+        )
+        self._emit(
+            AgentEvent(
+                type=event_type,
+                message=event_type.display_name,
+                data={
+                    "turn": turn,
+                    "estimated_tokens_before": notice.estimated_tokens_before,
+                    "estimated_tokens_after": notice.estimated_tokens_after,
+                    "context_window_tokens": notice.context_window_tokens,
+                    "target_tokens": notice.target_tokens,
+                    "retained_message_count": notice.retained_message_count,
+                    "duration_seconds": notice.duration_seconds,
+                    "strategy": notice.strategy,
+                    "fallback_reason": notice.fallback_reason,
+                },
+            )
+        )
 
     def _emit_text_delta(self, *, text: str, turn: int) -> None:
         """
@@ -408,7 +443,7 @@ class AgentLoop:
         content: list[Any],
         guard: _RunGuard,
     ) -> _ToolExecutionOutcome:
-        """Execute one tool batch with bounded, read-only recovery."""
+        """执行一批工具调用，并对可安全更正的读/目录误用做一次恢复。"""
         tool_results: list[dict[str, Any]] = []
         tool_names: list[str] = []
         stop_message: str | None = None
@@ -459,9 +494,24 @@ class AgentLoop:
                             recovery_result.content
                         )
                 if guard.failures_by_call[call_key] >= 2:
-                    stop_message = (
-                        f"工具 {tool_name} 使用相同参数已连续失败两次。"
+                    content_for_model = json.dumps(
+                        {
+                            "error": "repeated_identical_failure",
+                            "tool": tool_name,
+                            "arguments": arguments,
+                            "latest_error": guard.latest_error,
+                            "instruction": (
+                                "相同工具和参数已经重复失败。不要再次原样调用；"
+                                "请重新分析，改用其他工具，或向用户明确说明缺少什么信息。"
+                            ),
+                        },
+                        ensure_ascii=False,
                     )
+                    is_error_for_model = True
+            else:
+                # 失败计数描述的是“连续相同失败”，中间成功必须打断该序列。
+                guard.failures_by_call.pop(call_key, None)
+                guard.latest_error = None
 
             tool_results.append(
                 self._tool_result(
@@ -675,39 +725,6 @@ class AgentLoop:
             )
         )
 
-    def _finish_needs_input(
-        self,
-        *,
-        messages: list[dict[str, Any]],
-        guard: _RunGuard,
-        turn: int,
-        duration_seconds: float,
-        reason: str,
-    ) -> str:
-        """Close the protocol history with a deterministic, actionable summary."""
-        attempted = ", ".join(guard.attempted_tools[-6:]) or "无"
-        latest_error = guard.latest_error or "未获得足以继续执行的有效输入。"
-        summary = (
-            "本次请求尚未完成。"
-            f"原因：{reason} 已尝试工具：{attempted}。"
-            f"最近信息：{latest_error}。"
-            "请提供要继续处理的明确文件路径或场景 JSON 路径。"
-        )
-        messages.append({"role": "assistant", "content": summary})
-        self._emit(
-            AgentEvent(
-                type=AgentEventType.AGENT_NEEDS_INPUT,
-                message=summary,
-                data={
-                    "turns": turn,
-                    "duration_seconds": duration_seconds,
-                    "attempted_tools": list(guard.attempted_tools),
-                    "latest_error": guard.latest_error,
-                },
-            )
-        )
-        return summary
-
     def _emit(self, event: AgentEvent) -> None:
         """
         向外部监听器发送事件。
@@ -763,16 +780,3 @@ class AgentLoop:
         if not texts:
             return None
         return "\n".join(texts)
-
-    @staticmethod
-    def _has_explicit_json_path(messages: list[dict[str, Any]]) -> bool:
-        """判断本轮用户请求是否已经包含可用来生成的 JSON 文件路径。"""
-        for message in reversed(messages):
-            if message.get("role") != "user":
-                continue
-            content = message.get("content")
-            if not isinstance(content, str):
-                continue
-            if re.search(r"(?i)(?:[a-z]:[\\/])?[^\s<>\"'`]+\.json\b", content):
-                return True
-        return False

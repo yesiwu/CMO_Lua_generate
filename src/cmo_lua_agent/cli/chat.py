@@ -36,7 +36,6 @@ from cmo_lua_agent.orchestration.chat_session_store import (
     ChatSession,
     ChatSessionStore,
 )
-from cmo_lua_agent.orchestration.context_manager import ContextManager
 
 
 _EXIT_COMMANDS = {
@@ -59,7 +58,9 @@ def run_chat(
     agent_loop: AgentLoop,
     display: TerminalDisplay,
     session_store: ChatSessionStore | None = None,
-    context_manager: ContextManager | None = None,
+    context_manager: object | None = None,
+    resume: bool = False,
+    session_id: str | None = None,
 ) -> int:
     """
     启动交互式聊天循环。
@@ -75,17 +76,26 @@ def run_chat(
     Returns:
         程序退出码。正常退出返回 0。
     """
-    active_session = (
-        session_store.load_active()
-        if session_store is not None
-        else None
-    )
+    if resume and session_id is not None:
+        raise ValueError("resume_and_session_are_mutually_exclusive")
+    # 默认把一次程序启动视为一个新任务。历史会话仍完整保留，但只有显式 --resume、
+    # --session 或交互命令 :use 才重新进入，避免旧目标和失效路径悄悄污染新请求。
+    active_session = None
+    if session_store is not None:
+        if session_id is not None:
+            active_session = session_store.activate(session_id)
+        elif resume:
+            active_session = session_store.load_active()
+        else:
+            active_session = session_store.create()
     history: list[dict[str, Any]] = (
         active_session.messages
         if active_session is not None
         else []
     )
-    context_manager = context_manager or ContextManager()
+    # 参数仅为兼容旧调用方保留；上下文副本现在由 AgentLoop 在每次模型请求前管理，
+    # ChatSession 始终保存完整历史，避免压缩摘要反向污染持久化会话。
+    del context_manager
 
     # 首次进入聊天模式时显示静态标题。
     # start 后立即 stop，可以留下完整标题和状态栏，
@@ -151,10 +161,7 @@ def run_chat(
             # 模型文本已经通过 TEXT_DELTA 事件实时展示。
             # 不再打印 run() 返回的 final_text，
             # 否则最终回答会重复出现两次。
-            context = context_manager.build(history)
-            original_context_length = len(context)
-            agent_loop.run(context)
-            history.extend(context[original_context_length:])
+            agent_loop.run(history)
 
         except KeyboardInterrupt:
             interrupted = True

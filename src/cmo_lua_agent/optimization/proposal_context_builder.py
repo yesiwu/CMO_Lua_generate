@@ -24,6 +24,7 @@ def _operation_key(path: str) -> str | None:
 
 @dataclass(frozen=True, slots=True)
 class ProposalTacticalContext:
+    """供策略 Agent 使用的紧凑战术上下文及其可追溯 checksum。"""
     scenario_summary: dict[str, object]
     baseline_operations: tuple[dict[str, object], ...]
     target_summary: tuple[dict[str, object], ...]

@@ -1,4 +1,9 @@
-"""Production generation orchestration over a frozen candidate set."""
+"""冻结候选集的一代正式执行器。
+
+由 EvolutionCampaignService 的 Worker 调用。输入是已经写盘的 FrozenCandidateSet；
+执行 baseline 与候选评估、写入 Phase 6 Artifact，并在本代完成后调用 Phase 7。
+它不重新调用策略 LLM，也不自行授权 CMO 或修改 Campaign 控制状态。
+"""
 
 from __future__ import annotations
 
@@ -25,7 +30,11 @@ from cmo_lua_agent.optimization.phase6_models import EvaluationIdentity
 
 
 class ProductionGenerationExecutor:
-    """Run baseline and four frozen candidates, then Phase 7 and Phase 8."""
+    """执行一代冻结的 baseline/候选，并把结果交给既有排序与学习链路。
+
+Phase 8 不在这里按候选或按代聚合；TrainingRunner 在所有 Generation 的正式结果
+完成后统一调用它，避免 Experience 集合在聚合时继续变化。
+    """
 
     def __init__(
         self,
@@ -46,8 +55,8 @@ class ProductionGenerationExecutor:
         self._phase8 = phase8_adapter
         self._champion = champion_policy
         self._stop = stop_policy
-        # Execution identity is the fixed slot directory and candidate ID.  The
-        # checksums retained in preview artifacts are audit metadata only.
+        # 执行身份由固定 slot 目录和 candidate_id 决定；Preview 中保留的 checksum
+        # 用于审阅定位，不作为运行阻断条件，符合轻量化训练流程的设计。
         self._frozen = frozen_provider or FrozenCandidateSetProvider(
             verify_checksum_metadata=False,
         )
@@ -56,6 +65,12 @@ class ProductionGenerationExecutor:
         self._completion_gate = GenerationCompletionGate()
 
     def run(self, context: GenerationWorkerContext) -> GenerationExecutionResult:
+        """执行一代并返回给 Worker 的标准化结果。
+
+已完成且通过 CompletionGate 的候选会复用正式 Artifact；失败的外部 CMO 结果不复用，
+以便修复外部条件后获得新的尝试。暂停、停止和授权过期会在候选安全边界返回，交给
+Campaign Worker 持久化，而不是在 Executor 内猜测后续状态。
+        """
         preview = context.preview
         frozen_path = Path(preview.frozen_candidate_set_ref)
         if not frozen_path.is_file():
@@ -77,9 +92,8 @@ class ProductionGenerationExecutor:
             existing_path = phase6_root / self.candidate_root_name(candidate_id) / "candidate_outcome.json"
             if existing_path.is_file():
                 existing = json.loads(existing_path.read_text(encoding="utf-8"))
-                # A prior CMO-process failure is not a reusable result.  It
-                # must get a fresh attempt after the external condition (for
-                # example an open Command.exe UI) has been corrected.
+                # 仅复用已成功且完整的正式 Artifact。CMO 进程失败常由外部条件导致，
+                # 修复环境后必须重新尝试，不能把旧失败永久视作该候选的最终结论。
                 if bool(existing.get("execution_success")) and self._completion_gate.evaluate(
                     expected_candidate_ids=(candidate_id,),
                     outcomes=(existing,),

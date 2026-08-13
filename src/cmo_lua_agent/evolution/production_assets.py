@@ -36,6 +36,7 @@ def _atomic_json(path: Path, value: object) -> None:
 
 
 class ScenarioAssetVerificationService:
+    """验证 Campaign 使用的场景资产与运行输入是否可安全定位和读取。"""
     def __init__(self, *, registry_path: Path, verification_root: Path) -> None:
         self.registry_path = Path(registry_path).resolve()
         self.verification_root = Path(verification_root).resolve()
@@ -108,6 +109,7 @@ class ScenarioAssetVerificationService:
 
 
 class ControlledScenarioAssetRegistry:
+    """登记已验证的场景资产，向输入包加载器提供统一的受控引用。"""
     def __init__(self, *, registry_path: Path, verification_root: Path) -> None:
         self._service = ScenarioAssetVerificationService(
             registry_path=registry_path,

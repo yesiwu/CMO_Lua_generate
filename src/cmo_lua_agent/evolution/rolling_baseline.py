@@ -12,6 +12,7 @@ from cmo_lua_agent.contract.strategy_models import BaselineStrategy, strategy_sp
 
 @dataclass(frozen=True, slots=True)
 class ResolvedRollingBaseline:
+    """某一代 Preview 必须使用的已解析滚动基线引用及其来源证据。"""
     source_generation_index: int
     champion_id: str
     strategy_path: Path

@@ -19,6 +19,7 @@ from cmo_lua_agent.optimization.strategy_dimensions import semantic_dimension
 
 
 class CandidateSetValidator:
+    """校验一批候选是否满足正式执行前的结构与差异约束。"""
     def validate(
         self, *,
         scenario: ScenarioDefinition,

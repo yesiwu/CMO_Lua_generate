@@ -8,6 +8,10 @@ from cmo_lua_agent.training.models import TrainingStatus
 from cmo_lua_agent.training.store import TrainingStore
 
 
+def _baseline(_workflow_id: str) -> str:
+    return "abc123"
+
+
 def test_service_persists_request_before_launching_runner(tmp_path: Path) -> None:
     launches: list[str] = []
 
@@ -26,6 +30,7 @@ def test_service_persists_request_before_launching_runner(tmp_path: Path) -> Non
         input_resolver=Resolver(),
         process_manager=ProcessManager(),
         workflow_id_factory=lambda: "training-001",
+        baseline_builder=_baseline,
     )
 
     result = service.start(
@@ -37,6 +42,7 @@ def test_service_persists_request_before_launching_runner(tmp_path: Path) -> Non
     assert result == {"workflow_id": "training-001", "pid": 4321}
     assert launches == ["training-001"]
     assert service.inspect("training-001")["generation_count"] == 3
+    assert TrainingStore(tmp_path, "training-001").load_state().last_good_commit == "abc123"
 
 
 def test_service_control_persists_safe_boundary_commands(tmp_path: Path) -> None:
@@ -49,6 +55,7 @@ def test_service_control_persists_safe_boundary_commands(tmp_path: Path) -> None
         input_resolver=Resolver(),
         process_manager=SimpleNamespace(start=lambda _workflow_id: 1),
         workflow_id_factory=lambda: "training-001",
+        baseline_builder=_baseline,
     )
     service.start(input_path="scenario.json", objective="improve", generation_count=1)
 
@@ -72,6 +79,7 @@ def test_service_resume_restarts_a_dead_running_workflow(tmp_path: Path) -> None
         input_resolver=SimpleNamespace(resolve=lambda _path: SimpleNamespace(reference="scenario.json")),
         process_manager=ProcessManager(),
         workflow_id_factory=lambda: "training-001",
+        baseline_builder=_baseline,
     )
     service.start(input_path="scenario.json", objective="improve", generation_count=1)
     TrainingStore(tmp_path, "training-001").transition(status=TrainingStatus.RUNNING)
@@ -86,6 +94,7 @@ def test_service_inspect_exposes_persisted_transient_retry(tmp_path: Path) -> No
         input_resolver=SimpleNamespace(resolve=lambda _path: SimpleNamespace(reference="scenario.json")),
         process_manager=SimpleNamespace(start=lambda _workflow_id: 1),
         workflow_id_factory=lambda: "training-001",
+        baseline_builder=_baseline,
     )
     service.start(input_path="scenario.json", objective="improve", generation_count=1)
     TrainingStore(tmp_path, "training-001").transition(runner={"retry": {"kind": "TRANSIENT"}})
@@ -109,6 +118,7 @@ def test_service_inspect_relaunches_a_known_dead_running_workflow(tmp_path: Path
         input_resolver=SimpleNamespace(resolve=lambda _path: SimpleNamespace(reference="scenario.json")),
         process_manager=ProcessManager(),
         workflow_id_factory=lambda: "training-001",
+        baseline_builder=_baseline,
     )
     service.start(input_path="scenario.json", objective="improve", generation_count=1)
     TrainingStore(tmp_path, "training-001").transition(status=TrainingStatus.RUNNING)
@@ -117,3 +127,60 @@ def test_service_inspect_relaunches_a_known_dead_running_workflow(tmp_path: Path
 
     assert launches == ["training-001", "training-001"]
     assert status["runner_pid"] == 2
+
+
+def test_service_inspect_relaunches_a_dead_repairing_workflow(tmp_path: Path) -> None:
+    launches: list[str] = []
+
+    class ProcessManager:
+        def start(self, workflow_id: str) -> int:
+            launches.append(workflow_id)
+            return len(launches)
+
+        def is_running(self, _workflow_id: str) -> bool:
+            return False
+
+    service = TrainingService(
+        project_root=tmp_path,
+        input_resolver=SimpleNamespace(resolve=lambda _path: SimpleNamespace(reference="scenario.json")),
+        process_manager=ProcessManager(),
+        workflow_id_factory=lambda: "training-001",
+        baseline_builder=_baseline,
+    )
+    service.start(input_path="scenario.json", objective="improve", generation_count=1)
+    TrainingStore(tmp_path, "training-001").transition(
+        status=TrainingStatus.REPAIRING,
+        runner={"recovery": {"status": "REPAIRING", "attempts": 1}},
+    )
+
+    status = service.inspect("training-001")
+
+    assert launches == ["training-001", "training-001"]
+    assert status["runner_pid"] == 2
+
+
+def test_service_does_not_create_workflow_when_baseline_push_fails(tmp_path: Path) -> None:
+    launches: list[str] = []
+
+    def fail_baseline(_workflow_id: str) -> str:
+        raise RuntimeError("git push failed")
+
+    service = TrainingService(
+        project_root=tmp_path,
+        input_resolver=SimpleNamespace(
+            resolve=lambda _path: SimpleNamespace(reference="scenario.json")
+        ),
+        process_manager=SimpleNamespace(start=lambda workflow_id: launches.append(workflow_id)),
+        workflow_id_factory=lambda: "training-001",
+        baseline_builder=fail_baseline,
+    )
+
+    try:
+        service.start(input_path="scenario.json", objective="improve", generation_count=1)
+    except RuntimeError as exc:
+        assert "git push failed" in str(exc)
+    else:
+        raise AssertionError("baseline failure must abort start")
+
+    assert not (tmp_path / "runs" / "training" / "training-001").exists()
+    assert launches == []
