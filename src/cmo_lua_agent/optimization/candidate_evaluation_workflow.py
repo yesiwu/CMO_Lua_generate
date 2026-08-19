@@ -189,7 +189,6 @@ class CandidateEvaluationWorkflow:
                         if request.official_score_only
                         else self._phase3.evaluate(
                             run_result=record.result,
-                            run_id=record.run_paths.run_id,
                             scenario=request.scenario,
                             plan=plan,
                             score_compilation=request.native_score_compilation,

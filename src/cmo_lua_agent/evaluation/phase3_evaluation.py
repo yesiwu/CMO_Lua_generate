@@ -1,12 +1,15 @@
-"""Minimal, deterministic Phase 3 evidence and native-score evaluation.
-Phase3 最小化确定性评估核心代码：解析CMO仿真输出证据、校验数据一致性、生成标准化作战指标与可拆解得分，
-完全遵循文档Phase3设计，统一解析sqlite/csv两类仿真结果文件，输出结构化评估产物，不可变契约保证确定性。
+"""Phase 3 确定性评估。
+
+正式路径只认可 BatchRunner 生成的 ``execution-summary.json`` 作为分数事实来源，
+并把官方分数、计分事件和直接过程证据投影为候选评估结果。缺少官方摘要时
+直接返回不可评分，不再从 SQLite、CSV 或 Lua 日志重新推测战果。
+
+候选评估链调用本模块；Phase 7 会读取同一份 execution summary 生成经验，
+因此这里不移动、覆盖或删除上游 CMO Artifact。
 """
 from __future__ import annotations
 
-import csv
 import json
-import sqlite3
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -23,21 +26,8 @@ from cmo_lua_agent.scoring.native_score_compiler import CmoNativeScoreCompilatio
 class ResultArtifactPaths:
     batch_result_dir: Path | None    # 批次总目录
     job_result_dir: Path | None      # 单次仿真子目录
-    primary_result_path: Path | None# 核心结果文件(sqlite/csv)
-    runner_log_path: Path | None     # 执行器日志
-    lua_output_path: Path | None     # Lua运行时输出日志
-    is_confirmed: bool               # 是否存在有效结果文件
-    execution_summary_path: Path | None = None  # 官方机器摘要，正式分数唯一来源
-
-
-# ------------------------------ 证据1：外部执行层日志（BatchRunner） ------------------------------
-@dataclass(frozen=True, slots=True)
-class BatchRunnerEvidence:
-    execution_success: bool    # CMO进程是否正常跑完
-    timed_out: bool            # 是否超时中断
-    error: str | None          # 进程/脚本异常信息
-    result_dir: str | None     # 结果目录路径
-    configuration_restored: bool # 仿真结束是否恢复原始配置
+    execution_summary_path: Path | None # 官方机器摘要，正式分数唯一来源
+    is_confirmed: bool               # 是否存在有效官方摘要
 
 
 # ------------------------------ 通用数据载体：被毁单位 ------------------------------
@@ -75,27 +65,6 @@ class NativeScoreEvent:
     evidence_ref: str | None
 
 
-# ------------------------------ 证据3：Lua Runtime埋点日志 ------------------------------
-@dataclass(frozen=True, slots=True)
-class RuntimeTelemetry:
-    launch: tuple[str, ...]               # 成功起飞飞机名称列表
-    attack_ordered: tuple[str, ...]      # 下达攻击指令记录
-    return_to_base: tuple[str, ...]      # 成功返航飞机
-    score_registration_error: tuple[str, ...] # 计分触发器注册异常
-    runtime_error: tuple[str, ...]       # Lua运行时各类报错
-
-
-# ------------------------------ 内部临时结构：原始武器发射事件（仅解析用，不输出） ------------------------------
-@dataclass(frozen=True, slots=True)
-class _WeaponEvent:
-    """仅用于将 CMO 原始武器事件聚合到攻击链，绝不直接输出。"""
-    event_type: str         # 事件类型(发射/命中/拦截)
-    weapon_class: str | None# 武器型号
-    firing_unit_name: str | None # 发射单位名称
-    target_name: str | None      # 目标名称
-    result: str | None           # 结果(击杀/拦截/脱靶)
-
-
 # ------------------------------ 标准化攻击链路：单次完整攻击闭环 ------------------------------
 @dataclass(frozen=True, slots=True)
 class AttackEpisode:
@@ -123,40 +92,12 @@ class AttackEpisode:
     evidence_refs: tuple[str, ...] = ()
 
 
-# ------------------------------ 综合证据包：三类证据统一封装 ------------------------------
-@dataclass(frozen=True, slots=True)
-class AirOutcome:
-    """Direct, bounded air-operation evidence from execution-summary.json."""
-    aircraft_id: str
-    sortie_id: str | None
-    launch_requested: bool | None
-    airborne: bool | None
-    weapon_released: bool | None
-    released_quantity: int | None
-    rtb_requested: bool | None
-    landed: bool | None
-    destroyed: bool | None
-    survival_seconds: float | None
-    terminal_state: str | None
-    evidence_refs: tuple[str, ...] = ()
-
-
-@dataclass(frozen=True, slots=True)
-class CombatEvidence:
-    batch: BatchRunnerEvidence                  # 进程执行证据
-    native_snapshot: CmoNativeSnapshot          # CMO原生快照
-    runtime_telemetry: RuntimeTelemetry         # Lua埋点日志
-    attack_episodes: tuple[AttackEpisode, ...]  # 聚合后的标准化攻击链
-    raw_evidence_paths: ResultArtifactPaths     # 原始文件路径
-
-
 # ------------------------------ 证据对齐校验结果 ------------------------------
 @dataclass(frozen=True, slots=True)
 class EvidenceReconciliation:
-    status: str                     # 状态：valid/unscorable/result_integrity_failed
-    expected_native_score_delta: int | None # 根据击毁单位理论得分
-    actual_native_score_delta: int | None   # CMO实际得分
-    reasons: tuple[str, ...]                # 不一致/不可评分原因
+    """官方执行证据是否足以进入后续评分和语义判断。"""
+    status: str              # 状态：valid/unscorable
+    reasons: tuple[str, ...] # 不可评分原因；有效时为空
 
 
 # ------------------------------ 语义校验结果：策略与仿真是否匹配 ------------------------------
@@ -176,7 +117,6 @@ class Phase3CombatMetrics:
     enemy_units_destroyed: int            # 击毁敌方数量
     own_units_destroyed: int              # 己方损失数量
     weapon_expended: int | None           # 总弹药消耗
-    attack_episodes: tuple[AttackEpisode, ...] # 所有攻击闭环
     key_events: tuple[str, ...]           # 关键作战事件文本
     semantic_valid: bool                  # 语义校验是否通过
     scoreable: bool                       # 是否可打分
@@ -211,35 +151,38 @@ class Phase3EvaluationResult:
     metrics: Phase3CombatMetrics                 # 作战指标
     reward_breakdown: RewardBreakdown            # 得分明细
     score_events: tuple[NativeScoreEvent, ...] = ()
-    air_outcomes: tuple[AirOutcome, ...] = ()
-    process_evidence_status: str = "MISSING"
 
 
 # ------------------------------ 工具函数：定位本次仿真所有产物文件 ------------------------------
 def locate_result_artifacts(*, run_result: CmoRunResult) -> ResultArtifactPaths:
-    """根据CMO运行结果，自动查找批次目录、sqlite/csv核心结果、各类日志"""
-    # 取仿真根批次目录
+    """定位唯一任务目录及其官方执行摘要。"""
     batch = run_result.batch_result_dir or run_result.process_result.batch_result_dir
     if batch is None or not Path(batch).is_dir():
-        return ResultArtifactPaths(None, None, None, None, None, False, None)
+        return ResultArtifactPaths(None, None, None, False)
     batch = Path(batch)
-    # 查找001_开头单次仿真子文件夹
     jobs = sorted(path for path in batch.iterdir() if path.is_dir() and path.name.startswith("001_"))
     job = jobs[0] if len(jobs) == 1 else None
     summary = job / "execution-summary.json" if job and (job / "execution-summary.json").is_file() else None
-    primary = None
-    # 优先sqlite事件库，其次csv汇总文件
-    sqlite_present = bool(job and (job / "events.sqlite").is_file())
-    if job and sqlite_present and _sqlite_belongs_to_run(job / "events.sqlite", run_result.lua_path):
-        primary = job / "events.sqlite"
-    elif job and (job / "combat-summary.csv").is_file():
-        primary = job / "combat-summary.csv"
-    return ResultArtifactPaths(
-        batch, job, primary, batch / "runner.log" if (batch / "runner.log").is_file() else None,
-        job / "lua-output.log" if job and (job / "lua-output.log").is_file() else None,
-        job is not None and summary is not None and (not sqlite_present or primary is not None),
-        summary,
-    )
+    return ResultArtifactPaths(batch, job, summary, summary is not None)
+
+
+def _empty_snapshot() -> CmoNativeSnapshot:
+    """构造不可评分分支共用的空快照，保证所有异常出口语义一致。"""
+    return CmoNativeSnapshot(None, None, None, (), None, None)
+
+
+def _batch_evidence(
+    run_result: CmoRunResult,
+    paths: ResultArtifactPaths,
+) -> dict[str, object]:
+    """投影执行层事实，不在评估层重新解释进程状态。"""
+    return {
+        "execution_success": run_result.success,
+        "timed_out": run_result.process_result.timed_out,
+        "error": run_result.error.message if run_result.error else None,
+        "result_dir": str(paths.batch_result_dir) if paths.batch_result_dir else None,
+        "configuration_restored": run_result.restore_succeeded,
+    }
 
 
 # ------------------------------ Phase3 核心评估服务类 ------------------------------
@@ -253,26 +196,20 @@ class Phase3EvaluationService:
     ) -> Phase3EvaluationResult:
         """仿真数据异常/缺失，生成【不可评分】标准化产物并落地文件"""
         paths = locate_result_artifacts(run_result=run_result)
-        batch = BatchRunnerEvidence(
-            run_result.success,
-            run_result.process_result.timed_out,
-            run_result.error.message if run_result.error else None,
-            str(paths.batch_result_dir) if paths.batch_result_dir else None,
-            run_result.restore_succeeded,
-        )
+        batch = _batch_evidence(run_result, paths)
         # 构造空快照、不可评分结果
         result = self._unscorable(
             paths,
             batch,
-            CmoNativeSnapshot(None, None, None, (), None, None),
+            _empty_snapshot(),
             reason,
         )
         # 写入全套空json产物
-        _write_artifacts(Path(output_dir), result, batch, RuntimeTelemetry((), (), (), (), ()))
+        _write_artifacts(Path(output_dir), result, batch)
         return result
 
     def evaluate(
-        self, *, run_result: CmoRunResult, run_id: str, scenario: ScenarioDefinition,
+        self, *, run_result: CmoRunResult, scenario: ScenarioDefinition,
         plan: ExecutionPlan, score_compilation: CmoNativeScoreCompilation,
         generation_manifest: dict[str, Any], output_dir: Path | None = None,
         candidate_id: str | None = None,
@@ -280,46 +217,30 @@ class Phase3EvaluationService:
         """Phase3主入口：完整解析证据→对齐校验→语义校验→指标提取→生成得分"""
         # 1 定位所有结果文件
         paths = locate_result_artifacts(run_result=run_result)
-        batch = BatchRunnerEvidence(run_result.success, run_result.process_result.timed_out,
-            run_result.error.message if run_result.error else None,
-            str(paths.batch_result_dir) if paths.batch_result_dir else None, run_result.restore_succeeded)
+        batch = _batch_evidence(run_result, paths)
         # 无有效结果文件，直接标记不可评分
         if not paths.is_confirmed:
-            snapshot = CmoNativeSnapshot(None, None, None, (), None, None)
+            snapshot = _empty_snapshot()
             result = self._unscorable(paths, batch, snapshot, "execution-summary.json is missing")
         else:
             try:
-                # 2 解析sqlite/csv，得到原生快照、Lua埋点、原始武器事件
-                summary_snapshot, score_events = _parse_execution_summary(
+                # summary 同时承担官方分数、战损和直接过程证据的事实来源。
+                snapshot, score_events = _parse_execution_summary(
                     paths.execution_summary_path,
                     scenario=scenario,
                     expected_batch_run_id=paths.batch_result_dir.name if paths.batch_result_dir else None,
                     expected_candidate_id=candidate_id,
                     expected_scoring_side=score_compilation.score_spec.rules[0].score_side_id,
                 )
-                if paths.primary_result_path is not None:
-                    factual, telemetry, weapon_events = _parse_result(
-                        paths.primary_result_path, paths.lua_output_path, scenario, score_compilation,
-                    )
-                else:
-                    factual, telemetry, weapon_events = CmoNativeSnapshot(None, None, None, (), None, None), RuntimeTelemetry((), (), (), (), ()), ()
-                snapshot = CmoNativeSnapshot(
-                    summary_snapshot.native_score_initial, summary_snapshot.native_score_final,
-                    summary_snapshot.native_score_delta, summary_snapshot.destroyed_units,
-                    summary_snapshot.weapon_usage if summary_snapshot.weapon_usage is not None else factual.weapon_usage,
-                    factual.simulation_end_time, "execution-summary.json#/official_score/final",
-                )
-            except (OSError, ValueError, csv.Error, sqlite3.Error) as exc:
+            except (OSError, ValueError, json.JSONDecodeError) as exc:
                 # 文件解析失败，返回不可评分
-                result = self._unscorable(paths, batch, CmoNativeSnapshot(None, None, None, (), None, None), f"result parsing failed: {exc}")
+                result = self._unscorable(paths, batch, _empty_snapshot(), f"result parsing failed: {exc}")
                 if output_dir is not None:
-                    _write_artifacts(Path(output_dir), result, batch, RuntimeTelemetry((), (), (), (), ()))
+                    _write_artifacts(Path(output_dir), result, batch)
                 return result
-            # 3 原始武器事件聚合为标准化攻击链路AttackEpisode
-            direct_episodes, air_outcomes, process_status = _direct_process_evidence(paths.execution_summary_path)
-            episodes = direct_episodes or _episodes(plan, scenario, snapshot.destroyed_units, telemetry, weapon_events)
-            # 4 理论预期得分（按计分规则统计击毁单位）
-            expected = snapshot.native_score_delta
+            episodes = _parse_attack_episodes(paths.execution_summary_path)
+            # CMO 官方 summary 是唯一分数事实源。这里仅判断证据是否可用，
+            # 不再根据战损反推另一个“理论分数”与官方分数竞争。
             reasons: list[str] = []
             # 多维度数据一致性检查
             if not run_result.success or run_result.process_result.timed_out:
@@ -331,47 +252,29 @@ class Phase3EvaluationService:
                 reasons.append("native score fragment checksum mismatch")
             # 存在异常 → 不可评分
             if reasons:
-                reconciliation = EvidenceReconciliation("unscorable", expected, snapshot.native_score_delta, tuple(reasons))
-            # 理论得分和CMO实际分数不一致 → 数据冲突
-            elif not reasons:
-                reconciliation = EvidenceReconciliation("valid", expected, snapshot.native_score_delta, ())
-            # 全部数据对齐正常
+                reconciliation = EvidenceReconciliation("unscorable", tuple(reasons))
             else:
-                reconciliation = EvidenceReconciliation("valid", expected, snapshot.native_score_delta, ())
+                reconciliation = EvidenceReconciliation("valid", ())
             # 5 全局语义校验：场景/执行计划/计分配置ID、指纹统一校验
             semantic = _semantic(reconciliation, scenario, plan, score_compilation, generation_manifest, snapshot, episodes)
             # 6 计算分层得分明细
             reward = _reward(snapshot, score_events, reconciliation, semantic)
             # 7 提取标准化作战指标
-            metrics = _metrics(batch, snapshot, episodes, semantic)
+            metrics = _metrics(run_result.success, snapshot, episodes, semantic)
             # 组装完整评估结果
-            result = Phase3EvaluationResult(paths, snapshot, episodes, reconciliation, semantic, metrics, reward, score_events, air_outcomes, process_status)
+            result = Phase3EvaluationResult(paths, snapshot, episodes, reconciliation, semantic, metrics, reward, score_events)
         # 落地全套json产物文件
         if output_dir is not None:
-            _write_artifacts(Path(output_dir), result, batch, telemetry if paths.is_confirmed else RuntimeTelemetry((), (), (), (), ()))
+            _write_artifacts(Path(output_dir), result, batch)
         return result
 
     @staticmethod
-    def _unscorable(paths: ResultArtifactPaths, batch: BatchRunnerEvidence, snapshot: CmoNativeSnapshot, reason: str) -> Phase3EvaluationResult:
+    def _unscorable(paths: ResultArtifactPaths, batch: dict[str, object], snapshot: CmoNativeSnapshot, reason: str) -> Phase3EvaluationResult:
         """工具：生成不可评分空结果模板"""
-        reconciliation = EvidenceReconciliation("unscorable", None, None, (reason,))
+        reconciliation = EvidenceReconciliation("unscorable", (reason,))
         semantic = Phase3SemanticValidation(False, False, (reason,), ())
-        metrics = Phase3CombatMetrics(batch.execution_success, None, 0, 0, None, (), (), False, False)
+        metrics = Phase3CombatMetrics(bool(batch["execution_success"]), None, 0, 0, None, (), False, False)
         return Phase3EvaluationResult(paths, snapshot, (), reconciliation, semantic, metrics, RewardBreakdown(None, None, "native-score-v1", ()), ())
-
-
-# ------------------------------ 底层工具：校验sqlite文件属于本次Lua仿真 ------------------------------
-def _sqlite_belongs_to_run(db: Path, lua_path: Path) -> bool:
-    """读取sqlite内run_info表，核对脚本文件名匹配，防止读错历史仿真数据"""
-    try:
-        con = sqlite3.connect(f"file:{db.as_posix()}?mode=ro", uri=True)
-        try:
-            row = con.execute("select script from run_info limit 1").fetchone()
-        finally:
-            con.close()
-    except sqlite3.Error:
-        return False
-    return row is not None and bool(row[0]) and Path(str(row[0])).name == lua_path.name
 
 
 def _parse_execution_summary(
@@ -491,236 +394,69 @@ def _parse_execution_summary(
     ), tuple(events)
 
 
-def _direct_process_evidence(path: Path | None) -> tuple[tuple[AttackEpisode, ...], tuple[AirOutcome, ...], str]:
-    """Project direct BatchRunner evidence without participating in score parsing."""
-    if path is None or not path.is_file():
-        return (), (), "MISSING"
-    try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, ValueError, json.JSONDecodeError):
-        return (), (), "CONFLICTING"
-    traces_raw, air_raw, engagement_raw = (
-        payload.get("attack_execution_trace"), payload.get("air_outcomes"), payload.get("engagement_summary"),
-    )
-    values = (traces_raw, air_raw, engagement_raw)
-    if any(value is not None and not isinstance(value, list) for value in values):
-        return (), (), "CONFLICTING"
-    present = sum(value is not None for value in values)
-    if not present:
-        return (), (), "LEGACY_DERIVED"
-    status = "DIRECT" if present == 3 else "PARTIAL"
+def _parse_attack_episodes(path: Path | None) -> tuple[AttackEpisode, ...]:
+    """只投影 summary 已明确记录的攻击过程，不从其他日志猜测。"""
+    if path is None:
+        return ()
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    traces = payload.get("attack_execution_trace")
+    if traces is None:
+        return ()
+    if not isinstance(traces, list):
+        raise ValueError("execution summary attack_execution_trace must be an array")
 
     def stage_value(stages: object, name: str) -> bool | None:
-        rows = [row for row in stages if isinstance(row, dict) and row.get("stage") == name] if isinstance(stages, list) else []
+        rows = [
+            row for row in stages
+            if isinstance(row, dict) and row.get("stage") == name
+        ] if isinstance(stages, list) else []
         if not rows:
             return None
-        return True if any(row.get("success") is True for row in rows) else False if all(row.get("success") is False for row in rows) else None
+        if any(row.get("success") is True for row in rows):
+            return True
+        if all(row.get("success") is False for row in rows):
+            return False
+        return None
 
     episodes: list[AttackEpisode] = []
-    for row in traces_raw if isinstance(traces_raw, list) else []:
-        if not isinstance(row, dict) or not isinstance(row.get("attacker_id"), str) or not isinstance(row.get("target_id"), str):
+    for row in traces:
+        if not isinstance(row, dict):
+            continue
+        attacker_id = row.get("attacker_id")
+        target_id = row.get("target_id")
+        if not isinstance(attacker_id, str) or not isinstance(target_id, str):
             continue
         stages = row.get("attack_stages", row.get("stages", []))
         waves = row.get("attack_waves", [])
-        refs = tuple(str(value) for value in row.get("evidence_refs", []) if isinstance(value, str))
-        fired = sum(int(wave.get("fired_count", 0)) for wave in waves if isinstance(wave, dict) and isinstance(wave.get("fired_count", 0), int))
-        hits = sum(int(wave.get("hit_count", 0)) for wave in waves if isinstance(wave, dict) and isinstance(wave.get("hit_count", 0), int))
+        valid_waves = [wave for wave in waves if isinstance(wave, dict)] if isinstance(waves, list) else []
+        fired = sum(wave.get("fired_count", 0) for wave in valid_waves if isinstance(wave.get("fired_count", 0), int))
+        hits = sum(wave.get("hit_count", 0) for wave in valid_waves if isinstance(wave.get("hit_count", 0), int))
+        damage = row.get("target_damage")
         episodes.append(AttackEpisode(
-            str(row.get("operation_id")) if row.get("operation_id") is not None else None,
-            row["attacker_id"], row["target_id"], None, None, fired if waves else None, hits if waves else None, None,
-            bool((row.get("target_damage") or {}).get("destroyed")) if isinstance(row.get("target_damage"), dict) and (row.get("target_damage") or {}).get("destroyed") is not None else None,
-            None, None, (),
-            stage_value(stages, "scheduled"), stage_value(stages, "triggered"), stage_value(stages, "attacker_found"),
-            stage_value(stages, "target_found"), stage_value(stages, "contact_acquired"), stage_value(stages, "attack_range_reached"),
-            stage_value(stages, "attack_command_called"),
-            row.get("attack_command_accepted", stage_value(stages, "attack_command_succeeded")),
-            str(row.get("final_stage")) if row.get("success") is False and row.get("final_stage") is not None else None, refs,
+            operation_id=str(row["operation_id"]) if row.get("operation_id") is not None else None,
+            attacker_id=attacker_id,
+            target_id=target_id,
+            weapon_id=str(row["weapon_dbid"]) if row.get("weapon_dbid") is not None else None,
+            launch_succeeded=None,
+            weapons_fired=fired if valid_waves else None,
+            hits=hits if valid_waves else None,
+            intercepted=None,
+            target_destroyed=(bool(damage.get("destroyed")) if isinstance(damage, dict) and damage.get("destroyed") is not None else None),
+            attacker_destroyed=None,
+            returned_to_base=None,
+            important_errors=(),
+            scheduled=stage_value(stages, "scheduled"),
+            triggered=stage_value(stages, "triggered"),
+            attacker_found=stage_value(stages, "attacker_found"),
+            target_found=stage_value(stages, "target_found"),
+            contact_acquired=stage_value(stages, "contact_acquired"),
+            attack_range_reached=stage_value(stages, "attack_range_reached"),
+            attack_command_called=stage_value(stages, "attack_command_called"),
+            attack_command_succeeded=row.get("attack_command_accepted", stage_value(stages, "attack_command_succeeded")),
+            failure_stage=(str(row["final_stage"]) if row.get("success") is False and row.get("final_stage") is not None else None),
+            evidence_refs=tuple(str(value) for value in row.get("evidence_refs", []) if isinstance(value, str)),
         ))
-    outcomes: list[AirOutcome] = []
-    for row in air_raw if isinstance(air_raw, list) else []:
-        if not isinstance(row, dict) or not isinstance(row.get("aircraft_id"), str):
-            continue
-        states = row.get("air_states", row.get("states", []))
-        waves = row.get("attack_waves", [])
-        released = sum(int(wave.get("fired_count", 0)) for wave in waves if isinstance(wave, dict) and isinstance(wave.get("fired_count", 0), int))
-        outcomes.append(AirOutcome(
-            row["aircraft_id"], str(row.get("sortie_id")) if row.get("sortie_id") is not None else None,
-            stage_value([{**item, "stage": item.get("state")} for item in states] if isinstance(states, list) else [], "launch_requested"),
-            row.get("airborne"), row.get("weapon_released"), released if waves else None, row.get("rtb_requested"), row.get("landed"), row.get("destroyed"),
-            row.get("survival_seconds") if isinstance(row.get("survival_seconds"), (int, float)) else None,
-            str(row.get("final_state")) if row.get("final_state") is not None else None,
-            tuple(str(value) for value in row.get("evidence_refs", []) if isinstance(value, str)),
-        ))
-    return tuple(episodes), tuple(outcomes), status
-
-
-# ------------------------------ 分发解析器：自动区分sqlite/csv文件 ------------------------------
-def _parse_result(path: Path, lua_log: Path | None, scenario: ScenarioDefinition, score: CmoNativeScoreCompilation) -> tuple[CmoNativeSnapshot, RuntimeTelemetry, tuple[_WeaponEvent, ...]]:
-    if path.suffix.lower() == ".csv":
-        return _parse_csv(path, lua_log, scenario, score)
-    return _parse_sqlite(path, lua_log, scenario, score)
-
-
-# ------------------------------ Sqlite完整解析逻辑 ------------------------------
-def _parse_sqlite(db: Path, lua_log: Path | None, scenario: ScenarioDefinition, score: CmoNativeScoreCompilation) -> tuple[CmoNativeSnapshot, RuntimeTelemetry, tuple[_WeaponEvent, ...]]:
-    unit_by_name = {unit.name: unit for unit in scenario.units}
-    con = sqlite3.connect(f"file:{db.as_posix()}?mode=ro", uri=True)
-    try:
-        # 读取各阶段阵营分数
-        scores = {f"{phase}:{side}": value for phase, side, value in con.execute("select phase, side, score from side_scores")}
-        side = score.score_spec.rules[0].score_side_id
-        initial, final = scores.get(f"start:{side}"), scores.get(f"end:{side}")
-        destroyed: list[DestroyedUnit] = []
-        # 读取单位击毁事件，过滤导弹武器自爆记录
-        for _, event_type, _, name, unit_side, reason in con.execute("select sim_time,event_type,unit_id,unit_name,unit_side,reason from unit_damage_events"):
-            if event_type == "UnitDestroyed":
-                if unit_by_name.get(name) is None and _is_weapon_destruction(name, reason):
-                    continue
-                unit = unit_by_name.get(name)
-                destroyed.append(DestroyedUnit(unit.unit_id if unit else None, unit.name if unit else name, unit.side_id if unit else unit_side))
-        # 仿真结束时间
-        run = con.execute("select sim_ended from run_info limit 1").fetchone()
-        # 读取全部武器发射/命中原始事件
-        weapon_events = tuple(
-            _WeaponEvent(event_type, weapon_class, firing_name, target_name, result)
-            for event_type, weapon_class, firing_name, target_name, result in con.execute(
-                "select event_type,weapon_class,firing_unit_name,target_name,result from weapon_events"
-            )
-        )
-        usage = sum(1 for item in weapon_events if item.event_type == "WeaponFired")
-    finally:
-        con.close()
-    # 读取Lua日志提取埋点信息（起飞/攻击/返航/计分报错）
-    text = lua_log.read_text(encoding="utf-8", errors="replace") if lua_log else ""
-    telemetry = RuntimeTelemetry(
-        tuple(sorted(_names_after(text, "Launch/"))),
-        tuple(sorted(_operation_lines(text, "operation air_attack."))),
-        tuple(sorted(_names_after(text, "rtb"))),
-        tuple(line for line in text.splitlines() if "CMO-NATIVE-SCORE" in line and "failed" in line.lower()),
-        tuple(line for line in text.splitlines() if "runtime error" in line.lower()),
-    )
-    # 去重整理被毁单位，生成快照对象
-    unique_destroyed = tuple(sorted({(item.unit_id, item.unit_name): item for item in destroyed}.values(), key=lambda item: (item.unit_id is None, item.unit_name)))
-    delta = final - initial if (initial is not None and final is not None) else None
-    return CmoNativeSnapshot(initial, final, delta, unique_destroyed, usage, run[0] if run else None), telemetry, weapon_events
-
-
-# ------------------------------ CSV简易汇总文件解析 ------------------------------
-def _parse_csv(path: Path, lua_log: Path | None, scenario: ScenarioDefinition, score: CmoNativeScoreCompilation) -> tuple[CmoNativeSnapshot, RuntimeTelemetry, tuple[_WeaponEvent, ...]]:
-    unit_by_name = {unit.name: unit for unit in scenario.units}
-    initial = final = None
-    destroyed: list[DestroyedUnit] = []
-    weapon_usage = 0
-    with path.open(encoding="utf-8-sig", newline="") as handle:
-        for row in csv.DictReader(handle):
-            metric, side = row.get("指标", ""), row.get("阵营", "")
-            subject, result, value = row.get("武器或单位", ""), row.get("结果", ""), row.get("数量或损伤百分比", "")
-            # 读取开局/结尾分数
-            if side == score.score_spec.rules[0].score_side_id and metric == "CMO官方初始得分":
-                initial = _parse_int(value)
-            if side == score.score_spec.rules[0].score_side_id and metric == "CMO官方最终得分":
-                final = _parse_int(value)
-            # 读取被毁单位
-            if metric == "单位战损" and result == "被毁":
-                name = subject.split(" [", 1)[0]
-                unit = unit_by_name.get(name)
-                destroyed.append(DestroyedUnit(unit.unit_id if unit else None, unit.name if unit else name, unit.side_id if unit else side))
-            # 读取武器消耗总数
-            if metric == "武器消耗":
-                weapon_usage += _parse_int(value) or 0
-    # 解析Lua埋点日志
-    text = lua_log.read_text(encoding="utf-8", errors="replace") if lua_log else ""
-    telemetry = RuntimeTelemetry(tuple(sorted(_names_after(text, "Launch/"))), tuple(sorted(_operation_lines(text, "operation air_attack."))), tuple(sorted(_names_after(text, "rtb"))), (), ())
-    delta = final - initial if (initial is not None and final is not None) else None
-    unique_destroyed = tuple(sorted({(item.unit_id, item.unit_name): item for item in destroyed}.values(), key=lambda item: (item.unit_id is None, item.unit_name)))
-    return CmoNativeSnapshot(initial, final, delta, unique_destroyed, weapon_usage, None), telemetry, ()
-
-
-# ------------------------------ 辅助：安全转整数，空/非法返回None ------------------------------
-def _parse_int(value: str) -> int | None:
-    try:
-        return int(float(value))
-    except (TypeError, ValueError):
-        return None
-
-
-# ------------------------------ 过滤：忽略飞行导弹自爆记录，不视为单位损失 ------------------------------
-def _is_weapon_destruction(unit_name: str, reason: str | None) -> bool:
-    """CMO 将飞行中的武器也写入 UnitDestroyed，不能把它视为场景单位。"""
-    text = f"{unit_name} {reason or ''}".lower()
-    return "weapon has been destroyed" in text or "武器" in text
-
-
-# ------------------------------ 日志文本提取工具：标记后截取名称 ------------------------------
-def _names_after(text: str, marker: str) -> list[str]:
-    values: list[str] = []
-    for line in text.splitlines():
-        if marker in line and "success=true" in line:
-            values.append(line.split(marker, 1)[1].split()[0])
-    return values
-
-
-# ------------------------------ 日志提取操作ID ------------------------------
-def _operation_lines(text: str, marker: str) -> list[str]:
-    return [line.split(marker, 1)[1].split()[0] for line in text.splitlines() if marker in line]
-
-
-# ------------------------------ 原始武器事件 → 标准化攻击链路聚合 ------------------------------
-def _episodes(
-    plan: ExecutionPlan,
-    scenario: ScenarioDefinition,
-    destroyed: tuple[DestroyedUnit, ...],
-    telemetry: RuntimeTelemetry,
-    weapon_events: tuple[_WeaponEvent, ...],
-) -> tuple[AttackEpisode, ...]:
-    destroyed_ids = {item.unit_id for item in destroyed}
-    unit_by_id = scenario.unit_by_id()
-    episodes: list[AttackEpisode] = []
-    # 遍历执行计划中所有舰艇/飞机攻击原语
-    for operation in plan.operations:
-        if operation.primitive_type not in {"schedule_ship_attack", "aircraft_attack"}:
-            continue
-        p = operation.parameters
-        attacker, targets = str(p["shooter_id"]), tuple(p["target_ids"])
-        attacker_unit = unit_by_id.get(attacker)
-        if attacker_unit is None:
-            continue
-        # 每条攻击目标单独生成一条攻击闭环记录
-        for target in targets:
-            target_id = str(target)
-            target_unit = unit_by_id.get(target_id)
-            if target_unit is None:
-                continue
-            # 匹配该攻防对应的所有武器事件
-            matched = tuple(
-                event for event in weapon_events
-                if event.firing_unit_name == attacker_unit.name and event.target_name == target_unit.name
-            )
-            fired = sum(1 for event in matched if event.event_type == "WeaponFired")
-            hits = sum(1 for event in matched if event.event_type == "WeaponEndgame" and (event.result or "").upper() == "KILL")
-            intercepted = sum(1 for event in matched if "INTERCEPT" in (event.result or "").upper() or "POINTDEF" in (event.result or "").upper())
-            # 提取本条攻击相关所有报错
-            errors = tuple(sorted({
-                line for line in (*telemetry.runtime_error, *telemetry.score_registration_error)
-                if attacker in line or target_id in line or attacker_unit.name in line or target_unit.name in line
-            }))
-            # 组装标准化攻击链路对象
-            episodes.append(AttackEpisode(
-                operation.operation_id, attacker, target_id, str(p.get("weapon_dbid")),
-                attacker_unit.name in telemetry.launch if attacker_unit.platform_type == "aircraft" else None,
-                fired if matched else None, hits if matched else None, intercepted if matched else None,
-                target_id in destroyed_ids,
-                attacker in destroyed_ids,
-                False if attacker in destroyed_ids else (attacker_unit.name in telemetry.return_to_base if telemetry.return_to_base else None),
-                errors
-            ))
     return tuple(episodes)
-
-
-# ------------------------------ 按计分规则计算理论预期得分 ------------------------------
-def _expected_delta(destroyed: tuple[DestroyedUnit, ...], score: CmoNativeScoreCompilation) -> int:
-    rule_by_unit = {rule.target_unit_id: rule.point_change for rule in score.score_spec.rules}
-    return sum(rule_by_unit.get(item.unit_id, 0) for item in destroyed)
 
 
 # ------------------------------ 全量语义一致性校验 ------------------------------
@@ -770,7 +506,7 @@ def _reward(snapshot: CmoNativeSnapshot, score_events: tuple[NativeScoreEvent, .
 
 
 # ------------------------------ 聚合所有标准化作战指标 ------------------------------
-def _metrics(batch: BatchRunnerEvidence, snap: CmoNativeSnapshot, episodes: tuple[AttackEpisode, ...], semantic: Phase3SemanticValidation) -> Phase3CombatMetrics:
+def _metrics(execution_success: bool, snap: CmoNativeSnapshot, episodes: tuple[AttackEpisode, ...], semantic: Phase3SemanticValidation) -> Phase3CombatMetrics:
     own = sum(1 for item in snap.destroyed_units if item.side_id == "red")
     enemy = len(snap.destroyed_units) - own
     key_events: list[str] = []
@@ -783,12 +519,11 @@ def _metrics(batch: BatchRunnerEvidence, snap: CmoNativeSnapshot, episodes: tupl
     if snap.native_score_delta is not None:
         key_events.append(f"原生得分变化：{snap.native_score_delta}")
     return Phase3CombatMetrics(
-        batch.execution_success,
+        execution_success,
         snap.native_score_delta,
         enemy,
         own,
         snap.weapon_usage,
-        episodes,
         tuple(key_events),
         semantic.semantic_valid,
         semantic.scoreable,
@@ -796,12 +531,16 @@ def _metrics(batch: BatchRunnerEvidence, snap: CmoNativeSnapshot, episodes: tupl
 
 
 # ------------------------------ 落地全套Phase3输出JSON文件 ------------------------------
-def _write_artifacts(directory: Path, result: Phase3EvaluationResult, batch: BatchRunnerEvidence, telemetry: RuntimeTelemetry) -> None:
+def _write_artifacts(
+    directory: Path,
+    result: Phase3EvaluationResult,
+    batch: dict[str, object],
+) -> None:
     directory.mkdir(parents=True, exist_ok=True)
     payloads = {
-        "combat_evidence.json": {"batch": asdict(batch), "native_snapshot": asdict(result.native_snapshot), "runtime_telemetry": asdict(telemetry), "attack_episodes": [asdict(item) for item in result.attack_episodes], "raw_evidence_paths": _paths(result.artifact_paths)},
+        "combat_evidence.json": {"batch": batch, "native_snapshot": asdict(result.native_snapshot), "runtime_telemetry": {}, "attack_episodes": [asdict(item) for item in result.attack_episodes], "raw_evidence_paths": _paths(result.artifact_paths)},
         "semantic_validation.json": asdict(result.semantic_validation),
-        "combat_metrics.json": {**asdict(result.metrics), "attack_episodes": [asdict(item) for item in result.metrics.attack_episodes]},
+        "combat_metrics.json": {**asdict(result.metrics), "attack_episodes": [asdict(item) for item in result.attack_episodes]},
         "reward_breakdown.json": {**asdict(result.reward_breakdown), "breakdown": [asdict(item) for item in result.reward_breakdown.breakdown]},
         "native_score_diagnostics.json": {
             "score_source": result.native_snapshot.score_source,

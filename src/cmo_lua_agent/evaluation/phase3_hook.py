@@ -44,7 +44,6 @@ class Phase3EvaluationHook:
             # 正常执行Phase3完整评估流程，生成全套证据/指标/得分JSON
             return self.service.evaluate(
                 run_result=record.result,
-                run_id=record.run_paths.run_id,
                 scenario=self.scenario,
                 plan=self.plan,
                 score_compilation=self.score_compilation,

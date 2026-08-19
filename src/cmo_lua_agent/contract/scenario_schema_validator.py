@@ -427,7 +427,7 @@ class ScenarioSchemaValidator:
                 self._add_issue(
                     issues,
                     code="schema.invalid_weapon_load",
-                    message="weaponLoad 条目必须是对象",
+                    message=" 条目必须是对象",
                     path=item_path,
                 )
                 continue
